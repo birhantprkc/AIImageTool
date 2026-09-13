@@ -1,48 +1,69 @@
-﻿$ErrorActionPreference = "Stop"
+<#
+    publish.ps1 — Publish script for ZeroVision (Dual Mode: Full & Lite)
+    Adheres to AgentOption .NET Publish Release standard & ZeroUniverse rules.
+#>
+[CmdletBinding()]
+param(
+    [ValidateSet('Full', 'Lite', 'All')]
+    [string]$Mode = 'All',
+    [string]$Configuration = 'Release',
+    [string]$Runtime = 'win-x64'
+)
 
-Write-Host "Cleaning up old releases in Publish folder..."
-if (Test-Path "Publish") {
-    Remove-Item -Recurse -Force "Publish\*" -ErrorAction SilentlyContinue
+$ErrorActionPreference = "Stop"
+$Root = $PSScriptRoot
+$HostProj = Join-Path $Root "ZeroVision.Host\ZeroVision.Host.csproj"
+$FaceProj = Join-Path $Root "ZeroVision.Plugins.FaceRestorer\ZeroVision.Plugins.FaceRestorer.csproj"
+$UpscaleProj = Join-Path $Root "ZeroVision.Plugins.Upscaler\ZeroVision.Plugins.Upscaler.csproj"
+$Dist = Join-Path $Root "Publish"
+
+if (Test-Path $Dist) {
+    Remove-Item -Recurse -Force "$Dist\*" -ErrorAction SilentlyContinue
 } else {
-    New-Item -ItemType Directory -Force -Path "Publish"
+    New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 }
 
-Write-Host "Publishing FULL (Self-Contained)..."
-$solDir = (Get-Item .).FullName + "\"
+$solDir = (Get-Item $Root).FullName + "\"
 
-# Build các plugin trước
-dotnet build ZeroVision.Plugins.FaceRestorer\ZeroVision.Plugins.FaceRestorer.csproj -c Release -p:SolutionDir=$solDir
-dotnet build ZeroVision.Plugins.Upscaler\ZeroVision.Plugins.Upscaler.csproj -c Release -p:SolutionDir=$solDir
+# Build plugins first
+Write-Host ">>> Building ZeroVision plugins..." -ForegroundColor Cyan
+dotnet build $FaceProj -c $Configuration -p:SolutionDir=$solDir
+dotnet build $UpscaleProj -c $Configuration -p:SolutionDir=$solDir
 
-# Publish Host dự án chính (bỏ SolutionDir để xuất đúng thư mục chỉ định -o)
-dotnet publish ZeroVision.Host\ZeroVision.Host.csproj -c Release -r win-x64 -p:SelfContained=true -p:PublishSingleFile=true -o "Publish\Full"
-
-# Copy Plugins vào thư mục phát hành
-Copy-Item -Path "ZeroVision.Host\bin\Release\net8.0-windows\win-x64\Plugins" -Destination "Publish\Full\Plugins" -Recurse -Force
-
-# Đổi tên exe và pdb sang thương hiệu AuroraStudio
-Rename-Item -Path "Publish\Full\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
-if (Test-Path "Publish\Full\ZeroVision.Host.pdb") {
-    Rename-Item -Path "Publish\Full\ZeroVision.Host.pdb" -NewName "AuroraStudio.pdb" -Force
+if ($Mode -eq 'Full' -or $Mode -eq 'All') {
+    Write-Host ">>> Publishing ZeroVision FULL (Self-Contained Single File)..." -ForegroundColor Cyan
+    $outFull = Join-Path $Dist "Full"
+    dotnet publish $HostProj -c $Configuration -r $Runtime --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:EnableCompressionInSingleFile=true `
+        -o $outFull
+        
+    Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outFull\Plugins" -Recurse -Force
+    
+    # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
+    if (Test-Path "$outFull\ZeroVision.Host.exe") {
+        Copy-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\ZeroVision.exe" -Force
+        Rename-Item "$outFull\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
+    }
+    Write-Host "  ✔ Full build generated at: $outFull\ZeroVision.exe" -ForegroundColor Green
 }
 
-
-Write-Host "Publishing LITE (Framework-Dependent)..."
-# Publish Host dự án chính
-dotnet publish ZeroVision.Host\ZeroVision.Host.csproj -c Release -r win-x64 -p:SelfContained=false -p:PublishSingleFile=true -o "Publish\Lite"
-
-# Copy Plugins vào thư mục phát hành
-Copy-Item -Path "ZeroVision.Host\bin\Release\net8.0-windows\win-x64\Plugins" -Destination "Publish\Lite\Plugins" -Recurse -Force
-
-# Đổi tên exe và pdb sang thương hiệu AuroraStudio
-Rename-Item -Path "Publish\Lite\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
-if (Test-Path "Publish\Lite\ZeroVision.Host.pdb") {
-    Rename-Item -Path "Publish\Lite\ZeroVision.Host.pdb" -NewName "AuroraStudio.pdb" -Force
+if ($Mode -eq 'Lite' -or $Mode -eq 'All') {
+    Write-Host ">>> Publishing ZeroVision LITE (Framework-Dependent Single File)..." -ForegroundColor Cyan
+    $outLite = Join-Path $Dist "Lite"
+    dotnet publish $HostProj -c $Configuration -r $Runtime --self-contained false `
+        -p:PublishSingleFile=true `
+        -o $outLite
+        
+    Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outLite\Plugins" -Recurse -Force
+    
+    # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
+    if (Test-Path "$outLite\ZeroVision.Host.exe") {
+        Copy-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\ZeroVision.exe" -Force
+        Rename-Item "$outLite\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
+    }
+    Write-Host "  ✔ Lite build generated at: $outLite\ZeroVision.exe" -ForegroundColor Green
 }
 
-
-Write-Host "Compressing ZIP packages..."
-Compress-Archive -Path "Publish\Full\*" -DestinationPath "Publish\AuroraStudio_Full_Win_x64.zip" -Force
-Compress-Archive -Path "Publish\Lite\*" -DestinationPath "Publish\AuroraStudio_Lite_Win_x64.zip" -Force
-
-Write-Host "Publish Process Completed Successfully!"
+Write-Host ">>> ZeroVision publish completed successfully!" -ForegroundColor Green
