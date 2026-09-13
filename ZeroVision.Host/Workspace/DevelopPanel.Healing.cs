@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,13 +11,22 @@ namespace ZeroVision.Host.Workspace;
 // Healing/Clone brush UI (#6). Spots lưu ở DevelopPanel, round-trip qua history như 1 HealingOp.
 public partial class DevelopPanel
 {
+    private enum ActiveBrushMode
+    {
+        Heal,
+        Clone,
+        AiInpaint
+    }
+
     private readonly List<HealingOp.Spot> _healSpots = new();
     private HealingOp.HealMode _healMode = HealingOp.HealMode.Heal;
+    private ActiveBrushMode _brushMode = ActiveBrushMode.Heal;
     private float _healRadius = 0.03f;
     private CheckBox? _chkHealActive;
+    private ComboBox? _cmbHealMode;
     private TextBlock? _healInfo;
 
-    /// <summary>Bắn true khi bật chế độ Heal (CenterPreview cho click chấm vết), false khi tắt.</summary>
+    /// <summary>Bắn true khi bật chế độ Heal/Inpaint (CenterPreview cho click chấm vết), false khi tắt.</summary>
     public event EventHandler<bool>? HealingModeChanged;
 
     /// <summary>Bán kính heal hiện tại (chuẩn hoá) — CenterPreview đọc để vẽ + auto-source.</summary>
@@ -27,7 +36,7 @@ public partial class DevelopPanel
     {
         _chkHealActive = new CheckBox
         {
-            Content = "Bật Healing (click vào vết để xoá)", FontSize = 11,
+            Content = "Bật Healing / AI Inpaint (click vào ảnh để xoá)", FontSize = 11,
             Margin = new Thickness(0, 2, 0, 4)
         };
         _chkHealActive.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
@@ -40,10 +49,19 @@ public partial class DevelopPanel
         var cmbMode = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
         cmbMode.Items.Add(new ComboBoxItem { Content = "Heal (vá liền)" });
         cmbMode.Items.Add(new ComboBoxItem { Content = "Clone (chép thẳng)" });
+        cmbMode.Items.Add(new ComboBoxItem { Content = "✨ AI Inpaint (PDE Diffusion)" });
+        _cmbHealMode = cmbMode;
         cmbMode.SelectedIndex = 0;
         cmbMode.SelectionChanged += (_, _) =>
         {
-            _healMode = cmbMode.SelectedIndex == 1 ? HealingOp.HealMode.Clone : HealingOp.HealMode.Heal;
+            _brushMode = cmbMode.SelectedIndex switch
+            {
+                1 => ActiveBrushMode.Clone,
+                2 => ActiveBrushMode.AiInpaint,
+                _ => ActiveBrushMode.Heal
+            };
+            _healMode = _brushMode == ActiveBrushMode.Clone ? HealingOp.HealMode.Clone : HealingOp.HealMode.Heal;
+            UpdateHealInfo();
             if (!_loading && _healSpots.Count > 0) Commit();
         };
         modeRow.Children.Add(cmbMode);
@@ -67,7 +85,16 @@ public partial class DevelopPanel
 
     private void UpdateHealInfo()
     {
-        if (_healInfo != null) _healInfo.Text = $"{_healSpots.Count} chấm đã xoá";
+        if (_healInfo != null)
+        {
+            var modeName = _brushMode switch
+            {
+                ActiveBrushMode.Clone => "Clone",
+                ActiveBrushMode.AiInpaint => "AI Inpaint",
+                _ => "Heal"
+            };
+            _healInfo.Text = $"{_healSpots.Count} vùng [{modeName}]";
+        }
     }
 
     /// <summary>CenterPreview gọi khi user click 1 điểm (toạ độ chuẩn hoá). Auto-pick nguồn lân cận sạch.</summary>
@@ -84,25 +111,59 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Sinh HealingOp từ spots (gọi trong BuildOps). Rỗng nếu chưa có chấm.</summary>
+    /// <summary>Sinh HealingOp hoặc AiInpaintOp từ spots (gọi trong BuildOps). Rỗng nếu chưa có chấm.</summary>
     private void AppendHealingOp(List<EditOperation> ops)
     {
         if (_healSpots.Count == 0) return;
-        var op = new HealingOp { Mode = _healMode };
-        op.Spots.AddRange(_healSpots);
-        ops.Add(Op(HealingOp.Type, "Healing", op.ToParams()));
+
+        if (_brushMode == ActiveBrushMode.AiInpaint)
+        {
+            var op = new AiInpaintOp
+            {
+                Algorithm = InpaintAlgorithm.FastTeleaDiffusion,
+                Strength = 1.0f,
+                Iterations = 8
+            };
+            foreach (var s in _healSpots)
+            {
+                op.Regions.Add(new AiInpaintOp.InpaintRegion(s.Tx, s.Ty, s.Radius));
+            }
+            ops.Add(Op(AiInpaintOp.Type, "AI Inpaint", op.ToParams()));
+        }
+        else
+        {
+            var op = new HealingOp { Mode = _healMode };
+            op.Spots.AddRange(_healSpots);
+            ops.Add(Op(HealingOp.Type, "Healing", op.ToParams()));
+        }
     }
 
     /// <summary>Nạp lại spots từ history (gọi trong LoadFor).</summary>
     private void LoadHealing(string path)
     {
         _healSpots.Clear();
-        var p = FindOp(path, HealingOp.Type);
-        if (p != null)
+        var pInpaint = FindOp(path, AiInpaintOp.Type);
+        if (pInpaint != null)
         {
-            var op = HealingOp.FromParams(p);
-            _healSpots.AddRange(op.Spots);
-            _healMode = op.Mode;
+            var inpaintOp = (AiInpaintOp)AiInpaintOp.Create(pInpaint);
+            foreach (var r in inpaintOp.Regions)
+            {
+                _healSpots.Add(new HealingOp.Spot(r.NormalizedX, r.NormalizedY, r.NormalizedX, r.NormalizedY, r.Radius));
+            }
+            _brushMode = ActiveBrushMode.AiInpaint;
+            if (_cmbHealMode != null) _cmbHealMode.SelectedIndex = 2;
+        }
+        else
+        {
+            var p = FindOp(path, HealingOp.Type);
+            if (p != null)
+            {
+                var op = HealingOp.FromParams(p);
+                _healSpots.AddRange(op.Spots);
+                _healMode = op.Mode;
+                _brushMode = op.Mode == HealingOp.HealMode.Clone ? ActiveBrushMode.Clone : ActiveBrushMode.Heal;
+                if (_cmbHealMode != null) _cmbHealMode.SelectedIndex = _brushMode == ActiveBrushMode.Clone ? 1 : 0;
+            }
         }
         UpdateHealInfo();
     }
