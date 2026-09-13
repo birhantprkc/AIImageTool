@@ -1,0 +1,81 @@
+﻿<UserControl x:Class="ZeroVision.Plugins.VisionTagger.VisionTaggerControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="360"
+             Foreground="White"
+             Background="#1E1E1E">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="AI Auto Tagger" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,2"/>
+        <TextBlock x:Name="txtActiveImage" Grid.Row="1" Text="(chưa chọn ảnh)" Foreground="#888" FontSize="11"
+                   Margin="0,0,0,12" TextTrimming="CharacterEllipsis"
+                   ToolTip="Ảnh đang mở ở khung xem trung tâm"/>
+
+        <!-- Nút Action -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,14">
+            <Button x:Name="btnAnalyze" Content="Phân Tích Bằng AI" Height="38" Margin="0,0,0,6"
+                    Click="BtnAnalyze_Click" FontWeight="Bold" IsEnabled="False"/>
+            <Button x:Name="btnTagSelection" Content="Tag toàn bộ ảnh đang chọn (Batch)" Height="28"
+                    Click="BtnTagSelection_Click"
+                    ToolTip="Chạy AI tag cho mọi ảnh đang chọn và lưu vào keyword"/>
+        </StackPanel>
+
+        <!-- Tiêu đề mô tả -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Mô Tả Ảnh" FontSize="15" FontWeight="SemiBold"/>
+            <Button x:Name="btnCopyDesc" Content="Copy" Margin="10,0,0,0" Padding="6,2" Click="BtnCopyDesc_Click"/>
+        </StackPanel>
+
+        <!-- Mô tả -->
+        <TextBox x:Name="txtDescription" Grid.Row="4" TextWrapping="Wrap" AcceptsReturn="True"
+                 MinHeight="90" Padding="10" Background="#2D2D30" Foreground="White"
+                 BorderThickness="1" BorderBrush="#3E3E42" Margin="0,0,0,14"/>
+
+        <!-- Tiêu đề Tags -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Từ Khoá (Tags)" FontSize="15" FontWeight="SemiBold"/>
+            <Button x:Name="btnCopyTags" Content="Copy All" Margin="10,0,0,0" Padding="6,2" Click="BtnCopyTags_Click"/>
+            <Button x:Name="btnSaveTags" Content="Lưu vào Keywords" Margin="6,0,0,0" Padding="6,2"
+                    Click="BtnSaveTags_Click" ToolTip="Lưu tags vào metadata ảnh (dùng cho tìm kiếm/smart collection)"/>
+        </StackPanel>
+
+        <!-- Area chứa tags -->
+        <ScrollViewer Grid.Row="7" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="lstTags">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#007ACC" CornerRadius="4" Padding="8,4" Margin="3">
+                            <TextBlock Text="{Binding}" Foreground="White"/>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Loading Indicator -->
+        <StackPanel x:Name="pnlLoading" Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Center"
+                    Visibility="Collapsed" Margin="0,10,0,0">
+            <ProgressBar IsIndeterminate="True" Width="20" Height="20" Style="{DynamicResource CircularProgressBarStyle}"/>
+            <TextBlock Text="Đang xử lý AI..." Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#AAAAAA"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

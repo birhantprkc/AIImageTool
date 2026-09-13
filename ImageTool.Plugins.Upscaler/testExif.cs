@@ -1,1 +1,0 @@
-using System; using System.Linq; using SixLabors.ImageSharp; using SixLabors.ImageSharp.Metadata.Profiles.Exif; public class Tester { public static void Main() { var profile = new ExifProfile(); profile.SetValue(ExifTag.Software, "ImageTool v1.0"); foreach(var p in profile.Values) Console.WriteLine(p.Tag + " = " + p.GetValue()); } }

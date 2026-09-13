@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -13,7 +13,7 @@ public class TestLoader : AssemblyLoadContext
     }
     protected override Assembly Load(AssemblyName n)
     {
-        if (n.Name == "ImageTool.Core" || n.Name == "ImageTool.Shared") return AssemblyLoadContext.Default.LoadFromAssemblyName(n);
+        if (n.Name == "ZeroVision.Core" || n.Name == "ZeroVision.Shared") return AssemblyLoadContext.Default.LoadFromAssemblyName(n);
         var path = _resolver.ResolveAssemblyToPath(n);
         Console.WriteLine("RESOLVER Path for "+n.Name+": "+path);
         if (path != null) return LoadFromAssemblyPath(path);
@@ -28,11 +28,11 @@ public class Program
 {
     public static void Main()
     {
-        var dll = @"e:\15. Other\ImageTool\ImageTool.Host\bin\Debug\net8.0-windows\Plugins\ImageTool.Plugins.Upscaler.dll";
+        var dll = @"e:\15. Other\ZeroVision\ZeroVision.Host\bin\Debug\net8.0-windows\Plugins\ZeroVision.Plugins.Upscaler.dll";
         var ctx = new TestLoader(dll);
-        var asm = ctx.LoadFromAssemblyName(new AssemblyName("ImageTool.Plugins.Upscaler"));
+        var asm = ctx.LoadFromAssemblyName(new AssemblyName("ZeroVision.Plugins.Upscaler"));
         Console.WriteLine("Loaded plugin: " + asm.FullName);
-        var type = asm.GetType("ImageTool.Plugins.Upscaler.UpscalerControl");
+        var type = asm.GetType("ZeroVision.Plugins.Upscaler.UpscalerControl");
         Console.WriteLine("Loaded type: " + (type != null));
         
         try {

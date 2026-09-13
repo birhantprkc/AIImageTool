@@ -1,0 +1,207 @@
+﻿using System;
+using ZeroVision.Imaging;
+using Xunit;
+
+namespace ZeroVision.Tests;
+
+public class ColorD2Tests
+{
+    private static LinearImage Solid(float r, float g, float b, int w = 8, int h = 8)
+    {
+        var img = new LinearImage(w, h);
+        for (int i = 0; i < img.Pixels.Length; i += 4)
+        { img.Pixels[i] = r; img.Pixels[i + 1] = g; img.Pixels[i + 2] = b; img.Pixels[i + 3] = 1f; }
+        return img;
+    }
+
+    // ---- RgbLevels (D2.5) ----
+
+    [Fact]
+    public void Levels_Identity()
+    {
+        Assert.True(new RgbLevelsOp().IsIdentity);
+    }
+
+    [Fact]
+    public void Levels_BlackPoint_DarkensLows()
+    {
+        var img = Solid(ColorSpace.SrgbToLinear(0.2f), ColorSpace.SrgbToLinear(0.2f), ColorSpace.SrgbToLinear(0.2f));
+        new RgbLevelsOp { Black = 0.1f }.Apply(img, 1f);
+        // nâng điểm đen lên 0.1 -> giá trị 0.2 sRGB bị kéo tối hơn.
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[0]) < 0.2f);
+    }
+
+    [Fact]
+    public void Levels_Gamma_BrightensMid()
+    {
+        var img = Solid(ColorSpace.SrgbToLinear(0.5f), ColorSpace.SrgbToLinear(0.5f), ColorSpace.SrgbToLinear(0.5f));
+        new RgbLevelsOp { Gamma = 2f }.Apply(img, 1f);
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[0]) > 0.5f);
+    }
+
+    [Fact]
+    public void Levels_PerChannel_OnlyAffectsThatChannel()
+    {
+        // Nâng black kênh Blue -> chỉ B thay đổi, R/G giữ nguyên.
+        float v = ColorSpace.SrgbToLinear(0.3f);
+        var img = Solid(v, v, v);
+        new RgbLevelsOp { BlackB = 0.15f }.Apply(img, 1f);
+        Assert.Equal(v, img.Pixels[0], 4);       // R nguyên
+        Assert.Equal(v, img.Pixels[1], 4);       // G nguyên
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[2]) < 0.3f); // B tối hơn
+    }
+
+    [Fact]
+    public void Levels_PerChannel_InheritsMasterWhenNaN()
+    {
+        // Master gamma=2 áp cho mọi kênh khi per-channel = NaN.
+        float v = ColorSpace.SrgbToLinear(0.5f);
+        var img = Solid(v, v, v);
+        new RgbLevelsOp { Gamma = 2f }.Apply(img, 1f);
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[0]) > 0.5f);
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[1]) > 0.5f);
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[2]) > 0.5f);
+    }
+
+    [Fact]
+    public void Levels_PerChannel_OverridesMaster()
+    {
+        // Master gamma=2 nhưng kênh R chỉ định gamma=1 -> R không sáng lên.
+        float v = ColorSpace.SrgbToLinear(0.5f);
+        var img = Solid(v, v, v);
+        new RgbLevelsOp { Gamma = 2f, GammaR = 1f }.Apply(img, 1f);
+        Assert.Equal(0.5f, ColorSpace.LinearToSrgb(img.Pixels[0]), 2); // R giữ ~0.5
+        Assert.True(ColorSpace.LinearToSrgb(img.Pixels[1]) > 0.5f);    // G sáng theo master
+    }
+
+    [Fact]
+    public void Levels_PerChannel_RoundTrip()
+    {
+        var op = new RgbLevelsOp
+        {
+            Black = 0.05f, White = 0.95f, Gamma = 1.2f,
+            BlackB = 0.1f, GammaR = 0.8f,
+        };
+        var back = RgbLevelsOp.FromParams(op.ToParams());
+        Assert.Equal(0.05f, back.Black, 4);
+        Assert.Equal(0.1f, back.BlackB, 4);
+        Assert.Equal(0.8f, back.GammaR, 4);
+        // Kênh không set vẫn là NaN (kế thừa master).
+        Assert.True(float.IsNaN(back.WhiteR));
+        Assert.True(float.IsNaN(back.BlackG));
+    }
+
+    [Fact]
+    public void Levels_PerChannelIdentity_IsIdentity()
+    {
+        // Master identity + per-channel ở giá trị identity -> toàn bộ identity.
+        var op = new RgbLevelsOp { BlackR = 0f, WhiteR = 1f, GammaR = 1f };
+        Assert.True(op.IsIdentity);
+    }
+
+    // ---- Velvia (D2.3) ----
+
+    [Fact]
+    public void Velvia_Identity_WhenZero()
+    {
+        Assert.True(new VelviaOp { Amount = 0 }.IsIdentity);
+    }
+
+    [Fact]
+    public void Velvia_IncreasesSaturation()
+    {
+        var img = Solid(0.6f, 0.4f, 0.4f); // hơi đỏ
+        float satBefore = (0.6f - 0.4f);
+        new VelviaOp { Amount = 1f }.Apply(img, 1f);
+        float mx = MathF.Max(img.Pixels[0], MathF.Max(img.Pixels[1], img.Pixels[2]));
+        float mn = MathF.Min(img.Pixels[0], MathF.Min(img.Pixels[1], img.Pixels[2]));
+        Assert.True(mx - mn > satBefore);
+    }
+
+    [Fact]
+    public void Velvia_GrayUnchanged()
+    {
+        var img = Solid(0.5f, 0.5f, 0.5f);
+        new VelviaOp { Amount = 1f }.Apply(img, 1f);
+        Assert.InRange(img.Pixels[0], 0.49f, 0.51f);
+    }
+
+    // ---- ColorBalanceRgb (D2.1) ----
+
+    [Fact]
+    public void ColorBalance_Identity()
+    {
+        Assert.True(new ColorBalanceRgbOp().IsIdentity);
+    }
+
+    [Fact]
+    public void ColorBalance_GlobalChroma_IncreasesSat()
+    {
+        var img = Solid(0.6f, 0.4f, 0.4f);
+        float satBefore = 0.6f - 0.4f;
+        new ColorBalanceRgbOp { GlobalChroma = 0.5f }.Apply(img, 1f);
+        float mx = MathF.Max(img.Pixels[0], MathF.Max(img.Pixels[1], img.Pixels[2]));
+        float mn = MathF.Min(img.Pixels[0], MathF.Min(img.Pixels[1], img.Pixels[2]));
+        Assert.True(mx - mn > satBefore);
+    }
+
+    [Fact]
+    public void ColorBalance_GainLum_BrightensHighlights()
+    {
+        var img = Solid(0.8f, 0.8f, 0.8f); // sáng
+        float before = img.Pixels[0];
+        new ColorBalanceRgbOp { GainLum = 1f }.Apply(img, 1f);
+        Assert.True(img.Pixels[0] > before);
+    }
+
+    [Fact]
+    public void ColorBalance_RoundTrip()
+    {
+        var op = new ColorBalanceRgbOp { LiftHue = 220, LiftSat = 0.3f, GainHue = 40, GainSat = 0.25f, GlobalContrast = 0.2f };
+        var back = ColorBalanceRgbOp.FromParams(op.ToParams());
+        Assert.Equal(220f, back.LiftHue, 2);
+        Assert.Equal(0.25f, back.GainSat, 4);
+        Assert.Equal(0.2f, back.GlobalContrast, 4);
+    }
+
+    // ---- ColorContrast Lab (D2.4) ----
+
+    [Fact]
+    public void ColorContrast_Identity()
+    {
+        Assert.True(new ColorContrastOp().IsIdentity);
+    }
+
+    [Fact]
+    public void ColorContrast_Roundtrip_GrayStays()
+    {
+        // xám có a*=b*=0 -> nhân hệ số không đổi gì.
+        var img = Solid(0.5f, 0.5f, 0.5f);
+        new ColorContrastOp { GreenMagenta = 0.5f, BlueYellow = 0.5f }.Apply(img, 1f);
+        Assert.InRange(img.Pixels[0], 0.48f, 0.52f);
+        Assert.InRange(img.Pixels[1], 0.48f, 0.52f);
+    }
+
+    [Fact]
+    public void ColorContrast_BoostsColorfulness()
+    {
+        // pixel có màu -> tăng trục a/b làm nó "căng" hơn (xa xám hơn).
+        var img = Solid(0.6f, 0.35f, 0.45f);
+        float satBefore = MathF.Max(img.Pixels[0], MathF.Max(img.Pixels[1], img.Pixels[2]))
+                        - MathF.Min(img.Pixels[0], MathF.Min(img.Pixels[1], img.Pixels[2]));
+        new ColorContrastOp { GreenMagenta = 0.8f, BlueYellow = 0.8f }.Apply(img, 1f);
+        float satAfter = MathF.Max(img.Pixels[0], MathF.Max(img.Pixels[1], img.Pixels[2]))
+                       - MathF.Min(img.Pixels[0], MathF.Min(img.Pixels[1], img.Pixels[2]));
+        Assert.True(satAfter > satBefore);
+    }
+
+    [Fact]
+    public void AllD2_Registered()
+    {
+        var reg = EditOpRegistry.CreateDefault();
+        Assert.True(reg.Has(RgbLevelsOp.Type));
+        Assert.True(reg.Has(VelviaOp.Type));
+        Assert.True(reg.Has(ColorBalanceRgbOp.Type));
+        Assert.True(reg.Has(ColorContrastOp.Type));
+    }
+}
