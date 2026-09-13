@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -102,6 +102,7 @@ public sealed class EditOpRegistry
         ChannelGainOp.Register(reg);
         AiDenoiseOp.Register(reg);
         HealingOp.Register(reg);
+        AiInpaintOp.Register(reg);
         LensCorrectionOp.Register(reg);
         AiUpscaleOp.Register(reg);
         SigmoidOp.Register(reg);
