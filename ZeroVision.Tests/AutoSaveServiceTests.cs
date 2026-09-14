@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading;
 using ZeroVision.Core;
 using ZeroVision.Shared;
@@ -41,12 +41,20 @@ public class AutoSaveServiceTests
     {
         var history = new StubHistory();
         int writes = 0; string? lastPath = null;
-        using var svc = new AutoSaveService(history, (p, ops, ptr) => { Interlocked.Increment(ref writes); lastPath = p; }, 150);
+        using var ev = new ManualResetEventSlim(false);
+        using var svc = new AutoSaveService(history, (p, ops, ptr) =>
+        {
+            Interlocked.Increment(ref writes);
+            lastPath = p;
+            ev.Set();
+        }, 150);
 
         // 5 thay đổi liên tiếp trong < debounce.
         for (int i = 0; i < 5; i++) { history.Raise("a.jpg", i); Thread.Sleep(10); }
 
-        Thread.Sleep(500);        // qua debounce (margin rộng chống flake)
+        // Chờ debounce kích hoạt writer với timeout an toàn chống flake trên CI runner tải cao
+        Assert.True(ev.Wait(TimeSpan.FromSeconds(5)), "Writer was not called within timeout");
+        Thread.Sleep(200); // đảm bảo không có đợt ghi thứ 2 ngoài ý muốn
         Assert.Equal(1, writes);  // gộp 5 thay đổi -> chỉ ghi 1 lần
         Assert.Equal("a.jpg", lastPath);
     }
@@ -56,11 +64,16 @@ public class AutoSaveServiceTests
     {
         var history = new StubHistory();
         var written = new System.Collections.Concurrent.ConcurrentBag<string>();
-        using var svc = new AutoSaveService(history, (p, ops, ptr) => written.Add(p), 120);
+        using var cde = new CountdownEvent(2);
+        using var svc = new AutoSaveService(history, (p, ops, ptr) =>
+        {
+            written.Add(p);
+            cde.Signal();
+        }, 120);
 
         history.Raise("a.jpg", 1);
         history.Raise("b.jpg", 1);
-        Thread.Sleep(600);
+        Assert.True(cde.Wait(TimeSpan.FromSeconds(5)), "Both images were not written within timeout");
 
         Assert.Contains("a.jpg", written);
         Assert.Contains("b.jpg", written);
