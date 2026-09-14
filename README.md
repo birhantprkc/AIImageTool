@@ -1,9 +1,12 @@
 # 🌌 ZeroVision — High-Performance Image Processing & AI Studio
 
+[![Type: Desktop Application](https://img.shields.io/badge/Type-Desktop%20Application-007ACC?style=flat-square&logo=windows)](https://github.com/kzxl/ZeroVision)
+[![Ecosystem](https://img.shields.io/badge/Ecosystem-ZeroUniverse-8A2BE2?style=flat-square)](https://github.com/kzxl/ZeroUniverse)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows)](https://dotnet.microsoft.com/)
+[![Distribution: Standalone Single-File](https://img.shields.io/badge/Distribution-Standalone%20Single--File-2ea44f?style=flat-square)](https://github.com/kzxl/ZeroVision)
 [![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows)](https://dotnet.microsoft.com/)
-[![Ecosystem](https://img.shields.io/badge/Ecosystem-ZeroUniverse-6366F1?style=flat-square)](https://github.com/kzxl/ZeroUniverse)
+
 
 > **ZeroVision** (incorporating **Aurora Studio**) is a desktop workstation application (WPF, .NET 8) for high-fidelity image management, color grading, and computer vision enhancement. Part of the sovereign **ZeroUniverse** ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline (similar to Adobe Lightroom / Darktable) with autonomous **DirectML ONNX AI engines** for super-resolution upscaling, face restoration, and intelligent auto-tagging.
 
