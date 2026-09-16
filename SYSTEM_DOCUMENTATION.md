@@ -1,33 +1,34 @@
-# 📘 Tài liệu Hệ thống & Lộ trình Phát triển (Roadmap) - Aurora Studio
+# 📘 System Architecture & Technical Documentation — ZeroVision
 
-Tài liệu này cung cấp cái nhìn toàn cảnh về kiến trúc hệ thống của **Aurora Studio** (WPF / .NET 8) và bản đồ lộ trình phát triển chi tiết để theo dõi tiến độ.
+This document provides a comprehensive overview of the **ZeroVision** system architecture (WPF, .NET 8, ZeroUniverse ecosystem) and its evolutionary roadmap.
 
 ---
 
-## 🏛️ 1. Kiến trúc Hệ thống (System Architecture)
+## 🏛️ 1. System Architecture
 
-Ứng dụng được thiết kế theo mô hình phân lớp module hóa cao, tách biệt giữa giao diện (UI) và lõi xử lý ảnh tuyến tính (Linear Light Pipeline):
+ZeroVision is structured around modular separation of concerns, decoupling the presentation layer from the 32-bit float linear-light image processing engine and out-of-process AI accelerators:
 
 ```mermaid
 graph TD
-    UI[ImageTool.Host - WPF UI] -->|Đồng bộ luồng| Shared[ImageTool.Shared - Services]
-    UI -->|Render Pipeline| Imaging[ImageTool.Imaging - Core]
+    UI[ZeroVision.Host - WPF UI] -->|Thread Marshaling| Shared[ZeroVision.Shared - Services]
+    UI -->|Render Pipeline| Imaging[ZeroVision.Imaging - Core]
     Shared -->|ORM LiteSql| DB[(SQLite Catalog)]
     Imaging -->|Render/Cache| Canvas[CachedEditPipeline]
     UI -->|Hot-load plugins| Plugins[Plugins Directory]
     Plugins -->|DirectML / GPU| ONNX[ONNX Runtime]
 ```
 
-### Các Project thành phần:
-* **`ImageTool.Core`**: Định nghĩa các Interface, Model dùng chung (Workspace, History, Catalog, Styles...).
-* **`ImageTool.Imaging`**: Lõi xử lý ảnh phi phá hủy (**non-destructive**) chạy hoàn toàn ở không gian màu tuyến tính (**linear light float RGBA**). Quản lý ~40 phép hiệu chỉnh ảnh (`IEditOp`) và pipeline render tối ưu (`CachedEditPipeline`).
-* **`ImageTool.Shared`**: Chứa các dịch vụ nền: SQLite Catalog (sử dụng LiteSql ORM), History, Stacking, Batch Export, EXIF/GPS parser, và các thuật toán gom nhóm ảnh trùng.
-* **`ImageTool.Host`**: Lớp giao diện người dùng chính (WPF, MVVM). Quản lý CenterPreview, DevelopPanel, Filmstrip, và liên kết các plugin AI.
-* **`Plugins`**: Các module AI chạy độc lập (`Upscaler`, `FaceRestorer`, `VisionTagger`) được load động lúc khởi động.
+### Component Projects:
+* **`ZeroVision.Core`**: Domain models, pipeline contracts, preset systems, and metadata abstractions.
+* **`ZeroVision.Imaging`**: 32-bit float linear-light non-destructive image processing pipeline. Contains 40+ atomic edit operations (`IEditOp`), curve mathematics, color space transforms, and cached rendering DAGs (`CachedEditPipeline`).
+* **`ZeroVision.Shared`**: High-performance services: SQLite Catalog (via LiteSql ORM), EXIF/GPS parser with memory caching (`ExifReader.GetOrCreate`), Stacking, Batch Export, and metadata indexing.
+* **`ZeroVision.Host`**: Primary WPF desktop workstation. Hosts `CenterPreview`, `NavigatorPanel`, `DevelopPanel`, `Filmstrip`, and orchestrates AI plugins.
+* **`ZeroVision.Plugins.*`**: Autonomous DirectML AI engines (`Upscaler`, `FaceRestorer`, `VisionTagger`) running in isolated process environments.
+* **`ZeroVision.Tests`**: Automated unit and integration test suite (820+ passing tests).
 
 ---
 
-## 🔄 2. Luồng Xử lý Ảnh Phi phá hủy (Rendering Pipeline)
+## 🔄 2. Non-Destructive Rendering Pipeline
 
 ```mermaid
 sequenceDiagram
@@ -36,42 +37,30 @@ sequenceDiagram
     participant C as CachedEditPipeline
     participant V as View (CenterPreview)
 
-    UI->>R: Kéo Slider (Debounce 40ms) / Thêm Op
-    R->>C: Yêu cầu Render (Proxy 2048px)
-    C->>C: Lấy checkpoint op trùng gần nhất (LCP)
-    C->>C: Replay các op thay đổi từ checkpoint
-    C->>R: Trả về WriteableBitmap (BGRA32)
-    R->>V: Cập nhật Image.Source (Live Preview)
-    Note over V: Hiển thị Clipping Mask nếu giữ phím Alt
+    UI->>R: Slider adjustment (40ms debounce) / Add Op
+    R->>C: Request Render (Proxy 2048px)
+    C->>C: Retrieve Longest Common Prefix (LCP) checkpoint
+    C->>C: Replay modified ops from checkpoint
+    C->>R: Return WriteableBitmap (BGRA32)
+    R->>V: Update Image.Source (Live Preview)
+    Note over V: Alt-key displays real-time clipping mask
 ```
 
 ---
 
-## 📍 3. Trạng thái Hiện tại (Tính đến ngày 06/06/2026)
+## 📍 3. Feature Implementations
 
-### Giao diện & Trải nghiệm (UI/UX) - **ĐÃ HOÀN THÀNH**
-* [x] **Layout hiện đại**: Ghim Histogram và EXIF ở đầu cột phải, xếp chồng cột trái (Folder, History, Presets, Active Layers).
-* [x] **Active Layers Panel**: Quản lý bật/tắt nhanh lớp mặt nạ bằng con mắt (👁/❌) và xóa mask từ cột trái.
-* [x] **Modern Filmstrip**: Thumbnail bo góc tròn (`CornerRadius="6"`), viền highlight, hiển thị tên file.
-* [x] **QoL - Alt-key Clipping Preview**: Giữ phím `Alt` khi kéo slider để xem trước vùng bị cháy sáng/mất chi tiết tối.
-* [x] **Interactive Histogram**: Kéo trực tiếp trên biểu đồ để tăng giảm Exposure/Highlights/Shadows/Whites/Blacks.
+### Desktop UI/UX & Lightroom Ergonomics
+* [x] **Left Dock Navigator Panel**: Fixed top widget with ZeroUI `SegmentedControl` (`FIT`, `FILL`, `1:1`, `2:1`), live viewport rectangle tracking, and bi-directional real-time canvas pan/zoom.
+* [x] **Library Metadata Drill-Down Bar**: 4-column filter bar (**Date (Year)**, **Camera**, **Lens**, **ISO**) with aggregate counts and in-memory EXIF caching.
+* [x] **Interactive Masking Gizmos**: Direct on-canvas dragging for **Linear Gradient** (start/center/end bars + rotation axis) and **Radial Mask** (center handle + 4 perimeter dimension handles + feather ring).
+* [x] **Virtual Copies (`Ctrl+'`)**: Zero-byte image branching with independent edit stacks and shared decoded memory proxies.
+* [x] **Selective Copy Settings (`Ctrl+Shift+C`)**: Modular checklist dialog across 16 processing modules.
+* [x] **Auto-Advance Culling (`Caps Lock`)**: Automated next-photo navigation upon rating/flagging/labeling.
+* [x] **Panel Visibility Controls**: `Tab` (toggle side panels) and `Shift+Tab` (Pure Full Canvas mode).
+* [x] **Lights Out Mode (`L`)**: 3-stage background dimming (Normal -> 80% Dim -> 100% Black).
+* [x] **Interactive Histogram**: Hover zone highlight and drag adjustment for Blacks, Shadows, Exposure, Highlights, and Whites.
 
-### Lõi Xử lý Ảnh (Imaging Core) - **ĐÃ HOÀN THÀNH**
-* [x] **~40 Edit Operations**: Đầy đủ White Balance (Kelvin/Eyedropper/Auto), Tone Curve (RGB/R/G/B presets), HSL 8 dải, Color Grading, Clarity, Dehaze, Levels, Local Masks (Gradient/Radial/Brush/Range/AI Subject/Sky).
-* [x] **Hiệu năng**: Cache theo tầng (LCP check), xử lý đa luồng bất đồng bộ phi hồi đáp (`CancellationToken`), tối ưu SIMD cho WB & Exposure.
-
----
-
-## 🗺️ 4. Lộ trình Phát triển Tiếp theo (Roadmap)
-
-### 📌 Giai đoạn 1: Nâng cấp Hiệu năng & GPU (Hiệu suất cao)
-* [ ] **GPU Compute Pipeline (15.1)**: Port các toán tử xử lý nặng (GaussianBlur, Dehaze, Clarity, Diffuse-sharpen) sang GPU sử dụng `ComputeSharp` hoặc `DirectML`.
-* [ ] **Tối ưu hóa GC**: Sử dụng rộng rãi `ArrayPool` cho các buffer trung gian khi tính toán ma trận ảnh.
-
-### 📌 Giai đoạn 2: RAW Demosaic & Quản lý Màu (Tối ưu hình ảnh)
-* [ ] **LibRaw Native Integration (15.2)**: Tích hợp đầy đủ `libraw.dll` để demosaic trực tiếp dữ liệu RAW của các hãng (ARW, CR3, NEF) thay vì đọc JPEG preview nhúng.
-* [ ] **Camera/Lens Profiles (15.3)**: Tích hợp đầy đủ database `lensfun` và đọc profile màu camera binary (DCP/DNG) để tự động sửa lỗi ống kính dựa trên EXIF.
-
-### 📌 Giai đoạn 3: AI & Tính năng nâng cao
-* [ ] **AI Segmentation Đa Lớp (15.5)**: Tải và tích hợp các model ONNX phân vùng đa đối tượng (Người, Da, Tóc, Bầu trời, Nền) để tạo mặt nạ thông minh 1-click.
-* [ ] **Virtual Copies (15.9)**: Cho phép tạo nhiều phiên bản chỉnh sửa khác nhau của cùng một bức ảnh (virtual copies) hiển thị song song trên Grid View mà không nhân đôi file vật lý.
+### Core Imaging & Performance
+* [x] **40+ Non-Destructive Operations**: Full White Balance (Kelvin/Eyedropper/Auto), Tone Curves, 8-Channel HSL, Color Grading, Clarity, Dehaze, Levels, Local Masks (Gradient/Radial/Brush/Range/AI Subject/Sky).
+* [x] **Pipeline Optimization**: LCP checkpoint caching, SIMD-accelerated linear-light mathematics, and non-blocking asynchronous preview dispatch.

@@ -452,7 +452,7 @@ public partial class ExportPanel : UserControl
 
         try
         {
-            int drawn = ContactSheet.RenderPdf(paths, outPath, opt, documentTitle: "Aurora Studio - Photo Catalog");
+            int drawn = ContactSheet.RenderPdf(paths, outPath, opt, documentTitle: "ZeroVision - Photo Catalog");
             MessageBox.Show(drawn > 0 ? $"Đã tạo PDF Catalog qua ZeroReports ({drawn} ảnh):\n{outPath}" : "Không tạo được catalog.",
                 "PDF Catalog", MessageBoxButton.OK, drawn > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }

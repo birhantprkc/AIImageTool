@@ -43,11 +43,8 @@ if ($Mode -eq 'Full' -or $Mode -eq 'All') {
         
     Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outFull\Plugins" -Recurse -Force
     
-    # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
     if (Test-Path "$outFull\ZeroVision.Host.exe") {
-        Copy-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\ZeroVision.exe" -Force
-        Copy-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\AuroraStudio.exe" -Force
-        Remove-Item "$outFull\ZeroVision.Host.exe" -Force
+        Move-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\ZeroVision.exe" -Force
     }
     Write-Host "  [OK] Full build generated at: $outFull\ZeroVision.exe" -ForegroundColor Green
 }
@@ -61,11 +58,8 @@ if ($Mode -eq 'Lite' -or $Mode -eq 'All') {
         
     Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outLite\Plugins" -Recurse -Force
     
-    # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
     if (Test-Path "$outLite\ZeroVision.Host.exe") {
-        Copy-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\ZeroVision.exe" -Force
-        Copy-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\AuroraStudio.exe" -Force
-        Remove-Item "$outLite\ZeroVision.Host.exe" -Force
+        Move-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\ZeroVision.exe" -Force
     }
     Write-Host "  [OK] Lite build generated at: $outLite\ZeroVision.exe" -ForegroundColor Green
 }

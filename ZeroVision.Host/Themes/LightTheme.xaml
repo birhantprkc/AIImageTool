@@ -8,7 +8,7 @@
     <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
 
     <!-- ============================================================
-         PALETTE — Aurora Light (clean, modern, high-contrast)
+         PALETTE — ZeroVision Light (clean, modern, high-contrast)
          ============================================================ -->
     <Color x:Key="BgBase">#FFF8F9FA</Color>
     <Color x:Key="BgPanel">#FFFFFFFF</Color>

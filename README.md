@@ -1,4 +1,4 @@
-# 🌌 ZeroVision — High-Performance Image Processing & AI Studio
+# 🌌 ZeroVision — High-Performance RAW & Image Processing Workstation
 
 [![Type: Desktop Application](https://img.shields.io/badge/Type-Desktop%20Application-007ACC?style=flat-square&logo=windows)](https://github.com/kzxl/ZeroVision)
 [![Ecosystem](https://img.shields.io/badge/Ecosystem-ZeroUniverse-8A2BE2?style=flat-square)](https://github.com/kzxl/ZeroUniverse)
@@ -7,8 +7,7 @@
 [![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-
-> **ZeroVision** (incorporating **Aurora Studio**) is a desktop workstation application (WPF, .NET 8) for high-fidelity image management, color grading, and computer vision enhancement. Part of the sovereign **ZeroUniverse** ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline (similar to Adobe Lightroom / Darktable) with autonomous **DirectML ONNX AI engines** for super-resolution upscaling, face restoration, and intelligent auto-tagging.
+> **ZeroVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic **Adobe Lightroom Classic** keyboard and workflow paradigms.
 
 ---
 
@@ -18,68 +17,47 @@
 
 ## 🌟 Key Capabilities
 
-### 1. Non-Destructive Develop Pipeline (Linear Light)
+### 1. Professional Lightroom Workflows & ZeroUI Controls
+- **Left Dock Navigator Panel**: Fixed top widget with ZeroUI `SegmentedControl` (`FIT` | `FILL` | `1:1` | `2:1`), live viewport rectangle tracking, and bi-directional real-time canvas pan/zoom.
+- **Library Metadata Drill-Down**: 4-column filter bar (**Date (Year)** | **Camera** | **Lens** | **ISO**) with aggregate image counts and high-speed in-memory EXIF caching.
+- **Interactive Masking Gizmos**: Direct canvas drag manipulation for **Linear Gradient** (start/center/end bars + rotation axis) and **Radial Mask** (center handle + 4 perimeter dimension handles + feather ring).
+- **Virtual Copies (`Ctrl+'`)**: Instant zero-byte branching with isolated edit histories and shared decoded proxies.
+- **Selective Copy Settings (`Ctrl+Shift+C`)**: Granular checklist dialog across 16 processing modules with Check All/None and persistent state.
+- **Auto-Advance Culling (`Caps Lock`)**: Hands-free keyboard workflow that automatically advances to the next photo when assigning ratings (0–5), flags (P/X/U), or color labels (6–9).
+- **Panel Toggles & Lights Out**:
+  - `Tab`: Toggle side panels.
+  - `Shift+Tab`: Full clean canvas mode (hides titlebar, status bar, and filmstrip).
+  - `L`: 3-stage Lights Out background dimming (100% -> Dim 80% -> Full Black 100%).
+- **Interactive Histogram Tone Zones**: Real-time hover zone highlighting and direct drag tuning for *Blacks*, *Shadows*, *Exposure*, *Highlights*, and *Whites*.
 
-All adjustments operate in **linear light float RGBA** color space through an intelligent DAG pipeline, preventing color banding and preserving maximum highlight/shadow dynamic range.
+### 2. Non-Destructive Develop Pipeline (32-bit Linear Light)
+- **Exposure & Tone**: Exposure, Contrast, Highlights, Shadows, Whites, Blacks, Tone Curve (RGB & individual channels), Parametric Curves, Filmic RGB, Sigmoid, Dehaze, Auto Levels.
+- **Color & Color Grading**: White Balance (Kelvin & Eyedropper), 8-Channel HSL Mixer + Targeted Adjustment Tool (TAT direct-canvas drag), 4-Way Color Balance, Split Toning, 3D LUT (.cube), Film Scan Negative Inverter (Negadoctor).
+- **Detail & Corrections**: Radius-based Sharpening with edge Masking, Multi-stage Denoise (Luminance, Color, Chroma), Lensfun auto-correction (distortion & vignetting), Perspective Upright, Liquify Warp.
+- **Local Adjustments**: Linear Gradient, Radial, Brush, Polygon, Path, Luminance Range, Color Range, Parametric, and AI Subject/Sky masks.
 
-#### Tone & Lighting
-- **Exposure, Contrast, Highlights, Shadows, Whites, Blacks**
-- **Tone Curve & Parametric Curve** with interactive drag-point editing and presets (*Linear, Medium, Strong, Faded*)
-- **Filmic, Filmic RGB, Sigmoid, Tone Equalizer, Dehaze**
-- **Levels** (per-channel histogram stretching, **Auto Levels**, **Auto Color** for color cast removal)
-- Interactive **Histogram** with direct tone adjustment by dragging
+### 3. Autonomous AI & Vision Pipeline
+ZeroVision runs heavy AI workloads out-of-process via DirectML and ONNX Runtime:
 
-#### Color & Grading
-- **White Balance** (Kelvin temperature slider, **Auto WB**, **eyedropper** tool, standard illuminant presets)
-- **HSL 8-Channel Mixer** + **Targeted Adjustment Tool (TAT)** (click-drag directly on image canvas for rapid HSL tuning)
-- **Color Balance RGB 4-Way** and **Color Grading** wheels
-- **Split Toning, Channel Mixer, Selective Color, Color Unify, Velvia, Color Contrast (Lab)**
-- **3D LUT (.cube)** support and ICC input color profiles (**sRGB, AdobeRGB, Rec2020, Display P3**)
-- **Black & White**: Deep channel mixing with classic color filters and toning simulation
-- **Film Negative (negadoctor)**: High-precision negative film scan inversion and color reconstruction
-
-#### Detail & Sharpness
-- **Sharpen** (radius control + intelligent edge **Masking**)
-- **Noise Reduction** (Luminance, Color, Chroma)
-- **Diffuse-or-sharpen (PDE)** filter, **Hot Pixel** removal, **CA Correct**, **Defringe**
-- **Texture, Clarity, Grain** (monochrome and chromatic film grain synthesis)
-
-#### Geometry & Layout
-- **Crop** with free or standard aspect ratios (1:1, 16:9, 4:3, golden ratio) and composition guide overlays
-- **Straighten, Rotate, Flip** with EXIF-based auto-rotation
-- **Perspective / Upright** correction, **Liquify/Warp** with intuitive handle-based editing
-- **Lens Correction**: Automatic distortion and vignetting correction via **lensfun** database (EXIF-based) or manual adjustment
-
-#### Local Adjustments & Masking
-- **Linear Gradient Mask, Radial Mask, Brush Mask**
-- **Luminance Mask** and **Color Range Mask** for targeted tonal edits
-- Mask inversion, feathering, opacity, and multi-mask stacking
-
----
-
-### 2. Autonomous AI & Vision Pipeline
-
-ZeroVision decouples heavy AI inference into isolated background host processes (`ImageTool.Host`) via DirectML / ONNX Runtime:
-
-| AI Plugin | Model Architecture | Role |
+| AI Module | Architecture | Capability |
 | :--- | :--- | :--- |
-| **Upscaler** | Real-ESRGAN / AuraSR | 2x / 4x super-resolution upscaling with DirectML acceleration |
-| **Face Restorer** | GFPGAN / CodeFormer | High-fidelity portrait reconstruction and eye/facial feature enhancement |
-| **Vision Tagger** | MobileNet / ResNet ONNX | Semantic multi-label scene and object classification |
+| **Upscaler** | Real-ESRGAN / AuraSR | 2x / 4x super-resolution with GPU acceleration |
+| **Face Restorer** | GFPGAN / CodeFormer | Portrait reconstruction and facial detail restoration |
+| **Vision Tagger** | MobileNet / ResNet ONNX | Automated multi-label semantic tagging and classification |
 
 ---
 
-## 🏗 Architecture & Project Layout
+## 🏗 Solution Structure
 
 ```
 ZeroVision/
-├── ImageTool.Core/          # Domain models, preset system, pipeline abstractions
-├── ImageTool.Imaging/       # 32-bit float linear light image processing kernels
-├── ImageTool.Host/          # Out-of-process DirectML ONNX AI runner
-├── ImageTool.Shared/        # IPC contracts, cross-process shared memory buffers
-├── ImageTool.Plugins.*/     # Autonomous plugin modules (Upscaler, FaceRestorer, VisionTagger)
-├── TestDML/                 # DirectML hardware acceleration diagnostic harness
-└── ImageTool.Tests/         # ~800 automated unit and integration tests
+├── ZeroVision.Core/          # Domain contracts, pipeline abstractions, metadata & catalog models
+├── ZeroVision.Imaging/       # 32-bit float linear light image processing kernels & masks
+├── ZeroVision.Shared/        # Services (Catalog SQLite/LiteSql, EXIF parser, Stacking, Export)
+├── ZeroVision.Host/          # Main WPF desktop application (CenterPreview, Navigator, DevelopPanel)
+├── ZeroVision.Plugins.*/     # Autonomous DirectML ONNX plugins (Upscaler, FaceRestorer, VisionTagger)
+├── ZeroVision.Tests/         # 820+ automated unit & integration tests
+└── publish.ps1               # Dual-mode release packager (Full Self-Contained & Lite)
 ```
 
 ---
@@ -89,28 +67,30 @@ ZeroVision/
 ### Prerequisites
 - **Windows 10** (build 1809+) or **Windows 11** (64-bit)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- DirectX 12 capable GPU (for DirectML AI acceleration)
+- DirectX 12 compatible GPU (for DirectML AI features)
 
-### Build and Run
-
-```bash
+### Build and Test
+```powershell
 # Clone repository
 git clone https://github.com/kzxl/ZeroVision.git
 cd ZeroVision
 
-# Build solution
-dotnet build ImageTool.slnx -c Release
+# Build entire solution
+dotnet build ZeroVision.slnx -c Release
 
-# Run automated test suite
-dotnet test ImageTool.Tests/ImageTool.Tests.csproj
+# Run automated tests (820 tests)
+dotnet test ZeroVision.Tests/ZeroVision.Tests.csproj -c Release
 ```
 
-### Packaging
-
-To generate optimized Lite and Full deployment packages:
+### Packaging & Release
 ```powershell
-pwsh ./publish.ps1
+# Publish Dual-Mode (Full Self-Contained + Lite Framework-Dependent)
+powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Mode All
 ```
+
+Binaries are generated in:
+- `Publish/Full/ZeroVision.exe` (Single-file self-contained executable)
+- `Publish/Lite/ZeroVision.exe` (Compact framework-dependent executable)
 
 ---
 

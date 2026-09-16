@@ -17,7 +17,7 @@ public partial class App : Application
             LogException("UI Crash (Dispatcher)", e.Exception);
             MessageBox.Show(
                 $"Lỗi giao diện nghiêm trọng:\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\nLog: {CrashLogPath}",
-                "Aurora Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+                "ZeroVision", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         };
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -157,7 +157,7 @@ public partial class App : Application
             LogException("Startup Failed", ex);
             MessageBox.Show(
                 $"Không khởi động được app:\n{ex.GetType().Name}: {ex.Message}\n\nLog: {CrashLogPath}",
-                "Aurora Studio - Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                "ZeroVision - Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
     }

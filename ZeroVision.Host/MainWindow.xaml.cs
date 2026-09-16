@@ -718,7 +718,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                ZeroUI.Wpf.Overlays.ToastNotification.Show(this, message, "Aurora Studio",
+                ZeroUI.Wpf.Overlays.ToastNotification.Show(this, message, "ZeroVision",
                     ZeroUI.Wpf.Overlays.ToastType.Info, 2500);
             }
             catch

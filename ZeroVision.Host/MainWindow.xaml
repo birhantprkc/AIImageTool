@@ -4,7 +4,7 @@
         xmlns:ws="clr-namespace:ZeroVision.Host.Workspace"
         xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
         xmlns:opt="clr-namespace:ZeroUI.Wpf.Rendering.Optimizer;assembly=ZeroUI.Wpf"
-        Title="Aurora Studio" Height="820" Width="1480"
+        Title="ZeroVision" Height="820" Width="1480"
         Background="{DynamicResource BgBaseBrush}"
         WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterScreen" AllowDrop="True"
@@ -19,7 +19,7 @@
                 MouseMove="TitleBar_MouseMove">
             <DockPanel LastChildFill="True" Margin="10,0">
                 <!-- App title (drag region) -->
-                <TextBlock Text="✦ Aurora Studio" FontSize="12" FontWeight="SemiBold"
+                <TextBlock Text="✦ ZeroVision" FontSize="12" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
                            Margin="0,0,16,0"/>
                 <!-- Window controls (right) -->
