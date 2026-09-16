@@ -191,7 +191,7 @@ public sealed class SharpenOp : IEditOp
 /// midpoint điều chỉnh bán kính bắt đầu, feather độ mượt.
 ///
 /// Roundness [-1..1]: hình dạng vùng vignette — 0 = theo tỉ lệ ảnh, +1 = tròn hơn, -1 = chữ nhật hơn.
-/// Highlights [0..1]: khi tối rìa (amount&lt;0), bảo vệ vùng SÁNG khỏi bị tối (kiểu LR "Highlights"),
+/// Highlights [0..1]: khi tối rìa (amount&lt;0), bảo vệ vùng SÁNG khỏi bị tối (Highlight Priority),
 /// giữ đèn/điểm sáng ở rìa không bị dìm — chỉ áp khi amount&lt;0.
 /// </summary>
 public sealed class VignetteOp : IEditOp

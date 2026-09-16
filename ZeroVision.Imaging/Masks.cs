@@ -125,7 +125,7 @@ public sealed class RadialMask : IMaskGenerator
     public float Cx = 0.5f, Cy = 0.5f;  // tâm chuẩn hoá
     public float Rx = 0.3f, Ry = 0.3f;  // bán kính chuẩn hoá
     public float Feather = 0.4f;        // [0..1]
-    public bool Invert;                 // true = áp trong elip (như LR "inside")
+    public bool Invert;                 // true = áp trong elip (inside mask)
 
     public float[] Generate(int width, int height)
     {

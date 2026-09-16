@@ -6,7 +6,7 @@ namespace ZeroVision.Imaging;
 
 /// <summary>
 /// Color (chroma) noise reduction: tách Y (độ sáng) và chroma, làm mờ riêng chroma bán kính
-/// nhỏ rồi ghép lại. Giữ chi tiết độ sáng, chỉ làm mượt nhiễu màu — đúng kiểu LR Color NR.
+/// nhỏ rồi ghép lại. Giữ chi tiết độ sáng, chỉ làm mượt nhiễu màu theo chuẩn Color NR.
 /// </summary>
 public sealed class ColorNoiseReductionOp : IEditOp
 {
