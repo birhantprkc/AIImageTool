@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using ZeroVision.Core;
 using ZeroVision.Shared;
@@ -131,6 +131,13 @@ public partial class App : Application
             var catalogSvc = (ICatalogService)_serviceProvider.GetService(typeof(ICatalogService))!;
             if (metaSvc != null && catalogSvc != null)
                 metaSvc.MetaChanged += (_, args) => catalogSvc.UpdateCuration(args.ImagePath, args.Meta);
+
+            // Khởi tạo ZeroUI Theme Engine
+            try
+            {
+                ZeroUI.Wpf.Theme.ZeroThemeEngine.Initialize(this, "obsidian_dark");
+            }
+            catch { }
 
             // Áp theme đã lưu (Dark/Light) trước khi hiện cửa sổ.
             try

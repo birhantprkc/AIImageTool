@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -455,20 +455,27 @@ public partial class MainWindow : Window
 
     private readonly System.Windows.Threading.DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
-    /// <summary>Hiển thị toast không chặn ở đáy cửa sổ, tự ẩn sau 3s.</summary>
+    /// <summary>Hiển thị toast không chặn bằng ZeroUI ToastNotification, fallback overlay nếu cần.</summary>
     public void ShowToast(string message)
     {
         Dispatcher.BeginInvoke(() =>
         {
-            txtToast.Text = message;
-            toastBorder.Opacity = 0;
-            toastBorder.Visibility = Visibility.Visible;
-            // Fade-in animation
-            var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1,
-                new Duration(TimeSpan.FromMilliseconds(200)));
-            toastBorder.BeginAnimation(OpacityProperty, fadeIn);
-            _toastTimer.Stop();
-            _toastTimer.Start();
+            try
+            {
+                ZeroUI.Wpf.Overlays.ToastNotification.Show(this, message, "Aurora Studio",
+                    ZeroUI.Wpf.Overlays.ToastType.Info, 2500);
+            }
+            catch
+            {
+                txtToast.Text = message;
+                toastBorder.Opacity = 0;
+                toastBorder.Visibility = Visibility.Visible;
+                var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1,
+                    new Duration(TimeSpan.FromMilliseconds(200)));
+                toastBorder.BeginAnimation(OpacityProperty, fadeIn);
+                _toastTimer.Stop();
+                _toastTimer.Start();
+            }
         });
     }
 
@@ -985,11 +992,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CmbQuickRating_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void QuickRating_ValueChanged(object? sender, decimal e)
     {
-        if (_workspace == null || cmbQuickRating == null) return;
-        _workspace.Filter.MinRating = cmbQuickRating.SelectedIndex;
+        if (_workspace == null) return;
+        int rating = (int)Math.Round(e);
+        _workspace.Filter.MinRating = rating;
         _workspace.ApplyFilterAndSort();
+    }
+
+    private void BtnClearRating_Click(object sender, RoutedEventArgs e)
+    {
+        if (quickRating != null) quickRating.Value = 0;
+        if (_workspace != null)
+        {
+            _workspace.Filter.MinRating = 0;
+            _workspace.ApplyFilterAndSort();
+        }
     }
 
     private void QuickLabel_Click(object sender, RoutedEventArgs e)

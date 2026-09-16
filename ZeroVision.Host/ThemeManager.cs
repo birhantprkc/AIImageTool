@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Media;
 
@@ -48,6 +48,12 @@ public static class ThemeManager
         theme = string.Equals(theme, Light, StringComparison.OrdinalIgnoreCase) ? Light : Dark;
         var app = Application.Current;
         if (app == null) return;
+
+        try
+        {
+            ZeroUI.Wpf.Theme.ZeroThemeEngine.ApplySkin(theme == Light ? "clean_light" : "obsidian_dark");
+        }
+        catch { }
 
         var uri = new Uri($"Themes/{theme}Theme.xaml", UriKind.Relative);
         ResourceDictionary dict;

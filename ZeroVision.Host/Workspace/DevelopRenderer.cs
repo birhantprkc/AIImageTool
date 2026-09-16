@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
@@ -199,30 +199,38 @@ public sealed class DevelopRenderer
         int w = img.Width, h = img.Height;
         var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
         int stride = w * 4;
-        var buffer = new byte[stride * h];
-        float[] src = img.Pixels;
-
-        Parallel.For(0, h, y =>
+        int totalBytes = stride * h;
+        byte[] buffer = ZeroUI.Core.Memory.ZeroBufferPool.RentByteArray(totalBytes);
+        try
         {
-            int rowF = y * w * 4;
-            int rowB = y * stride;
-            for (int x = 0; x < w; x++)
-            {
-                int o = rowF + x * 4;
-                int bo = rowB + x * 4;
-                byte rr = ColorSpace.EncodeByteFast(src[o]);
-                byte gg = ColorSpace.EncodeByteFast(src[o + 1]);
-                byte bb = ColorSpace.EncodeByteFast(src[o + 2]);
-                float af = src[o + 3];
-                byte aa = (byte)(af <= 0f ? 0 : (af >= 1f ? 255 : (int)(af * 255f + 0.5f)));
-                // BGRA order
-                buffer[bo] = bb; buffer[bo + 1] = gg; buffer[bo + 2] = rr; buffer[bo + 3] = aa;
-            }
-        });
+            float[] src = img.Pixels;
 
-        wb.WritePixels(new Int32Rect(0, 0, w, h), buffer, stride, 0);
-        wb.Freeze();
-        return wb;
+            Parallel.For(0, h, y =>
+            {
+                int rowF = y * w * 4;
+                int rowB = y * stride;
+                for (int x = 0; x < w; x++)
+                {
+                    int o = rowF + x * 4;
+                    int bo = rowB + x * 4;
+                    byte rr = ColorSpace.EncodeByteFast(src[o]);
+                    byte gg = ColorSpace.EncodeByteFast(src[o + 1]);
+                    byte bb = ColorSpace.EncodeByteFast(src[o + 2]);
+                    float af = src[o + 3];
+                    byte aa = (byte)(af <= 0f ? 0 : (af >= 1f ? 255 : (int)(af * 255f + 0.5f)));
+                    // BGRA order
+                    buffer[bo] = bb; buffer[bo + 1] = gg; buffer[bo + 2] = rr; buffer[bo + 3] = aa;
+                }
+            });
+
+            wb.WritePixels(new Int32Rect(0, 0, w, h), buffer, stride, 0);
+            wb.Freeze();
+            return wb;
+        }
+        finally
+        {
+            ZeroUI.Core.Memory.ZeroBufferPool.ReturnByteArray(buffer);
+        }
     }
 
     /// <summary>Xoá cache (gọi khi đổi ảnh để giải phóng RAM nếu cần).</summary>
