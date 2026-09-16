@@ -15,6 +15,7 @@ $Root = $PSScriptRoot
 $HostProj = Join-Path $Root "ZeroVision.Host\ZeroVision.Host.csproj"
 $FaceProj = Join-Path $Root "ZeroVision.Plugins.FaceRestorer\ZeroVision.Plugins.FaceRestorer.csproj"
 $UpscaleProj = Join-Path $Root "ZeroVision.Plugins.Upscaler\ZeroVision.Plugins.Upscaler.csproj"
+$TaggerProj = Join-Path $Root "ZeroVision.Plugins.VisionTagger\ZeroVision.Plugins.VisionTagger.csproj"
 $Dist = Join-Path $Root "Publish"
 
 if (Test-Path $Dist) {
@@ -29,6 +30,7 @@ $solDir = (Get-Item $Root).FullName + "\"
 Write-Host ">>> Building ZeroVision plugins..." -ForegroundColor Cyan
 dotnet build $FaceProj -c $Configuration -p:SolutionDir=$solDir
 dotnet build $UpscaleProj -c $Configuration -p:SolutionDir=$solDir
+dotnet build $TaggerProj -c $Configuration -p:SolutionDir=$solDir
 
 if ($Mode -eq 'Full' -or $Mode -eq 'All') {
     Write-Host ">>> Publishing ZeroVision FULL (Self-Contained Single File)..." -ForegroundColor Cyan
@@ -44,13 +46,14 @@ if ($Mode -eq 'Full' -or $Mode -eq 'All') {
     # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
     if (Test-Path "$outFull\ZeroVision.Host.exe") {
         Copy-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\ZeroVision.exe" -Force
-        Rename-Item "$outFull\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
+        Copy-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\AuroraStudio.exe" -Force
+        Remove-Item "$outFull\ZeroVision.Host.exe" -Force
     }
-    Write-Host "  ✔ Full build generated at: $outFull\ZeroVision.exe" -ForegroundColor Green
+    Write-Host "  [OK] Full build generated at: $outFull\ZeroVision.exe" -ForegroundColor Green
 }
 
 if ($Mode -eq 'Lite' -or $Mode -eq 'All') {
-    Write-Host ">>> Publishing ZeroVision LITE (Framework-Dependent Single File)..." -ForegroundColor Cyan
+    Write-Host ">>> Publishing ZeroVision LITE [Framework-Dependent Single File]..." -ForegroundColor Cyan
     $outLite = Join-Path $Dist "Lite"
     dotnet publish $HostProj -c $Configuration -r $Runtime --self-contained false `
         -p:PublishSingleFile=true `
@@ -61,9 +64,10 @@ if ($Mode -eq 'Lite' -or $Mode -eq 'All') {
     # Provide both ZeroVision.exe and AuroraStudio.exe for compatibility
     if (Test-Path "$outLite\ZeroVision.Host.exe") {
         Copy-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\ZeroVision.exe" -Force
-        Rename-Item "$outLite\ZeroVision.Host.exe" -NewName "AuroraStudio.exe" -Force
+        Copy-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\AuroraStudio.exe" -Force
+        Remove-Item "$outLite\ZeroVision.Host.exe" -Force
     }
-    Write-Host "  ✔ Lite build generated at: $outLite\ZeroVision.exe" -ForegroundColor Green
+    Write-Host "  [OK] Lite build generated at: $outLite\ZeroVision.exe" -ForegroundColor Green
 }
 
 Write-Host ">>> ZeroVision publish completed successfully!" -ForegroundColor Green
