@@ -334,13 +334,13 @@ public sealed class DevelopRenderer
     }
 
     /// <summary>Phân tích Auto White Balance trên proxy. Trả gain per-channel; null nếu lỗi.</summary>
-    public AutoWhiteBalance.Gains? AnalyzeAutoWhiteBalance(string path)
+    public AutoWhiteBalance.Gains? AnalyzeAutoWhiteBalance(string path, AutoWhiteBalance.Strategy strategy = AutoWhiteBalance.Strategy.GrayEdge)
     {
         try
         {
             LinearImage? proxy = GetOrBuildProxy(path, CancellationToken.None);
             if (proxy == null) return null;
-            return AutoWhiteBalance.Analyze(proxy, AutoWhiteBalance.Strategy.GrayWorld);
+            return AutoWhiteBalance.Analyze(proxy, strategy);
         }
         catch (Exception ex) { ZeroVision.Shared.AppLog.Error("DevelopRenderer.AutoWB", path, ex); return null; }
     }

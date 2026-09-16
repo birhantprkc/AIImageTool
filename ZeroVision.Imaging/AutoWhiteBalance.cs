@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace ZeroVision.Imaging;
 
@@ -12,7 +12,7 @@ namespace ZeroVision.Imaging;
 /// </summary>
 public static class AutoWhiteBalance
 {
-    public enum Strategy { GrayWorld, WhitePatch }
+    public enum Strategy { GrayWorld, WhitePatch, GrayEdge }
 
     public struct Gains
     {
@@ -45,7 +45,7 @@ public static class AutoWhiteBalance
                 avgG > 1e-6 ? (float)(avgGray / avgG) : 1f,
                 avgB > 1e-6 ? (float)(avgGray / avgB) : 1f);
         }
-        else // WhitePatch
+        else if (strategy == Strategy.WhitePatch)
         {
             float mr = 0, mg = 0, mb = 0;
             for (int i = 0; i < n; i++)
@@ -61,6 +61,20 @@ public static class AutoWhiteBalance
                 mr > 1e-6f ? mx / mr : 1f,
                 mg > 1e-6f ? mx / mg : 1f,
                 mb > 1e-6f ? mx / mb : 1f);
+        }
+        else // GrayEdge
+        {
+            ZeroGraphics.Imaging.Filters.GrayEdgeAwb.EstimateIlluminantRgbaFloat(
+                px, img.Width, img.Height, order: 1, minkowskiP: 6, sigma: 1.0f,
+                out float rGain, out float gGain, out float bGain);
+
+            var gains = Normalize(rGain, gGain, bGain);
+            if (gains.IsNeutral)
+            {
+                // Fallback to GrayWorld if no edge energy is detected (e.g. flat synthetic patch)
+                return Analyze(img, Strategy.GrayWorld);
+            }
+            return gains;
         }
     }
 
