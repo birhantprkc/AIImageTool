@@ -92,6 +92,9 @@ public partial class MainWindow : Window
         {
             Dispatcher.BeginInvoke(() => centerView.SetTemporaryClipOverlay(active));
         };
+        developPanel.RequestToggleCrop += (_, _) => { SelectRightTab("Develop"); centerView.ToggleCrop(); };
+        developPanel.RequestToggleHeal += (_, _) => { SelectRightTab("Develop"); developPanel.FocusHealing(); };
+        developPanel.RequestToggleMask += (_, _) => { SelectRightTab("Develop"); developPanel.FocusMasking(); };
         centerView.BindCropPanel(developPanel);
         centerView.BindBrushPanel(developPanel);
         centerView.BindWhiteBalancePick(developPanel);
@@ -351,6 +354,8 @@ public partial class MainWindow : Window
             {
                 case System.Windows.Input.Key.D: SelectRightTab("Develop"); e.Handled = true; return;
                 case System.Windows.Input.Key.M: SelectRightTab("Develop"); developPanel.FocusMasking(); e.Handled = true; return;
+                case System.Windows.Input.Key.R: SelectRightTab("Develop"); centerView.ToggleCrop(); e.Handled = true; return;
+                case System.Windows.Input.Key.Q: SelectRightTab("Develop"); developPanel.FocusHealing(); e.Handled = true; return;
             }
         }
 
@@ -490,6 +495,13 @@ public partial class MainWindow : Window
                 if (!typing && VirtualCopyHelper.IsVirtualCopy(path))
                 {
                     DeleteVirtualCopyActive();
+                    e.Handled = true;
+                }
+                break;
+            case System.Windows.Input.Key.Apps:
+                if (!typing)
+                {
+                    centerView.OpenContextMenuForActive();
                     e.Handled = true;
                 }
                 break;
@@ -792,7 +804,7 @@ public partial class MainWindow : Window
         => ZeroVision.Shared.OpDisplayNames.Get(op.OpType, op.Title);
 
     /// <summary>Select right panel tab by header (LR-style module switch D/M).</summary>
-    private void SelectRightTab(string header)
+    public void SelectRightTab(string header)
     {
         foreach (var item in rightTabs.Items)
             if (item is TabItem ti && ti.Header is string h && h == header)

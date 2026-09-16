@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -51,6 +52,11 @@ public partial class CenterPreview : UserControl, IImageToolHost
             if (_cropMode) DrawCropOverlay();
             RedrawMaskGizmo();
             NotifyViewportChanged();
+        };
+        paneFull.MouseRightButtonUp += (s, e) =>
+        {
+            OpenContextMenuForActive();
+            e.Handled = true;
         };
     }
 
@@ -618,9 +624,9 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private void PaneSingle_PanStart(object sender, MouseButtonEventArgs e)
     {
+        _panStartMouse = e.GetPosition(paneSingle);
         if (_zoom <= 1.0 || imgPreview.Source == null) return;
         _isPanning = true;
-        _panStartMouse = e.GetPosition(paneSingle);
         _panStartX = zoomPan.X;
         _panStartY = zoomPan.Y;
         paneSingle.CaptureMouse();
@@ -630,11 +636,40 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private void PaneSingle_PanEnd(object sender, MouseButtonEventArgs e)
     {
-        if (!_isPanning) return;
-        _isPanning = false;
-        paneSingle.ReleaseMouseCapture();
-        paneSingle.Cursor = System.Windows.Input.Cursors.Arrow;
-        e.Handled = true;
+        var endPos = e.GetPosition(paneSingle);
+        double dist = (endPos - _panStartMouse).Length;
+
+        if (_isPanning)
+        {
+            _isPanning = false;
+            paneSingle.ReleaseMouseCapture();
+            paneSingle.Cursor = System.Windows.Input.Cursors.Arrow;
+            e.Handled = true;
+        }
+
+        // Click chuột phải trên ảnh (không phải kéo pan): mở Context Menu của ảnh đang xem
+        if (dist < 5.0 && _workspace != null && !string.IsNullOrEmpty(_workspace.ActiveImage) &&
+            _meta != null && _history != null && _clipboard != null)
+        {
+            var cm = ImageContextMenu.Build(_workspace.ActiveImage, _workspace, _meta, _history, _clipboard, SetReferenceImage);
+            cm.PlacementTarget = paneSingle;
+            cm.Placement = PlacementMode.MousePoint;
+            cm.IsOpen = true;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Mở context menu cho ảnh đang active (hỗ trợ phím Apps / Shift+F10).</summary>
+    public void OpenContextMenuForActive()
+    {
+        if (_workspace != null && !string.IsNullOrEmpty(_workspace.ActiveImage) &&
+            _meta != null && _history != null && _clipboard != null)
+        {
+            var cm = ImageContextMenu.Build(_workspace.ActiveImage, _workspace, _meta, _history, _clipboard, SetReferenceImage);
+            cm.PlacementTarget = paneSingle;
+            cm.Placement = PlacementMode.Center;
+            cm.IsOpen = true;
+        }
     }
 
     private void ResetZoom()

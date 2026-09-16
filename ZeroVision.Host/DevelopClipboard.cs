@@ -105,7 +105,7 @@ public sealed class DevelopClipboard
         return n;
     }
 
-    private static EditOperation Clone(EditOperation op) => new()
+    public static EditOperation Clone(EditOperation op) => new()
     {
         Id = Guid.NewGuid().ToString("N"),
         PluginId = op.PluginId,

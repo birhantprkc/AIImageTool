@@ -535,13 +535,26 @@ public partial class CenterPreview
                 border.BorderThickness = new Thickness(1);
             }
 
+            if (_workspace != null && _meta != null && _history != null && _clipboard != null)
+            {
+                border.ContextMenu = ImageContextMenu.Build(capturedPath, _workspace, _meta, _history, _clipboard, SetReferenceImage);
+            }
+
             // Click card -> set active image
             border.MouseLeftButtonDown += (s, e) =>
             {
-                if (!string.Equals(_workspace.ActiveImage, capturedPath, StringComparison.OrdinalIgnoreCase))
+                if (_workspace != null && !string.Equals(_workspace.ActiveImage, capturedPath, StringComparison.OrdinalIgnoreCase))
                 {
                     _workspace.SetActiveImage(capturedPath);
                     RebuildCullView();
+                }
+            };
+
+            border.MouseRightButtonUp += (s, e) =>
+            {
+                if (_workspace != null && !string.Equals(_workspace.ActiveImage, capturedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _workspace.SetActiveImage(capturedPath);
                 }
             };
 

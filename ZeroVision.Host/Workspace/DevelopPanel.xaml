@@ -38,12 +38,31 @@
         </Border>
 
         <!-- Fixed Header: Histogram & EXIF metadata -->
-        <StackPanel DockPanel.Dock="Top" Margin="8,4" Background="{DynamicResource BgPanelBrush}">
+        <StackPanel DockPanel.Dock="Top" Margin="8,4,8,2" Background="{DynamicResource BgPanelBrush}">
             <ContentControl x:Name="histogramContainer"/>
             <TextBlock x:Name="txtDevelopExif" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                        HorizontalAlignment="Left" Margin="4,4,4,4" TextWrapping="Wrap"
                        Visibility="Collapsed"/>
         </StackPanel>
+
+        <!-- Lightroom-style Quick Tool Strip (Crop, Healing, Masking, TAT) -->
+        <Border DockPanel.Dock="Top" Margin="8,0,8,6" Padding="3" CornerRadius="5"
+                Background="{DynamicResource BgPanelAltBrush}" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1">
+            <UniformGrid Columns="4">
+                <Button x:Name="btnToolCrop" Content="✂ Crop (R)" Padding="2,4" Margin="1,0"
+                        FontSize="10.5" FontWeight="Medium"
+                        Click="BtnToolCrop_Click" ToolTip="Crop &amp; Straighten (R)"/>
+                <Button x:Name="btnToolHeal" Content="🩹 Heal (Q)" Padding="2,4" Margin="1,0"
+                        FontSize="10.5" FontWeight="Medium"
+                        Click="BtnToolHeal_Click" ToolTip="Spot Removal / Healing Brush (Q)"/>
+                <Button x:Name="btnToolMask" Content="🎭 Mask (M)" Padding="2,4" Margin="1,0"
+                        FontSize="10.5" FontWeight="Medium"
+                        Click="BtnToolMask_Click" ToolTip="Local Masking (M)"/>
+                <Button x:Name="btnToolTat" Content="🎯 TAT (T)" Padding="2,4" Margin="1,0"
+                        FontSize="10.5" FontWeight="Medium"
+                        Click="BtnToolTat_Click" ToolTip="Targeted Adjustment Tool (TAT)"/>
+            </UniformGrid>
+        </Border>
 
         <TextBlock x:Name="txtNoImage" DockPanel.Dock="Top" Text="Select a photo to start editing"
                    Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic" FontSize="11" Margin="12,8" Visibility="Collapsed"/>

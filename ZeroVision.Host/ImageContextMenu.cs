@@ -193,7 +193,95 @@ public static class ImageContextMenu
         miMerge.Items.Add(miPano);
         menu.Items.Add(miMerge);
 
+        // --- Transform (Rotate / Flip) ---
+        var miTransform = new MenuItem { Header = "Transform" };
+        var miRotCcw = new MenuItem { Header = "Rotate Left (CCW)\t[" };
+        miRotCcw.Click += (_, _) => RotateTargets(Targets(), history, -1);
+        var miRotCw = new MenuItem { Header = "Rotate Right (CW)\t]" };
+        miRotCw.Click += (_, _) => RotateTargets(Targets(), history, 1);
+        var miFlipH = new MenuItem { Header = "Flip Horizontal" };
+        miFlipH.Click += (_, _) => FlipTargets(Targets(), history, true);
+        var miFlipV = new MenuItem { Header = "Flip Vertical" };
+        miFlipV.Click += (_, _) => FlipTargets(Targets(), history, false);
+        miTransform.Items.Add(miRotCcw);
+        miTransform.Items.Add(miRotCw);
+        miTransform.Items.Add(new Separator());
+        miTransform.Items.Add(miFlipH);
+        miTransform.Items.Add(miFlipV);
+        menu.Items.Add(miTransform);
+
+        menu.Items.Add(new Separator());
+
+        // --- Export ---
+        var miExport = new MenuItem { Header = "Export...\tCtrl+Shift+E" };
+        miExport.Click += (_, _) =>
+        {
+            if (Application.Current?.MainWindow is MainWindow mw)
+            {
+                mw.SelectRightTab("Export");
+            }
+        };
+        menu.Items.Add(miExport);
+
         return menu;
+    }
+
+    private static void RotateTargets(List<string> targets, IHistoryService history, int dir)
+    {
+        foreach (var t in targets)
+        {
+            var stack = history.GetStack(t);
+            int pointer = history.GetPointer(t);
+            var ops = stack.Take(pointer)
+                .Where(o => string.Equals(o.PluginId, DevelopClipboard.DevelopPluginId, StringComparison.OrdinalIgnoreCase))
+                .Select(DevelopClipboard.Clone)
+                .ToList();
+
+            var existing = ops.FirstOrDefault(o => o.OpType == OrientationOp.Type);
+            var orient = existing != null ? OrientationOp.FromParams(existing.Params) : new OrientationOp();
+            orient.Rotate90 = ((orient.Rotate90 + dir) % 4 + 4) % 4;
+            ops.RemoveAll(o => o.OpType == OrientationOp.Type);
+            if (!orient.IsIdentity)
+            {
+                ops.Insert(0, new EditOperation
+                {
+                    PluginId = DevelopClipboard.DevelopPluginId,
+                    OpType = OrientationOp.Type,
+                    Title = "Orientation",
+                    Params = orient.ToParams()
+                });
+            }
+            history.UpsertGroup(t, DevelopClipboard.DevelopPluginId, ops);
+        }
+    }
+
+    private static void FlipTargets(List<string> targets, IHistoryService history, bool horizontal)
+    {
+        foreach (var t in targets)
+        {
+            var stack = history.GetStack(t);
+            int pointer = history.GetPointer(t);
+            var ops = stack.Take(pointer)
+                .Where(o => string.Equals(o.PluginId, DevelopClipboard.DevelopPluginId, StringComparison.OrdinalIgnoreCase))
+                .Select(DevelopClipboard.Clone)
+                .ToList();
+
+            var existing = ops.FirstOrDefault(o => o.OpType == OrientationOp.Type);
+            var orient = existing != null ? OrientationOp.FromParams(existing.Params) : new OrientationOp();
+            if (horizontal) orient.FlipH = !orient.FlipH; else orient.FlipV = !orient.FlipV;
+            ops.RemoveAll(o => o.OpType == OrientationOp.Type);
+            if (!orient.IsIdentity)
+            {
+                ops.Insert(0, new EditOperation
+                {
+                    PluginId = DevelopClipboard.DevelopPluginId,
+                    OpType = OrientationOp.Type,
+                    Title = "Orientation",
+                    Params = orient.ToParams()
+                });
+            }
+            history.UpsertGroup(t, DevelopClipboard.DevelopPluginId, ops);
+        }
     }
 
     /// <summary>Mở dialog Batch Rename cho danh sách ảnh (dùng chung context menu + toolbar).</summary>

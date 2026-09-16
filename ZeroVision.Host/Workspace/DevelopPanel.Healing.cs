@@ -32,8 +32,25 @@ public partial class DevelopPanel
     /// <summary>Current heal radius (normalized) — CenterPreview reads to draw + auto-source.</summary>
     public float HealRadius => _healRadius;
 
+    private Expander? _healExpander;
+
+    /// <summary>Expand + scroll to Healing section and activate healing brush (Q shortcut).</summary>
+    public void FocusHealing()
+    {
+        if (_healExpander != null)
+        {
+            _healExpander.IsExpanded = true;
+            _healExpander.BringIntoView();
+        }
+        if (_chkHealActive != null)
+        {
+            _chkHealActive.IsChecked = true;
+        }
+    }
+
     private void BuildHealingUI(StackPanel host)
     {
+        _healExpander = host.Parent as Expander;
         _chkHealActive = new CheckBox
         {
             Content = "Enable Healing / Inpaint (click photo to erase)", FontSize = 11,

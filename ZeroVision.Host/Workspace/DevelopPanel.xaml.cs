@@ -61,7 +61,8 @@ public partial class DevelopPanel : UserControl
     // Crop rectangle (chuẩn hoá [0..1]). Mặc định full khung. Set bởi CenterPreview overlay.
     private float _cropX, _cropY, _cropW = 1f, _cropH = 1f;
 
-    // B&W + Invert toggles.
+    // B&W + Invert toggles & Treatment
+    private SegmentedControl? _segTreatment;
     private ToggleSwitch? _chkBw;
     private ToggleSwitch? _chkInvert;
     private ToggleSwitch? _chkFilmNeg;
@@ -76,6 +77,37 @@ public partial class DevelopPanel : UserControl
     private TextBlock? _colorMatchInfo; // #8 color match reference label
     private ZeroVision.Imaging.ColorMatch.Stats? _colorMatchStats; // stats ảnh tham chiếu đã đo
     public Func<string?>? ReferenceImageProvider { get; set; }
+
+    // Quick Tool Strip events
+    public event EventHandler? RequestToggleCrop;
+    public event EventHandler? RequestToggleHeal;
+    public event EventHandler? RequestToggleMask;
+
+    private void BtnToolCrop_Click(object sender, RoutedEventArgs e) => RequestToggleCrop?.Invoke(this, EventArgs.Empty);
+
+    private void BtnToolHeal_Click(object sender, RoutedEventArgs e)
+    {
+        FocusHealing();
+        RequestToggleHeal?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void BtnToolMask_Click(object sender, RoutedEventArgs e)
+    {
+        FocusMasking();
+        RequestToggleMask?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void BtnToolTat_Click(object sender, RoutedEventArgs e)
+    {
+        if (btnTat != null)
+        {
+            btnTat.IsChecked = !(btnTat.IsChecked == true);
+            TatStateChanged?.Invoke(this, (btnTat.IsChecked == true, GetTatMode()));
+            btnToolTat.Background = (btnTat.IsChecked == true)
+                ? ThemeManager.GetBrush("AccentBrush")
+                : ThemeManager.GetBrush("BgHoverBrush");
+        }
+    }
 
     // Lensfun auto lens-correction (5.3).
     private LensfunService? _lensfun;
@@ -106,7 +138,7 @@ public partial class DevelopPanel : UserControl
 
         BuildUI();
         chkSoloMode.CheckedChanged += ChkSoloMode_Changed;
-        segFilterTabs.Items = new[] { "All", "Basic", "Color", "Detail", "Advanced" };
+        segFilterTabs.Items = new[] { "All", "Basic", "Curve", "Color", "Detail", "Optics", "Geometry", "Effects", "Advanced" };
         segFilterTabs.SelectedIndex = 0;
         segFilterTabs.SelectedIndexChanged += SegFilterTabs_SelectedIndexChanged;
         SetEnabled(false);
@@ -153,11 +185,45 @@ public partial class DevelopPanel : UserControl
         // Histogram + cảnh báo clip (live) trên cùng.
         histogramContainer.Content = BuildHistogram();
 
-        // Basic / White Balance
-        var gWb = AddGroup("White Balance", true);
-        AddSlider(gWb, "kelvin", "Temp (K)", 2000, 12000, 6500, "0");
-        AddSlider(gWb, "temp", "Temp (fine)", -1, 1, 0);
-        AddSlider(gWb, "tint", "Tint", -1, 1, 0);
+        // 1. BASIC (Gom Treatment + Profile + White Balance + Tone + Presence)
+        var gBasic = AddGroup("Basic", true);
+
+        // Treatment: Color | Black & White
+        var treatRow = new DockPanel { Margin = new Thickness(0, 2, 0, 6) };
+        treatRow.Children.Add(new TextBlock { Text = "Treatment", FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Width = 70 });
+        _segTreatment = new SegmentedControl { Height = 22, CornerRadius = 4 };
+        _segTreatment.Items = new[] { "Color", "Black & White" };
+        _segTreatment.SelectedIndex = 0;
+        _segTreatment.SelectedIndexChanged += (_, idx) =>
+        {
+            if (_loading) return;
+            if (_chkBw != null) _chkBw.IsChecked = (idx == 1);
+            ScheduleCommit();
+        };
+        treatRow.Children.Add(_segTreatment);
+        gBasic.Children.Add(treatRow);
+
+        // Profile row (Input Profile)
+        var profRow = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+        profRow.Children.Add(new TextBlock { Text = "Profile", FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Width = 70 });
+        _cmbInputProfile = new ComboBox { Height = 22 };
+        foreach (var n in new[] { "sRGB", "AdobeRGB", "Rec2020", "DisplayP3", "Embedded ICC" })
+            _cmbInputProfile.Items.Add(new ComboBoxItem { Content = n });
+        _cmbInputProfile.SelectedIndex = 0;
+        _cmbInputProfile.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        _cmbInputProfile.ToolTip = "Interpret image in this color space then map to working space.";
+        profRow.Children.Add(_cmbInputProfile);
+        gBasic.Children.Add(profRow);
+        _iccAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(70, 0, 0, 4), TextWrapping = TextWrapping.Wrap };
+        _iccAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        gBasic.Children.Add(_iccAutoInfo);
+
+        // Subheader: White Balance
+        AddSubheader(gBasic, "WHITE BALANCE");
+        AddSlider(gBasic, "kelvin", "Temp (K)", 2000, 12000, 6500, "0");
+        AddSlider(gBasic, "temp", "Temp (fine)", -1, 1, 0);
+        AddSlider(gBasic, "tint", "Tint", -1, 1, 0);
+
         var wbBtnRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         var btnAutoWb = new Button { Content = "Auto WB", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Auto white balance (gray-world)" };
         btnAutoWb.Click += BtnAutoWb_Click;
@@ -165,9 +231,9 @@ public partial class DevelopPanel : UserControl
         btnPickWb.Click += BtnPickWb_Click;
         wbBtnRow.Children.Add(btnAutoWb);
         wbBtnRow.Children.Add(btnPickWb);
-        gWb.Children.Add(wbBtnRow);
-        // WB preset theo nguồn sáng (đặt Kelvin chuẩn).
-        var wbPresetRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        gBasic.Children.Add(wbBtnRow);
+
+        var wbPresetRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         wbPresetRow.Children.Add(new TextBlock { Text = "Preset", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         var cmbWbPreset = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
         foreach (var n in new[] { "—", "Daylight (5500K)", "Cloudy (6500K)", "Shade (7500K)", "Tungsten (3200K)", "Fluorescent (4000K)", "Flash (5500K)" })
@@ -176,47 +242,33 @@ public partial class DevelopPanel : UserControl
         cmbWbPreset.SelectionChanged += (_, _) => { if (!_loading) ApplyWbPreset(cmbWbPreset.SelectedIndex); };
         cmbWbPreset.ToolTip = "Set Kelvin temperature by lighting preset.";
         wbPresetRow.Children.Add(cmbWbPreset);
-        gWb.Children.Add(wbPresetRow);
+        gBasic.Children.Add(wbPresetRow);
 
-        var gTone = AddGroup("Tone", true);
-        AddSlider(gTone, "exposure", "Exposure", -5, 5, 0, "0.00");
-        AddSlider(gTone, "contrast", "Contrast", -1, 1, 0);
-        AddSlider(gTone, "highlights", "Highlights", -1, 1, 0);
-        AddSlider(gTone, "shadows", "Shadows", -1, 1, 0);
-        AddSlider(gTone, "whites", "Whites", -1, 1, 0);
-        AddSlider(gTone, "blacks", "Blacks", -1, 1, 0);
-        AddSlider(gTone, "filmic", "Filmic", 0, 1, 0);
+        // Subheader: Tone
+        AddSubheader(gBasic, "TONE");
+        var toneBtnRow = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
+        var btnAutoTone = new Button { Content = "Auto Tone", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Auto exposure, contrast, whites, blacks" };
+        btnAutoTone.Click += BtnAuto_Click;
+        toneBtnRow.Children.Add(btnAutoTone);
+        gBasic.Children.Add(toneBtnRow);
 
-        // Tone Mapping nâng cao (D1: Sigmoid + Filmic RGB)
-        var gToneMap = AddGroup("Tone Mapping (scene-referred)", false);
-        AddSlider(gToneMap, "sig_amt", "Sigmoid", 0, 1, 0);
-        AddSlider(gToneMap, "sig_contrast", "Sigmoid Contrast", 0.5, 3, 1.5, "0.00");
-        AddSlider(gToneMap, "filmrgb_amt", "Filmic RGB", 0, 1, 0);
-        AddSlider(gToneMap, "filmrgb_white", "  White (EV)", 1, 8, 4, "0.0");
-        AddSlider(gToneMap, "filmrgb_black", "  Black (EV)", -10, -1, -6, "0.0");
-        AddSlider(gToneMap, "filmrgb_contrast", "  Contrast", 0.5, 2.5, 1.2, "0.00");
-        AddSlider(gToneMap, "filmrgb_lat", "  Latitude", 0, 0.9, 0.2, "0.00");
-        AddSlider(gToneMap, "filmrgb_sat", "  HL Saturation", -1, 1, 0);
-        AddSlider(gToneMap, "hlrecon", "Highlight Recon", 0, 1, 0);
-        AddSlider(gToneMap, "ltm_amt", "Local Tone (HDR)", 0, 1, 0);
-        AddSlider(gToneMap, "ltm_detail", "  Local Contrast", -1, 1, 0);
+        AddSlider(gBasic, "exposure", "Exposure", -5, 5, 0, "0.00");
+        AddSlider(gBasic, "contrast", "Contrast", -1, 1, 0);
+        AddSlider(gBasic, "highlights", "Highlights", -1, 1, 0);
+        AddSlider(gBasic, "shadows", "Shadows", -1, 1, 0);
+        AddSlider(gBasic, "whites", "Whites", -1, 1, 0);
+        AddSlider(gBasic, "blacks", "Blacks", -1, 1, 0);
+        AddSlider(gBasic, "filmic", "Filmic", 0, 1, 0);
 
-        // Tone Equalizer (D1.3) — chỉnh sáng theo 5 zone
-        var gToneEq = AddGroup("Tone Equalizer", false);
-        AddSlider(gToneEq, "teq_blacks", "Blacks", -1, 1, 0);
-        AddSlider(gToneEq, "teq_shadows", "Shadows", -1, 1, 0);
-        AddSlider(gToneEq, "teq_mid", "Midtones", -1, 1, 0);
-        AddSlider(gToneEq, "teq_highlights", "Highlights", -1, 1, 0);
-        AddSlider(gToneEq, "teq_whites", "Whites", -1, 1, 0);
+        // Subheader: Presence
+        AddSubheader(gBasic, "PRESENCE");
+        AddSlider(gBasic, "texture", "Texture", -1, 1, 0);
+        AddSlider(gBasic, "clarity", "Clarity", -1, 1, 0);
+        AddSlider(gBasic, "dehaze", "Dehaze", -1, 1, 0);
+        AddSlider(gBasic, "vibrance", "Vibrance", -1, 1, 0);
+        AddSlider(gBasic, "saturation", "Saturation", -1, 1, 0);
 
-        // Parametric curve
-        var gParam = AddGroup("Parametric Curve", false);
-        AddSlider(gParam, "pc_hi", "Highlights", -1, 1, 0);
-        AddSlider(gParam, "pc_lt", "Lights", -1, 1, 0);
-        AddSlider(gParam, "pc_dk", "Darks", -1, 1, 0);
-        AddSlider(gParam, "pc_sh", "Shadows", -1, 1, 0);
-
-        // Tone Curve (point editor) — 2.2
+        // 2. TONE CURVE (Point Curve + Parametric Curve)
         var gCurve = AddGroup("Tone Curve", false);
         var chRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         chRow.Children.Add(new TextBlock { Text = "Channel", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
@@ -227,10 +279,11 @@ public partial class DevelopPanel : UserControl
         _curveChannel.SelectionChanged += CurveChannel_SelectionChanged;
         chRow.Children.Add(_curveChannel);
         gCurve.Children.Add(chRow);
+
         _curveEditor = new CurveEditor { Margin = new Thickness(0, 2, 0, 4) };
         _curveEditor.CurveChanged += CurveEditor_Changed;
         gCurve.Children.Add(_curveEditor);
-        // Preset đường cong tương phản (áp cho kênh RGB master).
+
         var presetRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         presetRow.Children.Add(new TextBlock { Text = "Preset", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         var cmbCurvePreset = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
@@ -241,6 +294,7 @@ public partial class DevelopPanel : UserControl
         cmbCurvePreset.ToolTip = "Apply contrast curve preset to RGB master channel.";
         presetRow.Children.Add(cmbCurvePreset);
         gCurve.Children.Add(presetRow);
+
         var curveHint = new TextBlock
         {
             Text = "Drag points • double-click add/delete • right-click delete",
@@ -253,79 +307,26 @@ public partial class DevelopPanel : UserControl
         _chkCurvePreserveHue.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
         gCurve.Children.Add(rowCurveHue);
 
-        var gPres = AddGroup("Presence", true);
-        AddSlider(gPres, "vibrance", "Vibrance", -1, 1, 0);
-        AddSlider(gPres, "saturation", "Saturation", -1, 1, 0);
-        AddSlider(gPres, "clarity", "Clarity", -1, 1, 0);
-        AddSlider(gPres, "clahe", "Local Contrast (CLAHE)", 0, 1, 0);
-        AddSlider(gPres, "clahe_clip", "CLAHE Clip Limit", 1, 10, 3, "0.0");
-        AddSlider(gPres, "texture", "Texture", -1, 1, 0);
-        AddSlider(gPres, "dehaze", "Dehaze", -1, 1, 0);
-        AddSlider(gPres, "velvia", "Velvia", 0, 1, 0);
+        AddSubheader(gCurve, "PARAMETRIC CURVE");
+        AddSlider(gCurve, "pc_hi", "Highlights", -1, 1, 0);
+        AddSlider(gCurve, "pc_lt", "Lights", -1, 1, 0);
+        AddSlider(gCurve, "pc_dk", "Darks", -1, 1, 0);
+        AddSlider(gCurve, "pc_sh", "Shadows", -1, 1, 0);
 
-        // Levels (D2.5)
-        var gLevels = AddGroup("Levels", false);
-        AddSlider(gLevels, "lvl_black", "Black point", 0, 0.5, 0, "0.00");
-        AddSlider(gLevels, "lvl_gamma", "Gamma", 0.2, 3, 1, "0.00");
-        AddSlider(gLevels, "lvl_white", "White point", 0.5, 1, 1, "0.00");
-        var btnAutoLevels = new Button { Content = "Auto Levels", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
-        btnAutoLevels.Click += BtnAutoLevels_Click;
-        gLevels.Children.Add(btnAutoLevels);
-        var btnAutoColor = new Button { Content = "Auto Color", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Stretch dynamic range per RGB channel to remove color casts (per-channel levels)." };
-        btnAutoColor.Click += BtnAutoColor_Click;
-        gLevels.Children.Add(btnAutoColor);
-        // Per-channel (D2.5): black/white/gamma riêng cho R/G/B (color grading kiểu film).
-        var expLvlCh = new Expander { Header = "Per-channel R/G/B", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 11, Margin = new Thickness(0, 2, 0, 2) };
-        var gLvlCh = new StackPanel();
-        AddSlider(gLvlCh, "lvl_blackR", "R Black", 0, 0.5, 0, "0.00");
-        AddSlider(gLvlCh, "lvl_whiteR", "R White", 0.5, 1, 1, "0.00");
-        AddSlider(gLvlCh, "lvl_gammaR", "R Gamma", 0.2, 3, 1, "0.00");
-        AddSlider(gLvlCh, "lvl_blackG", "G Black", 0, 0.5, 0, "0.00");
-        AddSlider(gLvlCh, "lvl_whiteG", "G White", 0.5, 1, 1, "0.00");
-        AddSlider(gLvlCh, "lvl_gammaG", "G Gamma", 0.2, 3, 1, "0.00");
-        AddSlider(gLvlCh, "lvl_blackB", "B Black", 0, 0.5, 0, "0.00");
-        AddSlider(gLvlCh, "lvl_whiteB", "B White", 0.5, 1, 1, "0.00");
-        AddSlider(gLvlCh, "lvl_gammaB", "B Gamma", 0.2, 3, 1, "0.00");
-        expLvlCh.Content = gLvlCh;
-        gLevels.Children.Add(expLvlCh);
+        // 3. COLOR MIXER & GRADING (Gom HSL + Color Grading + Split Toning + B&W Mix)
+        var gColor = AddGroup("Color Mixer & Grading", false);
 
-        // Color Balance RGB 4-way (D2.1)
-        var gCbr = AddGroup("Color Balance RGB", false);
-        AddSlider(gCbr, "cbr_liftHue", "Shadow Hue", 0, 360, 0, "0");
-        AddSlider(gCbr, "cbr_liftSat", "Shadow Sat", 0, 1, 0);
-        AddSlider(gCbr, "cbr_gammaHue", "Mid Hue", 0, 360, 0, "0");
-        AddSlider(gCbr, "cbr_gammaSat", "Mid Sat", 0, 1, 0);
-        AddSlider(gCbr, "cbr_gainHue", "Highlight Hue", 0, 360, 0, "0");
-        AddSlider(gCbr, "cbr_gainSat", "Highlight Sat", 0, 1, 0);
-        AddSlider(gCbr, "cbr_chroma", "Global Chroma", -1, 1, 0);
-        AddSlider(gCbr, "cbr_contrast", "Global Contrast", -1, 1, 0);
-
-        // Color Contrast (D2.4)
-        var gCc = AddGroup("Color Contrast (Lab)", false);
-        AddSlider(gCc, "cc_ga", "Green ↔ Magenta", -1, 1, 0);
-        AddSlider(gCc, "cc_by", "Blue ↔ Yellow", -1, 1, 0);
-
-        // Color Calibration / Channel Mixer (nudge hue + sat từng primary R/G/B).
-        var gChm = AddGroup("Color Calibration", false);
-        AddSlider(gChm, "chm_rHue", "Red Hue", -1, 1, 0);
-        AddSlider(gChm, "chm_rSat", "Red Sat", -1, 1, 0);
-        AddSlider(gChm, "chm_gHue", "Green Hue", -1, 1, 0);
-        AddSlider(gChm, "chm_gSat", "Green Sat", -1, 1, 0);
-        AddSlider(gChm, "chm_bHue", "Blue Hue", -1, 1, 0);
-        AddSlider(gChm, "chm_bSat", "Blue Sat", -1, 1, 0);
-
-        // HSL
-        var gHsl = AddGroup("HSL / Color Mixer", false);
+        AddSubheader(gColor, "HSL / COLOR MIXER");
         var tatRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
-        btnTat = new System.Windows.Controls.Primitives.ToggleButton 
-        { 
-            Content = "🎯 Targeted Adjustment (TAT)", 
+        btnTat = new System.Windows.Controls.Primitives.ToggleButton
+        {
+            Content = "🎯 Targeted Adjustment (TAT)",
             Padding = new Thickness(8, 3, 8, 3),
             ToolTip = "Targeted Adjustment Tool: Click and drag up/down on photo to adjust tonal bands."
         };
-        btnTat.Checked += (s, e) => TatStateChanged?.Invoke(this, (true, GetTatMode()));
-        btnTat.Unchecked += (s, e) => TatStateChanged?.Invoke(this, (false, GetTatMode()));
-        
+        btnTat.Checked += (s, e) => { TatStateChanged?.Invoke(this, (true, GetTatMode())); if (btnToolTat != null) btnToolTat.Background = ThemeManager.GetBrush("AccentBrush"); };
+        btnTat.Unchecked += (s, e) => { TatStateChanged?.Invoke(this, (false, GetTatMode())); if (btnToolTat != null) btnToolTat.Background = ThemeManager.GetBrush("BgHoverBrush"); };
+
         cmbTatMode = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0), Width = 90 };
         cmbTatMode.Items.Add(new ComboBoxItem { Content = "Saturation", Tag = "sat" });
         cmbTatMode.Items.Add(new ComboBoxItem { Content = "Luminance", Tag = "lum" });
@@ -336,7 +337,7 @@ public partial class DevelopPanel : UserControl
         };
         tatRow.Children.Add(btnTat);
         tatRow.Children.Add(cmbTatMode);
-        gHsl.Children.Add(tatRow);
+        gColor.Children.Add(tatRow);
 
         var bandRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         bandRow.Children.Add(new TextBlock { Text = "Color Band", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
@@ -345,22 +346,13 @@ public partial class DevelopPanel : UserControl
             _bandCombo.Items.Add(new ComboBoxItem { Content = n });
         _bandCombo.SelectedIndex = 0;
         _bandCombo.SelectionChanged += BandCombo_SelectionChanged;
-        gHsl.Children.Add(bandRow);
         bandRow.Children.Add(_bandCombo);
-        AddSlider(gHsl, "hsl_hue", "Hue", -1, 1, 0);
-        AddSlider(gHsl, "hsl_sat", "Saturation", -1, 1, 0);
-        AddSlider(gHsl, "hsl_lum", "Luminance", -1, 1, 0);
+        gColor.Children.Add(bandRow);
+        AddSlider(gColor, "hsl_hue", "Hue", -1, 1, 0);
+        AddSlider(gColor, "hsl_sat", "Saturation", -1, 1, 0);
+        AddSlider(gColor, "hsl_lum", "Luminance", -1, 1, 0);
 
-        // Color grading (split toning đơn giản)
-        var gSplit = AddGroup("Split Toning", false);
-        AddSlider(gSplit, "st_hiHue", "HL Hue", 0, 360, 0, "0");
-        AddSlider(gSplit, "st_hiSat", "HL Sat", 0, 1, 0);
-        AddSlider(gSplit, "st_shHue", "SH Hue", 0, 360, 0, "0");
-        AddSlider(gSplit, "st_shSat", "SH Sat", 0, 1, 0);
-        AddSlider(gSplit, "st_bal", "Balance", -1, 1, 0);
-
-        // Color Grading 3-way wheels — 3.3
-        var gGrade = AddGroup("Color Grading", false);
+        AddSubheader(gColor, "COLOR GRADING (3-WAY)");
         string[] zoneNames = { "Shadows", "Midtones", "Highlights", "Global" };
         var wheelRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 4) };
         for (int z = 0; z < 4; z++)
@@ -374,27 +366,236 @@ public partial class DevelopPanel : UserControl
             cell.Children.Add(wheel);
             wheelRow.Children.Add(cell);
         }
-        gGrade.Children.Add(wheelRow);
-        AddSlider(gGrade, "cg_sh_lum", "Shadow Lum", -1, 1, 0);
-        AddSlider(gGrade, "cg_mid_lum", "Midtone Lum", -1, 1, 0);
-        AddSlider(gGrade, "cg_hi_lum", "Highlight Lum", -1, 1, 0);
-        AddSlider(gGrade, "cg_blend", "Blending", 0, 1, 0.5, "0.00");
+        gColor.Children.Add(wheelRow);
+        AddSlider(gColor, "cg_sh_lum", "Shadow Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_mid_lum", "Midtone Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_hi_lum", "Highlight Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_blend", "Blending", 0, 1, 0.5, "0.00");
 
-        // Selective color (dịch 1 dải hue sang hue khác)
-        var gSel = AddGroup("Selective Color", false);
-        AddSlider(gSel, "sel_src", "Source Hue", 0, 360, 0, "0");
-        AddSlider(gSel, "sel_tgt", "Target Hue", 0, 360, 0, "0");
-        AddSlider(gSel, "sel_tol", "Tolerance", 1, 90, 30, "0");
-        AddSlider(gSel, "sel_str", "Strength", 0, 1, 0);
+        AddSubheader(gColor, "SPLIT TONING");
+        AddSlider(gColor, "st_hiHue", "HL Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "st_hiSat", "HL Sat", 0, 1, 0);
+        AddSlider(gColor, "st_shHue", "SH Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "st_shSat", "SH Sat", 0, 1, 0);
+        AddSlider(gColor, "st_bal", "Balance", -1, 1, 0);
 
-        // Color unify (kéo toàn ảnh về 1 tông màu — port ColorLab non-destructive)
-        var gUnify = AddGroup("Color Unify", false);
-        AddSlider(gUnify, "uni_hue", "Target Hue", 0, 360, 0, "0");
-        AddSlider(gUnify, "uni_sat", "Target Sat", 0, 1, 0.5, "0.00");
-        AddSlider(gUnify, "uni_int", "Intensity", 0, 1, 0);
+        AddSubheader(gColor, "BLACK & WHITE MIX");
+        var (rowBw, swBw) = CreateToggleRow("Enable B&W Mix");
+        _chkBw = swBw;
+        _chkBw.CheckedChanged += (_, _) =>
+        {
+            if (_segTreatment != null)
+                _segTreatment.SelectedIndex = _chkBw.IsChecked ? 1 : 0;
+            if (!_loading) ScheduleCommit();
+        };
+        gColor.Children.Add(rowBw);
+        AddSlider(gColor, "bw_r", "Red mix", 0, 1, 0.299, "0.00");
+        AddSlider(gColor, "bw_g", "Green mix", 0, 1, 0.587, "0.00");
+        AddSlider(gColor, "bw_b", "Blue mix", 0, 1, 0.114, "0.00");
+        var bwFilterRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        bwFilterRow.Children.Add(new TextBlock { Text = "Filter", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        var cmbBwFilter = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "Neutral", "Red", "Orange", "Yellow", "Green", "Blue" })
+            cmbBwFilter.Items.Add(new ComboBoxItem { Content = n });
+        cmbBwFilter.SelectedIndex = 0;
+        cmbBwFilter.SelectionChanged += (_, _) => { if (!_loading) ApplyBwFilter(cmbBwFilter.SelectedIndex); };
+        cmbBwFilter.ToolTip = "Simulate optical color filters: Red darkens sky/lightens skin, Green brightens foliage...";
+        bwFilterRow.Children.Add(cmbBwFilter);
+        gColor.Children.Add(bwFilterRow);
+        AddSlider(gColor, "bw_toneHue", "Tone Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "bw_toneStr", "Tone Strength", 0, 1, 0);
 
-        // Color Match (#8): mượn tông màu từ ảnh tham chiếu (Reinhard Lab transfer).
-        var gMatch = AddGroup("Color Match", false);
+        // 4. DETAIL (Sharpening + Noise Reduction + Defringe + AI)
+        var gDetail = AddGroup("Detail", false);
+        gDetail.Children.Add(BuildDetailLoupeWidget());
+        AddSubheader(gDetail, "SHARPENING");
+        AddSlider(gDetail, "sharpen", "Sharpen", 0, 1, 0);
+        AddSlider(gDetail, "sharpenRadius", "Sharpen Radius", 0.5, 3, 1, "0.0");
+        AddSlider(gDetail, "sharpenMask", "Sharpen Masking", 0, 1, 0);
+
+        AddSubheader(gDetail, "NOISE REDUCTION");
+        AddSlider(gDetail, "lumaNR", "Luminance NR", 0, 1, 0);
+        AddSlider(gDetail, "colorNR", "Color NR", 0, 1, 0);
+        AddSlider(gDetail, "chromaNR", "Chroma NR (edge)", 0, 1, 0);
+        AddSlider(gDetail, "diffuse", "Diffuse/Sharpen", -1, 1, 0);
+        AddSlider(gDetail, "diffuse_iter", "Diffuse Iterations", 1, 12, 6, "0");
+        AddSlider(gDetail, "diffuse_edge", "Diffuse Edge Sens", 0, 1, 0.5, "0.00");
+        AddSlider(gDetail, "fsep_smooth", "Skin Smooth", 0, 1, 0);
+        AddSlider(gDetail, "fsep_radius", "Skin Radius", 2, 30, 8, "0");
+        AddSlider(gDetail, "fsep_detail", "Skin Detail", 0.5, 2, 1, "0.00");
+
+        AddSubheader(gDetail, "OPTICS & DEFRINGE");
+        AddSlider(gDetail, "defrPurple", "Defringe Purple", 0, 1, 0);
+        AddSlider(gDetail, "defrGreen", "Defringe Green", 0, 1, 0);
+        AddSlider(gDetail, "hotpix", "Hot Pixel", 0, 1, 0);
+        AddSlider(gDetail, "hotpixThr", "Hot Pixel Thr", 0, 1, 0.5);
+        AddSlider(gDetail, "caRed", "CA Red/Cyan", -1, 1, 0);
+        AddSlider(gDetail, "caBlue", "CA Blue/Yellow", -1, 1, 0);
+        var btnAutoCa = new Button { Content = "Auto CA", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto chromatic aberration correction." };
+        btnAutoCa.Click += BtnAutoCa_Click;
+        gDetail.Children.Add(btnAutoCa);
+
+        AddSubheader(gDetail, "AI ENHANCEMENT");
+        AddSlider(gDetail, "aiDenoise", "AI Denoise", 0, 1, 0);
+        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (on export)", "Enlarge 4x using AI during export (requires Upscaler model)");
+        _chkAiUpscale = swAiUp;
+        _chkAiUpscale.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gDetail.Children.Add(rowAiUp);
+
+        // 5. OPTICS (Lensfun Profile + Manual Distortion)
+        var gOptics = AddGroup("Optics", false);
+        AddSubheader(gOptics, "PROFILE CORRECTIONS");
+        var btnAutoLens = new Button { Content = "Auto Lens (lensfun)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto lens distortion & vignette correction from EXIF focal length using lensfun." };
+        btnAutoLens.Click += BtnAutoLens_Click;
+        gOptics.Children.Add(btnAutoLens);
+        _lensAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
+        _lensAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        gOptics.Children.Add(_lensAutoInfo);
+
+        AddSubheader(gOptics, "MANUAL CORRECTIONS");
+        AddSlider(gOptics, "lens_k1", "Lens Distortion", -0.5, 0.5, 0, "0.00");
+        AddSlider(gOptics, "lens_k2", "Lens Distortion 2", -0.5, 0.5, 0, "0.00");
+        AddSlider(gOptics, "lens_vig", "Lens Vignette Fix", 0, 1, 0);
+
+        // 6. GEOMETRY & TRANSFORM (Rotate/Flip + Straighten + Perspective)
+        var gGeo = AddGroup("Geometry & Transform", false);
+        var rotRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        var btnRotL = new Button { Content = "⟲ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnRotR = new Button { Content = "⟳ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnFlipH = new Button { Content = "⇋ FlipH", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnFlipV = new Button { Content = "⇅ FlipV", Padding = new Thickness(8, 3, 8, 3) };
+        btnRotL.Click += (_, _) => RotateBy(-1);
+        btnRotR.Click += (_, _) => RotateBy(1);
+        btnFlipH.Click += (_, _) => ToggleFlip(true);
+        btnFlipV.Click += (_, _) => ToggleFlip(false);
+        rotRow.Children.Add(btnRotL);
+        rotRow.Children.Add(btnRotR);
+        rotRow.Children.Add(btnFlipH);
+        rotRow.Children.Add(btnFlipV);
+        gGeo.Children.Add(rotRow);
+
+        AddSubheader(gGeo, "UPRIGHT & STRAIGHTEN");
+        AddSlider(gGeo, "straighten", "Straighten", -45, 45, 0, "0.0");
+        var geoBtnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+        var btnAutoStraighten = new Button { Content = "Auto Straighten", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Auto level horizon (estimates dominant edge tilt)." };
+        btnAutoStraighten.Click += BtnAutoStraighten_Click;
+        geoBtnRow.Children.Add(btnAutoStraighten);
+        var btnAutoUpright = new Button { Content = "Auto Upright", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Auto correct perspective keystone (converging vertical/horizontal lines)." };
+        btnAutoUpright.Click += BtnAutoUpright_Click;
+        geoBtnRow.Children.Add(btnAutoUpright);
+        gGeo.Children.Add(geoBtnRow);
+
+        AddSubheader(gGeo, "PERSPECTIVE TRANSFORM");
+        AddSlider(gGeo, "persp_v", "Perspective V", -1, 1, 0);
+        AddSlider(gGeo, "persp_h", "Perspective H", -1, 1, 0);
+        AddSlider(gGeo, "persp_scale", "Persp Scale", 0.5, 2, 1, "0.00");
+
+        // 7. EFFECTS (Vignette + Grain + Glow)
+        var gFx = AddGroup("Effects", false);
+        AddSubheader(gFx, "POST-CROP VIGNETTE");
+        AddSlider(gFx, "vignette", "Vignette", -1, 1, 0);
+        AddSlider(gFx, "vig_mid", "Vignette Midpoint", 0, 1, 0.5);
+        AddSlider(gFx, "vig_feather", "Vignette Feather", 0.01, 1, 0.5, "0.00");
+        AddSlider(gFx, "vig_round", "Vignette Roundness", -1, 1, 0, "0.00");
+        AddSlider(gFx, "vig_hi", "Vignette Highlights", 0, 1, 0, "0.00");
+
+        AddSubheader(gFx, "GRAIN");
+        AddSlider(gFx, "grain", "Grain", 0, 1, 0);
+        AddSlider(gFx, "grain_size", "Grain Size", 0.5, 5, 1, "0.0");
+        AddSlider(gFx, "grain_rough", "Grain Roughness", 0, 1, 0.5, "0.00");
+        AddSlider(gFx, "grain_color", "Grain Color", 0, 1, 0, "0.00");
+
+        AddSubheader(gFx, "GLOW / ORTON");
+        AddSlider(gFx, "glow", "Glow / Soften", 0, 1, 0);
+        AddSlider(gFx, "glow_radius", "Glow Radius", 2, 50, 12, "0");
+        AddSlider(gFx, "glow_thresh", "Glow Threshold", 0, 1, 0, "0.00");
+
+        // 8. CALIBRATION (Color Calibration)
+        var gChm = AddGroup("Calibration", false);
+        AddSubheader(gChm, "CAMERA CALIBRATION");
+        AddSlider(gChm, "chm_rHue", "Red Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_rSat", "Red Sat", -1, 1, 0);
+        AddSlider(gChm, "chm_gHue", "Green Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_gSat", "Green Sat", -1, 1, 0);
+        AddSlider(gChm, "chm_bHue", "Blue Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_bSat", "Blue Sat", -1, 1, 0);
+
+        // 9. ADVANCED & LAB (Darktable / Custom Tools)
+        var gAdv = AddGroup("Advanced & Lab (Darktable / Custom)", false);
+
+        AddSubheader(gAdv, "SCENE-REFERRED TONE MAPPING");
+        AddSlider(gAdv, "sig_amt", "Sigmoid", 0, 1, 0);
+        AddSlider(gAdv, "sig_contrast", "Sigmoid Contrast", 0.5, 3, 1.5, "0.00");
+        AddSlider(gAdv, "filmrgb_amt", "Filmic RGB", 0, 1, 0);
+        AddSlider(gAdv, "filmrgb_white", "  White (EV)", 1, 8, 4, "0.0");
+        AddSlider(gAdv, "filmrgb_black", "  Black (EV)", -10, -1, -6, "0.0");
+        AddSlider(gAdv, "filmrgb_contrast", "  Contrast", 0.5, 2.5, 1.2, "0.00");
+        AddSlider(gAdv, "filmrgb_lat", "  Latitude", 0, 0.9, 0.2, "0.00");
+        AddSlider(gAdv, "filmrgb_sat", "  HL Saturation", -1, 1, 0);
+        AddSlider(gAdv, "hlrecon", "Highlight Recon", 0, 1, 0);
+        AddSlider(gAdv, "ltm_amt", "Local Tone (HDR)", 0, 1, 0);
+        AddSlider(gAdv, "ltm_detail", "  Local Contrast", -1, 1, 0);
+        AddSlider(gAdv, "clahe", "Local Contrast (CLAHE)", 0, 1, 0);
+        AddSlider(gAdv, "clahe_clip", "CLAHE Clip Limit", 1, 10, 3, "0.0");
+
+        AddSubheader(gAdv, "TONE EQUALIZER");
+        AddSlider(gAdv, "teq_blacks", "Blacks", -1, 1, 0);
+        AddSlider(gAdv, "teq_shadows", "Shadows", -1, 1, 0);
+        AddSlider(gAdv, "teq_mid", "Midtones", -1, 1, 0);
+        AddSlider(gAdv, "teq_highlights", "Highlights", -1, 1, 0);
+        AddSlider(gAdv, "teq_whites", "Whites", -1, 1, 0);
+
+        AddSubheader(gAdv, "LEVELS");
+        AddSlider(gAdv, "lvl_black", "Black point", 0, 0.5, 0, "0.00");
+        AddSlider(gAdv, "lvl_gamma", "Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gAdv, "lvl_white", "White point", 0.5, 1, 1, "0.00");
+        var lvlBtnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+        var btnAutoLevels = new Button { Content = "Auto Levels", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        btnAutoLevels.Click += BtnAutoLevels_Click;
+        lvlBtnRow.Children.Add(btnAutoLevels);
+        var btnAutoColor = new Button { Content = "Auto Color", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Stretch dynamic range per RGB channel to remove color casts." };
+        btnAutoColor.Click += BtnAutoColor_Click;
+        lvlBtnRow.Children.Add(btnAutoColor);
+        gAdv.Children.Add(lvlBtnRow);
+
+        var expLvlCh = new Expander { Header = "Per-channel R/G/B", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 11, Margin = new Thickness(0, 2, 0, 2) };
+        var gLvlCh = new StackPanel();
+        AddSlider(gLvlCh, "lvl_blackR", "R Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteR", "R White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaR", "R Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_blackG", "G Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteG", "G White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaG", "G Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_blackB", "B Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteB", "B White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaB", "B Gamma", 0.2, 3, 1, "0.00");
+        expLvlCh.Content = gLvlCh;
+        gAdv.Children.Add(expLvlCh);
+
+        AddSubheader(gAdv, "COLOR BALANCE & CONTRAST");
+        AddSlider(gAdv, "cbr_liftHue", "Shadow Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_liftSat", "Shadow Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_gammaHue", "Mid Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_gammaSat", "Mid Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_gainHue", "Highlight Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_gainSat", "Highlight Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_chroma", "Global Chroma", -1, 1, 0);
+        AddSlider(gAdv, "cbr_contrast", "Global Contrast", -1, 1, 0);
+        AddSlider(gAdv, "cc_ga", "Green ↔ Magenta", -1, 1, 0);
+        AddSlider(gAdv, "cc_by", "Blue ↔ Yellow", -1, 1, 0);
+        AddSlider(gAdv, "velvia", "Velvia", 0, 1, 0);
+
+        AddSubheader(gAdv, "COLOR TOOLS (SELECTIVE, UNIFY, MATCH, LUT)");
+        AddSlider(gAdv, "sel_src", "Selective Source Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "sel_tgt", "Selective Target Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "sel_tol", "Selective Tolerance", 1, 90, 30, "0");
+        AddSlider(gAdv, "sel_str", "Selective Strength", 0, 1, 0);
+
+        AddSlider(gAdv, "uni_hue", "Unify Target Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "uni_sat", "Unify Target Sat", 0, 1, 0.5, "0.00");
+        AddSlider(gAdv, "uni_int", "Unify Intensity", 0, 1, 0);
+
+        // Color Match
         var matchRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         _colorMatchInfo = new TextBlock { Text = "(no reference photo selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         var btnMatchRef = new Button { Content = "Match Ref", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Match color grading from the active Reference Photo (Shift+R)" };
@@ -410,15 +611,13 @@ public partial class DevelopPanel : UserControl
         matchRow.Children.Add(btnMatch);
         matchRow.Children.Add(btnMatchRef);
         matchRow.Children.Add(_colorMatchInfo);
-        gMatch.Children.Add(matchRow);
-        AddSlider(gMatch, "match_strength", "Match Strength", 0, 1, 0.8, "0.00");
-        gMatch.Children.Add(new TextBlock { Text = "Match color grading from a reference photo (Reinhard Lab transfer).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        gAdv.Children.Add(matchRow);
+        AddSlider(gAdv, "match_strength", "Match Strength", 0, 1, 0.8, "0.00");
 
-        // 3D LUT (.cube)
-        var gLut = AddGroup("3D LUT (.cube)", false);
+        // 3D LUT
         var lutRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         _lutLabel = new TextBlock { Text = "(no LUT selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        var btnLut = new Button { Content = "Choose...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+        var btnLut = new Button { Content = "Choose LUT...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
         var btnLutClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0) };
         DockPanel.SetDock(btnLut, Dock.Right);
         DockPanel.SetDock(btnLutClear, Dock.Right);
@@ -427,71 +626,21 @@ public partial class DevelopPanel : UserControl
         lutRow.Children.Add(btnLutClear);
         lutRow.Children.Add(btnLut);
         lutRow.Children.Add(_lutLabel);
-        gLut.Children.Add(lutRow);
-        AddSlider(gLut, "lut_intensity", "Intensity", 0, 1, 1);
+        gAdv.Children.Add(lutRow);
+        AddSlider(gAdv, "lut_intensity", "LUT Intensity", 0, 1, 1);
 
-        // Detail
-        var gDetail = AddGroup("Detail", false);
-        gDetail.Children.Add(BuildDetailLoupeWidget());
-        AddSlider(gDetail, "sharpen", "Sharpen", 0, 1, 0);
-        AddSlider(gDetail, "sharpenRadius", "Sharpen Radius", 0.5, 3, 1, "0.0");
-        AddSlider(gDetail, "sharpenMask", "Sharpen Masking", 0, 1, 0);
-        AddSlider(gDetail, "lumaNR", "Luminance NR", 0, 1, 0);
-        AddSlider(gDetail, "colorNR", "Color NR", 0, 1, 0);
-        AddSlider(gDetail, "chromaNR", "Chroma NR (edge)", 0, 1, 0);
-        AddSlider(gDetail, "diffuse", "Diffuse/Sharpen", -1, 1, 0);
-        AddSlider(gDetail, "diffuse_iter", "Diffuse Iterations", 1, 12, 6, "0");
-        AddSlider(gDetail, "diffuse_edge", "Diffuse Edge Sens", 0, 1, 0.5, "0.00");
-        AddSlider(gDetail, "fsep_smooth", "Skin Smooth", 0, 1, 0);
-        AddSlider(gDetail, "fsep_radius", "Skin Radius", 2, 30, 8, "0");
-        AddSlider(gDetail, "fsep_detail", "Skin Detail", 0.5, 2, 1, "0.00");
-        AddSlider(gDetail, "defrPurple", "Defringe Purple", 0, 1, 0);
-        AddSlider(gDetail, "defrGreen", "Defringe Green", 0, 1, 0);
-        AddSlider(gDetail, "hotpix", "Hot Pixel", 0, 1, 0);
-        AddSlider(gDetail, "hotpixThr", "Hot Pixel Thr", 0, 1, 0.5);
-        AddSlider(gDetail, "caRed", "CA Red/Cyan", -1, 1, 0);
-        AddSlider(gDetail, "caBlue", "CA Blue/Yellow", -1, 1, 0);
-        var btnAutoCa = new Button { Content = "Auto CA", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto chromatic aberration correction (estimates lateral R/B fringe displacement)." };
-        btnAutoCa.Click += BtnAutoCa_Click;
-        gDetail.Children.Add(btnAutoCa);
-        AddSlider(gDetail, "aiDenoise", "AI Denoise", 0, 1, 0);
-        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (on export)", "Enlarge 4x using AI during export (requires Upscaler model)");
-        _chkAiUpscale = swAiUp;
-        _chkAiUpscale.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gDetail.Children.Add(rowAiUp);
-
-        // Effects
-        var gFx = AddGroup("Effects", false);
-        AddSlider(gFx, "vignette", "Vignette", -1, 1, 0);
-        AddSlider(gFx, "vig_mid", "Vignette Midpoint", 0, 1, 0.5);
-        AddSlider(gFx, "vig_feather", "Vignette Feather", 0.01, 1, 0.5, "0.00");
-        AddSlider(gFx, "vig_round", "Vignette Roundness", -1, 1, 0, "0.00");
-        AddSlider(gFx, "vig_hi", "Vignette Highlights", 0, 1, 0, "0.00");
-        AddSlider(gFx, "grain", "Grain", 0, 1, 0);
-        AddSlider(gFx, "grain_size", "Grain Size", 0.5, 5, 1, "0.0");
-        AddSlider(gFx, "grain_rough", "Grain Roughness", 0, 1, 0.5, "0.00");
-        AddSlider(gFx, "grain_color", "Grain Color", 0, 1, 0, "0.00");
-        AddSlider(gFx, "glow", "Glow / Soften", 0, 1, 0);
-        AddSlider(gFx, "glow_radius", "Glow Radius", 2, 50, 12, "0");
-        AddSlider(gFx, "glow_thresh", "Glow Threshold", 0, 1, 0, "0.00");
-        var (rowInvert, swInvert) = CreateToggleRow("Negative / Invert");
-        _chkInvert = swInvert;
-        _chkInvert.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gFx.Children.Add(rowInvert);
-
-        // Gradient Map (#5): preset dải màu + opacity. Map luminance -> gradient (grading/duotone).
-        var gradRow = new DockPanel { Margin = new Thickness(0, 6, 0, 2) };
+        // Gradient Map
+        var gradRow = new DockPanel { Margin = new Thickness(0, 4, 0, 2) };
         gradRow.Children.Add(new TextBlock { Text = "Gradient Map", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 86 });
         _cmbGradientMap = new ComboBox { Height = 22 };
         foreach (var preset in GradientMapPresets.All)
             _cmbGradientMap.Items.Add(new ComboBoxItem { Content = preset.Name });
         _cmbGradientMap.SelectedIndex = 0;
-        _cmbGradientMap.ToolTip = "Map luminance to color gradient (grading/duotone/cinematic). None = disabled.";
+        _cmbGradientMap.ToolTip = "Map luminance to color gradient.";
         gradRow.Children.Add(_cmbGradientMap);
-        gFx.Children.Add(gradRow);
-        AddSlider(gFx, "gradmap_opacity", "Gradient Amount", 0, 1, 0, "0.00");
-        AddSlider(gFx, "gradmap_mid", "Gradient Midpoint", 0.05, 0.95, 0.5, "0.00");
-        // Màu 3 chặng tuỳ chỉnh (hex sRGB). Chọn preset -> tự điền; sửa tay -> grading riêng.
+        gAdv.Children.Add(gradRow);
+        AddSlider(gAdv, "gradmap_opacity", "Gradient Amount", 0, 1, 0, "0.00");
+        AddSlider(gAdv, "gradmap_mid", "Gradient Midpoint", 0.05, 0.95, 0.5, "0.00");
         var gmColorRow = new Grid { Margin = new Thickness(0, 2, 0, 2) };
         gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
@@ -505,10 +654,7 @@ public partial class DevelopPanel : UserControl
         gmColorRow.Children.Add(_gmShadow);
         gmColorRow.Children.Add(_gmMid);
         gmColorRow.Children.Add(_gmHigh);
-        gFx.Children.Add(gmColorRow);
-        gFx.Children.Add(new TextBlock { Text = "Shadow · Mid · Highlight (hex)", FontSize = 9, Foreground = ThemeManager.GetBrush("TextDimBrush"), Margin = new Thickness(0, 0, 0, 4) });
-
-        // Chọn preset -> điền hex 3 chặng (None giữ nguyên hex hiện có).
+        gAdv.Children.Add(gmColorRow);
         _cmbGradientMap.SelectionChanged += (_, _) =>
         {
             if (_loading) return;
@@ -521,108 +667,36 @@ public partial class DevelopPanel : UserControl
             ScheduleCommit();
         };
 
-        // Film Negative (negadoctor) — chuyển scan phim âm bản thành dương bản.
-        var gFilm = AddGroup("Film Negative", false);
-        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Enable Film Negative (invert scanned negative)");
+        // Negative / Film Negative
+        var (rowInvert, swInvert) = CreateToggleRow("Negative / Invert");
+        _chkInvert = swInvert;
+        _chkInvert.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gAdv.Children.Add(rowInvert);
+
+        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Enable Film Negative (negadoctor)");
         _chkFilmNeg = swFilmNeg;
         _chkFilmNeg.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gFilm.Children.Add(rowFilmNeg);
-        AddSlider(gFilm, "film_rbase", "Base R", 0.02, 1, 0.50, "0.00");
-        AddSlider(gFilm, "film_gbase", "Base G", 0.02, 1, 0.30, "0.00");
-        AddSlider(gFilm, "film_bbase", "Base B", 0.02, 1, 0.18, "0.00");
-        AddSlider(gFilm, "film_gamma", "Contrast (gamma)", 0.3, 3, 1, "0.00");
-        AddSlider(gFilm, "film_exposure", "Exposure", 0.1, 4, 1, "0.00");
+        gAdv.Children.Add(rowFilmNeg);
+        AddSlider(gAdv, "film_rbase", "Base R", 0.02, 1, 0.50, "0.00");
+        AddSlider(gAdv, "film_gbase", "Base G", 0.02, 1, 0.30, "0.00");
+        AddSlider(gAdv, "film_bbase", "Base B", 0.02, 1, 0.18, "0.00");
+        AddSlider(gAdv, "film_gamma", "Contrast (gamma)", 0.3, 3, 1, "0.00");
+        AddSlider(gAdv, "film_exposure", "Exposure", 0.1, 4, 1, "0.00");
         var btnPickBase = new Button { Content = "Pick film base (click border)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
         btnPickBase.Click += BtnPickFilmBase_Click;
-        gFilm.Children.Add(btnPickBase);
-        gFilm.Children.Add(new TextBlock { Text = "Tip: Sample film base from an unexposed edge (orange mask).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        gAdv.Children.Add(btnPickBase);
 
-        // Black & White
-        var gBw = AddGroup("Black & White", false);
-        var (rowBw, swBw) = CreateToggleRow("Convert to Black & White");
-        _chkBw = swBw;
-        _chkBw.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gBw.Children.Add(rowBw);
-        AddSlider(gBw, "bw_r", "Red mix", 0, 1, 0.299, "0.00");
-        AddSlider(gBw, "bw_g", "Green mix", 0, 1, 0.587, "0.00");
-        AddSlider(gBw, "bw_b", "Blue mix", 0, 1, 0.114, "0.00");
-        // Preset filter màu cổ điển (mô phỏng kính lọc khi chụp phim B&W).
-        var bwFilterRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        bwFilterRow.Children.Add(new TextBlock { Text = "Filter", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
-        var cmbBwFilter = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
-        foreach (var n in new[] { "Neutral", "Red", "Orange", "Yellow", "Green", "Blue" })
-            cmbBwFilter.Items.Add(new ComboBoxItem { Content = n });
-        cmbBwFilter.SelectedIndex = 0;
-        cmbBwFilter.SelectionChanged += (_, _) => { if (!_loading) ApplyBwFilter(cmbBwFilter.SelectedIndex); };
-        cmbBwFilter.ToolTip = "Simulate optical color filters: Red darkens sky/lightens skin, Green brightens foliage...";
-        bwFilterRow.Children.Add(cmbBwFilter);
-        gBw.Children.Add(bwFilterRow);
-        AddSlider(gBw, "bw_toneHue", "Tone Hue", 0, 360, 0, "0");
-        AddSlider(gBw, "bw_toneStr", "Tone Strength", 0, 1, 0);
-
-        // Geometry
-        var gGeo = AddGroup("Geometry", false);
-        var rotRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
-        var btnRotL = new Button { Content = "⟲ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
-        var btnRotR = new Button { Content = "⟳ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
-        var btnFlipH = new Button { Content = "⇋ FlipH", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
-        var btnFlipV = new Button { Content = "⇅ FlipV", Padding = new Thickness(8, 3, 8, 3) };
-        btnRotL.Click += (_, _) => RotateBy(-1);
-        btnRotR.Click += (_, _) => RotateBy(1);
-        btnFlipH.Click += (_, _) => ToggleFlip(true);
-        btnFlipV.Click += (_, _) => ToggleFlip(false);
-        rotRow.Children.Add(btnRotL);
-        rotRow.Children.Add(btnRotR);
-        rotRow.Children.Add(btnFlipH);
-        rotRow.Children.Add(btnFlipV);
-        gGeo.Children.Add(rotRow);
-        AddSlider(gGeo, "straighten", "Straighten", -45, 45, 0, "0.0");
-        var btnAutoStraighten = new Button { Content = "Auto Straighten", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto level horizon (estimates dominant edge tilt)." };
-        btnAutoStraighten.Click += BtnAutoStraighten_Click;
-        gGeo.Children.Add(btnAutoStraighten);
-        var btnAutoUpright = new Button { Content = "Auto Upright", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto correct perspective keystone (converging vertical/horizontal lines)." };
-        btnAutoUpright.Click += BtnAutoUpright_Click;
-        gGeo.Children.Add(btnAutoUpright);
-        AddSlider(gGeo, "persp_v", "Perspective V", -1, 1, 0);
-        AddSlider(gGeo, "persp_h", "Perspective H", -1, 1, 0);
-        AddSlider(gGeo, "persp_scale", "Persp Scale", 0.5, 2, 1, "0.00");
-        AddSlider(gGeo, "lens_k1", "Lens Distortion", -0.5, 0.5, 0, "0.00");
-        AddSlider(gGeo, "lens_k2", "Lens Distortion 2", -0.5, 0.5, 0, "0.00");
-        AddSlider(gGeo, "lens_vig", "Lens Vignette Fix", 0, 1, 0);
-        var btnAutoLens = new Button { Content = "Auto Lens (lensfun)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto lens distortion & vignette correction from EXIF focal length using lensfun." };
-        btnAutoLens.Click += BtnAutoLens_Click;
-        gGeo.Children.Add(btnAutoLens);
-        _lensAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
-        _lensAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
-        gGeo.Children.Add(_lensAutoInfo);
-
-        // Color Management (D2.2): input/working color space.
-        var gCm = AddGroup("Color Management", false);
-        var cmRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        cmRow.Children.Add(new TextBlock { Text = "Input Profile", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 90 });
-        _cmbInputProfile = new ComboBox { Height = 22 };
-        foreach (var n in new[] { "sRGB", "AdobeRGB", "Rec2020", "DisplayP3", "Embedded ICC" })
-            _cmbInputProfile.Items.Add(new ComboBoxItem { Content = n });
-        _cmbInputProfile.SelectedIndex = 0;
-        _cmbInputProfile.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbInputProfile.ToolTip = "Interpret image in this color space then map to working sRGB. sRGB = unchanged. Embedded ICC = use embedded profile matrix.";
-        cmRow.Children.Add(_cmbInputProfile);
-        gCm.Children.Add(cmRow);
-        _iccAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
-        _iccAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
-        gCm.Children.Add(_iccAutoInfo);
-
-        // Soft Proof / Gamut (#1): mô phỏng giới hạn màu thiết bị đích + cảnh báo ngoài gamut.
-        var spRow = new DockPanel { Margin = new Thickness(0, 4, 0, 2) };
+        // Soft Proof
+        AddSubheader(gAdv, "SOFT PROOF / GAMUT WARNING");
+        var spRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         spRow.Children.Add(new TextBlock { Text = "Soft Proof", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 90 });
         _cmbSoftProof = new ComboBox { Height = 22 };
         foreach (var n in new[] { "Off", "sRGB", "AdobeRGB", "Rec2020", "DisplayP3" })
             _cmbSoftProof.Items.Add(new ComboBoxItem { Content = n });
         _cmbSoftProof.SelectedIndex = 0;
         _cmbSoftProof.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbSoftProof.ToolTip = "Simulate output device gamut (out-of-gamut colors compressed/clipped). Off = disabled.";
         spRow.Children.Add(_cmbSoftProof);
-        gCm.Children.Add(spRow);
+        gAdv.Children.Add(spRow);
 
         var spModeRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         spModeRow.Children.Add(new TextBlock { Text = "Proof Mode", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 90 });
@@ -631,50 +705,54 @@ public partial class DevelopPanel : UserControl
             _cmbSoftProofMode.Items.Add(new ComboBoxItem { Content = n });
         _cmbSoftProofMode.SelectedIndex = 0;
         _cmbSoftProofMode.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbSoftProofMode.ToolTip = "Clip = clamp out-of-gamut colors; Desaturate = desaturate toward luminance.";
         spModeRow.Children.Add(_cmbSoftProofMode);
-        gCm.Children.Add(spModeRow);
-
+        gAdv.Children.Add(spModeRow);
         _softProofInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
         _softProofInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
-        gCm.Children.Add(_softProofInfo);
+        gAdv.Children.Add(_softProofInfo);
 
-        // Local Adjustments / Masking (6.4 brush + 6.7 full slider set)
-        var gMask = AddGroup("Local Adjustments", false);
-        _maskExpander = gMask.Parent as Expander;
-        BuildMaskUI(gMask);
-
-        // Healing / Clone brush (#6)
-        var gHeal = AddGroup("Healing / Clone", false);
-        BuildHealingUI(gHeal);
-
-        // Liquify / Warp (D3.5)
-        var gLiquify = AddGroup("Liquify / Warp", false);
-        BuildLiquifyUI(gLiquify);
-
-        // Lua Scripting (UX tối ưu hóa)
-        var gLua = AddGroup("Lua Scripting", false);
+        // Lua Scripting
+        AddSubheader(gAdv, "LUA SCRIPTING");
         var scriptRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         scriptRow.Children.Add(new TextBlock { Text = "Script", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
-
         var btnRefreshLua = new Button { Content = "↻", Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Rescan Scripts/ directory" };
         btnRefreshLua.Click += (s, e) => RefreshLuaScripts();
         DockPanel.SetDock(btnRefreshLua, Dock.Right);
         scriptRow.Children.Add(btnRefreshLua);
-
         _cmbLuaScript = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
         _cmbLuaScript.SelectionChanged += CmbLuaScript_SelectionChanged;
         scriptRow.Children.Add(_cmbLuaScript);
-        gLua.Children.Add(scriptRow);
-
+        gAdv.Children.Add(scriptRow);
         _panelLuaSliders = new StackPanel { Margin = new Thickness(4, 2, 4, 2) };
-        gLua.Children.Add(_panelLuaSliders);
-
+        gAdv.Children.Add(_panelLuaSliders);
         RefreshLuaScripts();
 
-        // Quét cây 1 lần: chuyển các foreground literal Gainsboro/Gray (đặt inline lúc dựng) sang
-        // theme brush để hiển thị đúng trong cả Light theme (Gainsboro near-white -> vô hình trên nền sáng).
+        // 10. TOOL EXPANDERS (Local Adjustments, Healing, Liquify)
+        var gMask = AddGroup("Local Adjustments", false);
+        _maskExpander = gMask.Parent as Expander;
+        BuildMaskUI(gMask);
+
+        var gHeal = AddGroup("Healing / Clone", false);
+        _healExpander = gHeal.Parent as Expander;
+        BuildHealingUI(gHeal);
+
+        var gLiquify = AddGroup("Liquify / Warp", false);
+        BuildLiquifyUI(gLiquify);
+
         ThemeizeLiteralForegrounds(panelSliders);
+    }
+
+    private static void AddSubheader(Panel host, string text)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 10, 0, 3)
+        };
+        tb.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        host.Children.Add(tb);
     }
 
     /// <summary>Đệ quy đổi Foreground = Gainsboro/Gray (literal) sang DynamicResource theme brush.</summary>
@@ -2506,7 +2584,7 @@ public partial class DevelopPanel : UserControl
 
     private void SegFilterTabs_SelectedIndexChanged(object? sender, int index)
     {
-        var tabs = new[] { "All", "Basic", "Color", "Detail", "Advanced" };
+        var tabs = new[] { "All", "Basic", "Curve", "Color", "Detail", "Optics", "Geometry", "Effects", "Advanced" };
         if (index >= 0 && index < tabs.Length)
         {
             _currentTab = tabs[index];
@@ -2539,18 +2617,17 @@ public partial class DevelopPanel : UserControl
     {
         if (tab == "All") return true;
 
-        switch (tab)
+        return tab switch
         {
-            case "Basic":
-                return header is "White Balance" or "Tone" or "Presence" or "Parametric Curve" or "Tone Curve" or "Levels" or "Film Negative" or "Black & White";
-            case "Color":
-                return header is "Color Balance RGB" or "Color Contrast (Lab)" or "Color Calibration" or "HSL / Color Mixer" or "Split Toning" or "Color Grading" or "Selective Color" or "Color Unify" or "Color Match" or "3D LUT";
-            case "Detail":
-                return header is "Detail" or "Effects";
-            case "Advanced":
-                return header is "Geometry" or "Color Management" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp" or "Lua Scripting";
-            default:
-                return false;
-        }
+            "Basic" => header is "Basic",
+            "Curve" => header is "Tone Curve",
+            "Color" => header is "Color Mixer & Grading" or "Calibration",
+            "Detail" => header is "Detail",
+            "Optics" => header is "Optics",
+            "Geometry" => header is "Geometry & Transform",
+            "Effects" => header is "Effects",
+            "Advanced" => header is "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp",
+            _ => false
+        };
     }
 }
