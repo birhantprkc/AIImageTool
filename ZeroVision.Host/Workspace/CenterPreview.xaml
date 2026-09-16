@@ -153,10 +153,9 @@
                 </Canvas>
 
                 <!-- Interactive Masking Gizmo Overlay (Linear Gradient & Radial Direct Drag) -->
-                <Canvas x:Name="maskGizmoOverlay" Background="#01000000" Visibility="Collapsed"
-                        MouseLeftButtonDown="MaskGizmo_MouseDown"
-                        MouseMove="MaskGizmo_MouseMove"
-                        MouseLeftButtonUp="MaskGizmo_MouseUp"/>
+                <Canvas x:Name="maskGizmoOverlay" Background="#01000000" Visibility="Collapsed">
+                    <edit:MaskGizmoOverlay x:Name="ctrlMaskGizmo"/>
+                </Canvas>
 
                 <!-- Brush overlay: captures stroke for local brush mask. Hidden until brush mask selected. -->
                 <Canvas x:Name="brushOverlay" Background="#01000000" Visibility="Collapsed" Cursor="Cross"
