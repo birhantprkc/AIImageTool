@@ -51,6 +51,12 @@
                                             ToolTip="Đã chỉnh sửa">
                                         <TextBlock Text="✎" Foreground="#000" FontSize="8" FontWeight="Bold"/>
                                     </Border>
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,0,0,2"
+                                            Background="#007ACC" CornerRadius="2" Padding="3,0"
+                                            Visibility="{Binding IsVirtualCopy, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="Virtual Copy (Bản sao ảo)">
+                                        <TextBlock Text="{Binding VirtualCopyBadge}" Foreground="#FFF" FontSize="8" FontWeight="Bold"/>
+                                    </Border>
                                     <TextBlock Text="{Binding RatingDisplay}" Foreground="{DynamicResource RatingBrush}" FontSize="9"
                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,2"/>
                                 </Grid>

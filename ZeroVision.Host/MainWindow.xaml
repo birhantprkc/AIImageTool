@@ -13,7 +13,7 @@
     <Grid>
     <DockPanel>
         <!-- ========== CUSTOM TITLE BAR ========== -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource BgPanelBrush}" Height="36"
+        <Border x:Name="titleBarBorder" DockPanel.Dock="Top" Background="{DynamicResource BgPanelBrush}" Height="36"
                 BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
                 MouseMove="TitleBar_MouseMove">
@@ -109,7 +109,7 @@
         </Border>
 
         <!-- ========== STATUS BAR (bottom) ========== -->
-        <Border DockPanel.Dock="Bottom" Background="{DynamicResource BgPanelBrush}" Height="22"
+        <Border x:Name="statusBarBorder" DockPanel.Dock="Bottom" Background="{DynamicResource BgPanelBrush}" Height="22"
                 BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,1,0,0">
             <DockPanel Margin="10,0">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
@@ -135,17 +135,17 @@
         </Border>
 
         <!-- ========== MAIN AREA ========== -->
-        <Grid>
+        <Grid x:Name="mainGrid">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="colLeft" Width="280" MinWidth="220"/>
-                <ColumnDefinition Width="6"/>
+                <ColumnDefinition x:Name="colSplitterLeft" Width="6"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="6"/>
+                <ColumnDefinition x:Name="colSplitterRight" Width="6"/>
                 <ColumnDefinition x:Name="colRight" Width="380" MinWidth="280"/>
             </Grid.ColumnDefinitions>
 
             <!-- LEFT: Navigation, History, Layers -->
-            <Grid Grid.Column="0" Background="{DynamicResource BgPanelBrush}">
+            <Grid x:Name="panelLeft" Grid.Column="0" Background="{DynamicResource BgPanelBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0">
                         <Expander Header="Folder" IsExpanded="True" Margin="0,0,0,4">
@@ -164,7 +164,7 @@
                 </ScrollViewer>
             </Grid>
 
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="splitterLeft" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
                           Background="{DynamicResource BgBaseBrush}"/>
 
             <!-- CENTER -->
@@ -173,7 +173,7 @@
                 <ws:CenterPreview x:Name="centerView"/>
             </DockPanel>
 
-            <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="splitterRight" Grid.Column="3" Width="6" HorizontalAlignment="Stretch"
                           Background="{DynamicResource BgBaseBrush}"/>
 
             <!-- RIGHT: Tabs -->
@@ -319,6 +319,9 @@
                         <TextBlock Text="Ctrl+Z / Y   Undo / Redo" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Ctrl+Shift+C   Hộp thoại chọn copy" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Ctrl+C / V   Copy / Paste nhanh" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+'   Tạo Virtual Copy (bản sao)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Tab / Shift+Tab   Ẩn panel / Full Canvas" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="L   Lights Out (tắt đèn nền)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
                     </StackPanel>
                 </Grid>
                 <TextBlock Text="Nhấn F1, ? hoặc Esc để đóng" FontSize="10" Foreground="{DynamicResource TextDimBrush}"

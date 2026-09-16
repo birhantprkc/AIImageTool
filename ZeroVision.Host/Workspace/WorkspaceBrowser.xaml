@@ -158,6 +158,12 @@
                                             Background="{Binding LabelBrush}"/>
                                     <TextBlock Text="{Binding PickDisplay}" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold"
                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,6,0"/>
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6,0,0,24"
+                                            Background="#007ACC" CornerRadius="2" Padding="3,1"
+                                            Visibility="{Binding IsVirtualCopy, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="Virtual Copy (Bản sao ảo)">
+                                        <TextBlock Text="{Binding VirtualCopyBadge}" Foreground="#FFF" FontSize="9" FontWeight="Bold"/>
+                                    </Border>
                                     <Border VerticalAlignment="Bottom" Background="#AA000000" Padding="4,2">
                                         <DockPanel>
                                             <TextBlock DockPanel.Dock="Right" Text="{Binding RatingDisplay}"

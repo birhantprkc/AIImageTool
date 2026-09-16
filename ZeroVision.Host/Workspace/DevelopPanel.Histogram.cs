@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +16,10 @@ public partial class DevelopPanel
     private Border? _histHost;
     private Canvas? _histCanvas;
     private TextBlock? _histClipLabel;
+    private Rectangle? _histHoverRect;
+    private string? _histHoverKey;
+    private string _normalClipText = "Không clip";
+    private Brush? _normalClipBrush;
     // Chế độ hiển thị kênh: 0 = RGB chồng, 1 = Luma.
     private int _histChannelMode;
     // Chế độ scope: 0 = histogram, 1 = waveform/parade.
@@ -50,10 +54,20 @@ public partial class DevelopPanel
             Cursor = System.Windows.Input.Cursors.SizeWE,
             ToolTip = "Kéo ngang trên histogram để chỉnh tone: trái→phải = Blacks · Shadows · Exposure · Highlights · Whites"
         };
+        _histHoverRect = new Rectangle
+        {
+            Fill = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+            Stroke = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
+            StrokeThickness = 1,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed
+        };
+        _histCanvas.Children.Add(_histHoverRect);
         _histCanvas.SizeChanged += (_, _) => DrawScope();
         _histCanvas.MouseLeftButtonDown += HistCanvas_MouseDown;
         _histCanvas.MouseMove += HistCanvas_MouseMove;
         _histCanvas.MouseLeftButtonUp += HistCanvas_MouseUp;
+        _histCanvas.MouseLeave += HistCanvas_MouseLeave;
         _histHost = new Border
         {
             BorderBrush = ThemeManager.GetBrush("BorderBrush_"),
@@ -131,6 +145,10 @@ public partial class DevelopPanel
         double w = _histCanvas.ActualWidth, h = _histCanvas.ActualHeight;
         if (w <= 0 || h <= 0) return;
         _histCanvas.Children.Clear();
+        if (_histHoverRect != null)
+        {
+            _histCanvas.Children.Add(_histHoverRect);
+        }
 
         var hist = _lastHist;
         if (_histChannelMode == 1)
@@ -159,8 +177,13 @@ public partial class DevelopPanel
             var parts = new List<string>();
             if (hist.ShadowClipWarning) parts.Add($"▼ tối {hist.ShadowClipPercent:0.0}%");
             if (hist.HighlightClipWarning) parts.Add($"▲ sáng {hist.HighlightClipPercent:0.0}%");
-            _histClipLabel.Text = parts.Count > 0 ? string.Join("   ", parts) : "Không clip";
-            _histClipLabel.Foreground = parts.Count > 0 ? Brushes.Orange : ThemeManager.GetBrush("TextDimBrush");
+            _normalClipText = parts.Count > 0 ? string.Join("   ", parts) : "Không clip";
+            _normalClipBrush = parts.Count > 0 ? Brushes.Orange : ThemeManager.GetBrush("TextDimBrush");
+            if (string.IsNullOrEmpty(_histHoverKey))
+            {
+                _histClipLabel.Text = _normalClipText;
+                _histClipLabel.Foreground = _normalClipBrush;
+            }
         }
     }
 
@@ -268,7 +291,7 @@ public partial class DevelopPanel
         double w = _histCanvas.ActualWidth;
         if (w <= 0) return;
         double x = e.GetPosition(_histCanvas).X;
-        _histDragKey = ToneKeyAt(x / w);
+        _histDragKey = ToneKeyAt(Math.Clamp(x / w, 0.0, 1.0));
         _histDragging = true;
         _histDragLastX = x;
         _histCanvas.CaptureMouse();
@@ -277,20 +300,37 @@ public partial class DevelopPanel
 
     private void HistCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (!_histDragging || _histCanvas == null || _histDragKey == null) return;
+        if (_histCanvas == null || _scopeMode == 1) return;
         double w = _histCanvas.ActualWidth;
-        if (w <= 0) return;
-        double x = e.GetPosition(_histCanvas).X;
-        double dxFrac = (x - _histDragLastX) / w;   // tỉ lệ chiều ngang đã kéo
-        _histDragLastX = x;
-        if (Math.Abs(dxFrac) < 1e-4) return;
+        double h = _histCanvas.ActualHeight;
+        if (w <= 0 || h <= 0) return;
 
-        // Exposure thang [-5..5] nhạy hơn; còn lại [-1..1].
-        double gain = _histDragKey == "exposure" ? 4.0 : 1.6;
-        double cur = GetVal(_histDragKey);
-        double next = cur + dxFrac * gain;
-        next = _histDragKey == "exposure" ? Math.Clamp(next, -5, 5) : Math.Clamp(next, -1, 1);
-        SetVal(_histDragKey, next);   // slider.ValueChanged tự ScheduleCommit (debounce)
+        double x = e.GetPosition(_histCanvas).X;
+        double frac = Math.Clamp(x / w, 0.0, 1.0);
+        string key = ToneKeyAt(frac);
+
+        if (_histDragging && _histDragKey != null)
+        {
+            double dxFrac = (x - _histDragLastX) / w;
+            _histDragLastX = x;
+            if (Math.Abs(dxFrac) >= 1e-4)
+            {
+                double gain = _histDragKey == "exposure" ? 4.0 : 1.6;
+                double cur = GetVal(_histDragKey);
+                double next = cur + dxFrac * gain;
+                next = _histDragKey == "exposure" ? Math.Clamp(next, -5, 5) : Math.Clamp(next, -1, 1);
+                SetVal(_histDragKey, next);
+            }
+            key = _histDragKey;
+        }
+
+        UpdateHoverZone(key, w, h);
+    }
+
+    private void HistCanvas_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_histDragging) return;
+        ClearHoverZone();
     }
 
     private void HistCanvas_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -299,8 +339,52 @@ public partial class DevelopPanel
         _histDragging = false;
         _histDragKey = null;
         _histCanvas?.ReleaseMouseCapture();
+        if (_histCanvas != null && !_histCanvas.IsMouseOver)
+            ClearHoverZone();
         e.Handled = true;
     }
+
+    private void UpdateHoverZone(string key, double w, double h)
+    {
+        if (_histCanvas == null || _histHoverRect == null) return;
+        _histHoverKey = key;
+        var (s0, s1, name) = ZoneInfo(key);
+        double left = s0 * w;
+        double width = (s1 - s0) * w;
+        Canvas.SetLeft(_histHoverRect, left);
+        Canvas.SetTop(_histHoverRect, 0);
+        _histHoverRect.Width = width;
+        _histHoverRect.Height = h;
+        _histHoverRect.Visibility = Visibility.Visible;
+
+        if (_histClipLabel != null)
+        {
+            double val = GetVal(key);
+            string valStr = key == "exposure" ? $"{val:+0.00;-0.00;0.00} EV" : $"{val * 100:+0;-0;0}";
+            _histClipLabel.Text = $"{name}: {valStr}";
+            _histClipLabel.Foreground = ThemeManager.GetBrush("AccentBrush");
+        }
+    }
+
+    private void ClearHoverZone()
+    {
+        if (_histHoverRect != null) _histHoverRect.Visibility = Visibility.Collapsed;
+        _histHoverKey = null;
+        if (_histClipLabel != null)
+        {
+            _histClipLabel.Text = _normalClipText;
+            _histClipLabel.Foreground = _normalClipBrush ?? ThemeManager.GetBrush("TextDimBrush");
+        }
+    }
+
+    private static (double startFrac, double endFrac, string name) ZoneInfo(string key) => key switch
+    {
+        "blacks" => (0.00, 0.20, "Blacks"),
+        "shadows" => (0.20, 0.40, "Shadows"),
+        "exposure" => (0.40, 0.60, "Exposure"),
+        "highlights" => (0.60, 0.80, "Highlights"),
+        _ => (0.80, 1.00, "Whites"),
+    };
 
     /// <summary>Vùng tone theo vị trí ngang chuẩn hoá [0..1] -> slider Basic tương ứng.</summary>
     private static string ToneKeyAt(double xFrac) => xFrac switch

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -143,23 +143,25 @@ public static class ImageContextMenu
         menu.Items.Add(miCopyPath);
 
         // --- Virtual Copy ---
-        var miVc = new MenuItem { Header = "Create Virtual Copy" };
+        var miVc = new MenuItem { Header = "Create Virtual Copy\tCtrl+'" };
         miVc.Click += (_, _) =>
         {
             string vcPath = history.CreateVirtualCopy(imagePath);
-            MessageBox.Show($"Đã tạo Virtual Copy:\n{System.IO.Path.GetFileName(vcPath)}", "Virtual Copy",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            workspace.AddVirtualCopy(vcPath, imagePath);
         };
         menu.Items.Add(miVc);
 
         if (history.IsVirtualCopy(imagePath))
         {
-            var miDelVc = new MenuItem { Header = "Delete Virtual Copy" };
+            var miDelVc = new MenuItem { Header = "Delete Virtual Copy\tDel" };
             miDelVc.Click += (_, _) =>
             {
                 if (MessageBox.Show("Xoá Virtual Copy này?", "Virtual Copy",
                     MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
+                {
                     history.DeleteVirtualCopy(imagePath);
+                    workspace.RemoveVirtualCopy(imagePath);
+                }
             };
             menu.Items.Add(miDelVc);
         }

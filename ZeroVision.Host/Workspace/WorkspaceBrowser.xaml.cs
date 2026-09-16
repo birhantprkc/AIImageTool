@@ -403,6 +403,9 @@ public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
     public string StackBadge => _stackCount > 1 ? $"⧉ {_stackCount}" : "";
     public bool IsStackCover => _stackCount > 1;
 
+    public bool IsVirtualCopy => VirtualCopyHelper.IsVirtualCopy(ImagePath);
+    public string VirtualCopyBadge => IsVirtualCopy ? $"[VC {VirtualCopyHelper.GetVirtualCopyNumber(ImagePath)}]" : "";
+
     public string RatingDisplay => _rating > 0 ? new string('★', _rating) : "";
     public string PickDisplay => _pick switch { PickFlag.Pick => "✓", PickFlag.Reject => "✗", _ => "" };
 

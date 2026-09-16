@@ -260,9 +260,47 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        if (shortcutOverlay.Visibility == Visibility.Visible && e.Key == System.Windows.Input.Key.Escape)
+        if (e.Key == System.Windows.Input.Key.Escape)
         {
-            shortcutOverlay.Visibility = Visibility.Collapsed;
+            if (shortcutOverlay.Visibility == Visibility.Visible)
+            {
+                shortcutOverlay.Visibility = Visibility.Collapsed;
+                e.Handled = true;
+                return;
+            }
+            if (_lightsOutState > 0)
+            {
+                SetLightsOut(0);
+                e.Handled = true;
+                return;
+            }
+            if (_allChromeHidden)
+            {
+                ToggleAllChrome();
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // Panel Visibility: Tab & Shift+Tab
+        if (!typingNow && e.Key == System.Windows.Input.Key.Tab)
+        {
+            bool shiftMod = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0;
+            if (shiftMod)
+                ToggleAllChrome();
+            else
+                ToggleSidePanels();
+            e.Handled = true;
+            return;
+        }
+
+        // Lights Out: L key (cycle 0 -> 1 -> 2 -> 0)
+        if (!typingNow && !ctrlMod &&
+            (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Alt) == 0 &&
+            (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) == 0 &&
+            e.Key == System.Windows.Input.Key.L)
+        {
+            CycleLightsOut();
             e.Handled = true;
             return;
         }
@@ -310,6 +348,8 @@ public partial class MainWindow : Window
             {
                 case System.Windows.Input.Key.C: if (!typing) { CopyDevelopSettings(showDialog: false); e.Handled = true; return; } break;
                 case System.Windows.Input.Key.V: if (!typing) { PasteDevelopSettings(); e.Handled = true; return; } break;
+                case System.Windows.Input.Key.OemQuotes:
+                    if (!typing) { CreateVirtualCopyActive(); e.Handled = true; return; } break;
             }
         }
 
@@ -403,6 +443,13 @@ public partial class MainWindow : Window
                 if (IsAutoAdvanceActive()) NavigateActiveImage(1);
                 e.Handled = true; break;
             case System.Windows.Input.Key.B: if (!typing) { ToggleQuickCollection(); e.Handled = true; } break;
+            case System.Windows.Input.Key.Delete:
+                if (!typing && VirtualCopyHelper.IsVirtualCopy(path))
+                {
+                    DeleteVirtualCopyActive();
+                    e.Handled = true;
+                }
+                break;
             // (← → điều hướng ảnh đã xử lý sớm phía trên, trước guard ActiveImage.)
         }
     }
@@ -412,6 +459,145 @@ public partial class MainWindow : Window
 
     private void ShortcutOverlay_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         => shortcutOverlay.Visibility = Visibility.Collapsed;
+
+    // ===== Panel Visibility & Lights Out (Phase 2) =====
+    private bool _sidePanelsHidden;
+    private GridLength _savedLeftWidth = new(280);
+    private GridLength _savedRightWidth = new(380);
+
+    public void ToggleSidePanels()
+    {
+        if (_sidePanelsHidden)
+        {
+            colLeft.MinWidth = 220;
+            colLeft.Width = _savedLeftWidth;
+            colRight.MinWidth = 280;
+            colRight.Width = _savedRightWidth;
+            colSplitterLeft.Width = new GridLength(6);
+            colSplitterRight.Width = new GridLength(6);
+            splitterLeft.Visibility = Visibility.Visible;
+            splitterRight.Visibility = Visibility.Visible;
+            _sidePanelsHidden = false;
+        }
+        else
+        {
+            if (colLeft.Width.Value > 0) _savedLeftWidth = colLeft.Width;
+            if (colRight.Width.Value > 0) _savedRightWidth = colRight.Width;
+            colLeft.MinWidth = 0;
+            colLeft.Width = new GridLength(0);
+            colRight.MinWidth = 0;
+            colRight.Width = new GridLength(0);
+            colSplitterLeft.Width = new GridLength(0);
+            colSplitterRight.Width = new GridLength(0);
+            splitterLeft.Visibility = Visibility.Collapsed;
+            splitterRight.Visibility = Visibility.Collapsed;
+            _sidePanelsHidden = true;
+        }
+    }
+
+    private bool _allChromeHidden;
+    public void ToggleAllChrome()
+    {
+        if (_allChromeHidden)
+        {
+            titleBarBorder.Visibility = Visibility.Visible;
+            statusBarBorder.Visibility = Visibility.Visible;
+            filmstrip.Visibility = Visibility.Visible;
+            if (!_sidePanelsHidden)
+            {
+                colLeft.MinWidth = 220;
+                colLeft.Width = _savedLeftWidth;
+                colRight.MinWidth = 280;
+                colRight.Width = _savedRightWidth;
+                colSplitterLeft.Width = new GridLength(6);
+                colSplitterRight.Width = new GridLength(6);
+                splitterLeft.Visibility = Visibility.Visible;
+                splitterRight.Visibility = Visibility.Visible;
+            }
+            _allChromeHidden = false;
+        }
+        else
+        {
+            if (!_sidePanelsHidden)
+            {
+                if (colLeft.Width.Value > 0) _savedLeftWidth = colLeft.Width;
+                if (colRight.Width.Value > 0) _savedRightWidth = colRight.Width;
+                colLeft.MinWidth = 0;
+                colLeft.Width = new GridLength(0);
+                colRight.MinWidth = 0;
+                colRight.Width = new GridLength(0);
+                colSplitterLeft.Width = new GridLength(0);
+                colSplitterRight.Width = new GridLength(0);
+                splitterLeft.Visibility = Visibility.Collapsed;
+                splitterRight.Visibility = Visibility.Collapsed;
+            }
+            titleBarBorder.Visibility = Visibility.Collapsed;
+            statusBarBorder.Visibility = Visibility.Collapsed;
+            filmstrip.Visibility = Visibility.Collapsed;
+            _allChromeHidden = true;
+        }
+    }
+
+    private int _lightsOutState; // 0 = Normal, 1 = Dim (80%), 2 = Black (100%)
+
+    public void CycleLightsOut()
+    {
+        SetLightsOut((_lightsOutState + 1) % 3);
+    }
+
+    public void SetLightsOut(int state)
+    {
+        _lightsOutState = Math.Clamp(state, 0, 2);
+        double opacity = _lightsOutState switch
+        {
+            1 => 0.15,
+            2 => 0.0,
+            _ => 1.0
+        };
+
+        titleBarBorder.Opacity = opacity;
+        panelLeft.Opacity = opacity;
+        toolsHost.Opacity = opacity;
+        statusBarBorder.Opacity = opacity;
+        filmstrip.Opacity = opacity;
+        splitterLeft.Opacity = opacity;
+        splitterRight.Opacity = opacity;
+
+        bool interactive = _lightsOutState == 0;
+        panelLeft.IsHitTestVisible = interactive;
+        toolsHost.IsHitTestVisible = interactive;
+        statusBarBorder.IsHitTestVisible = interactive;
+        filmstrip.IsHitTestVisible = interactive;
+
+        if (_lightsOutState == 2)
+            centerView.Background = System.Windows.Media.Brushes.Black;
+        else if (_lightsOutState == 1)
+            centerView.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(20, 20, 20));
+        else
+            centerView.ClearValue(BackgroundProperty);
+    }
+
+    private void CreateVirtualCopyActive()
+    {
+        var path = _workspace.ActiveImage;
+        if (string.IsNullOrEmpty(path)) return;
+        string vcPath = _history.CreateVirtualCopy(path);
+        _workspace.AddVirtualCopy(vcPath, path);
+        txtStatus.Text = $"Created Virtual Copy: {System.IO.Path.GetFileName(vcPath)}";
+    }
+
+    private void DeleteVirtualCopyActive()
+    {
+        var path = _workspace.ActiveImage;
+        if (string.IsNullOrEmpty(path) || !VirtualCopyHelper.IsVirtualCopy(path)) return;
+        if (System.Windows.MessageBox.Show("Xoá Virtual Copy này?", "Virtual Copy",
+            System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question) == System.Windows.MessageBoxResult.OK)
+        {
+            _history.DeleteVirtualCopy(path);
+            _workspace.RemoveVirtualCopy(path);
+            txtStatus.Text = "Deleted Virtual Copy";
+        }
+    }
 
     /// <summary>Chuyển ảnh active sang ảnh kế tiếp (+1) / trước đó (-1) trong danh sách hiện tại.</summary>
     private void NavigateActiveImage(int delta)

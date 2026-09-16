@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Json;
 using ZeroVision.Core;
@@ -233,7 +233,9 @@ public class HistoryService : IHistoryService
     }
 
     // ===== Virtual Copies =====
-    public const string VirtualCopySuffix = "#vc";
+    public const string VirtualCopySuffix = VirtualCopyHelper.Suffix;
+
+    public static string ResolveDiskPath(string path) => VirtualCopyHelper.ResolveDiskPath(path);
 
     public string CreateVirtualCopy(string imagePath)
     {
@@ -301,14 +303,7 @@ public class HistoryService : IHistoryService
             .ToList();
     }
 
-    public bool IsVirtualCopy(string path)
-    {
-        return path.Contains(VirtualCopySuffix, StringComparison.OrdinalIgnoreCase);
-    }
+    public bool IsVirtualCopy(string path) => VirtualCopyHelper.IsVirtualCopy(path);
 
-    public string GetOriginalPath(string virtualCopyPath)
-    {
-        int idx = virtualCopyPath.IndexOf(VirtualCopySuffix, StringComparison.OrdinalIgnoreCase);
-        return idx >= 0 ? virtualCopyPath[..idx] : virtualCopyPath;
-    }
+    public string GetOriginalPath(string virtualCopyPath) => VirtualCopyHelper.ResolveDiskPath(virtualCopyPath);
 }

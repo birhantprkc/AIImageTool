@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using ZeroVision.Core;
 
 namespace ZeroVision.Imaging;
 
@@ -60,7 +61,7 @@ public sealed class ImageDecoderRegistry
         }
     }
 
-    public bool CanDecode(string path) => _byExt.ContainsKey(Path.GetExtension(path));
+    public bool CanDecode(string path) => _byExt.ContainsKey(Path.GetExtension(VirtualCopyHelper.ResolveDiskPath(path)));
 
     public IReadOnlyList<IImageDecoder> Decoders => _decoders;
 
@@ -69,10 +70,11 @@ public sealed class ImageDecoderRegistry
 
     public DecodedImage Decode(string path)
     {
-        var ext = Path.GetExtension(path);
+        var diskPath = VirtualCopyHelper.ResolveDiskPath(path);
+        var ext = Path.GetExtension(diskPath);
         if (!_byExt.TryGetValue(ext, out var decoder))
             throw new NotSupportedException($"Không có decoder cho định dạng '{ext}'. File: {path}");
-        return decoder.Decode(path);
+        return decoder.Decode(diskPath);
     }
 
     /// <summary>Registry mặc định đã nạp sẵn decoder chuẩn.</summary>

@@ -203,6 +203,12 @@
                                             ToolTip="Nhóm ảnh chụp liên tiếp">
                                         <TextBlock Text="{Binding StackBadge}" Foreground="{DynamicResource RatingBrush}" FontSize="11" FontWeight="Bold"/>
                                     </Border>
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6,0,0,26"
+                                            Background="#007ACC" CornerRadius="2" Padding="4,1"
+                                            Visibility="{Binding IsVirtualCopy, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="Virtual Copy (Bản sao ảo)">
+                                        <TextBlock Text="{Binding VirtualCopyBadge}" Foreground="#FFF" FontSize="10" FontWeight="Bold"/>
+                                    </Border>
                                     <Border VerticalAlignment="Bottom" Background="#AA000000" Padding="4,2">
                                         <DockPanel>
                                             <TextBlock DockPanel.Dock="Right" Text="{Binding RatingDisplay}"

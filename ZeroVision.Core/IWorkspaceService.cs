@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 
 namespace ZeroVision.Core;
 
@@ -20,6 +20,8 @@ public interface IWorkspaceService
     void AddToSelection(string path);
     void RemoveFromSelection(string path);
     void ClearSelection();
+    void AddVirtualCopy(string vcPath, string originalPath);
+    void RemoveVirtualCopy(string vcPath);
     void ApplyFilterAndSort();
 
     event EventHandler<FolderOpenedEventArgs>? FolderOpened;

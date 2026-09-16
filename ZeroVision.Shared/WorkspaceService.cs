@@ -59,6 +59,29 @@ public class WorkspaceService : IWorkspaceService
             }
             catch { all = new List<string>(); }
 
+            try
+            {
+                var sidecar = Path.Combine(folderPath, ".imgtool.history.json");
+                if (File.Exists(sidecar))
+                {
+                    var json = File.ReadAllText(sidecar);
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        if (VirtualCopyHelper.IsVirtualCopy(prop.Name))
+                        {
+                            string vcPath = Path.Combine(folderPath, prop.Name);
+                            string diskPath = VirtualCopyHelper.ResolveDiskPath(vcPath);
+                            if (File.Exists(diskPath) && !all.Contains(vcPath))
+                            {
+                                all.Add(vcPath);
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
             _allImages = all;
             var visible = ApplyFilterAndSortInternal();
 
@@ -191,11 +214,11 @@ public class WorkspaceService : IWorkspaceService
 
     private static DateTime SafeWriteTime(string p)
     {
-        try { return File.GetLastWriteTimeUtc(p); } catch { return DateTime.MinValue; }
+        try { return File.GetLastWriteTimeUtc(VirtualCopyHelper.ResolveDiskPath(p)); } catch { return DateTime.MinValue; }
     }
     private static long SafeSize(string p)
     {
-        try { return new FileInfo(p).Length; } catch { return 0; }
+        try { return new FileInfo(VirtualCopyHelper.ResolveDiskPath(p)).Length; } catch { return 0; }
     }
 
     public void SetActiveImage(string? path)
@@ -231,5 +254,73 @@ public class WorkspaceService : IWorkspaceService
         if (_selection.Count == 0) return;
         _selection.Clear();
         SelectionChanged?.Invoke(this, new BatchSelectionChangedEventArgs(Array.Empty<string>()));
+    }
+
+    public void AddVirtualCopy(string vcPath, string originalPath)
+    {
+        if (string.IsNullOrWhiteSpace(vcPath)) return;
+        void DoAdd()
+        {
+            if (!_allImages.Contains(vcPath))
+            {
+                int origIdx = _allImages.FindIndex(p => string.Equals(p, originalPath, StringComparison.OrdinalIgnoreCase));
+                if (origIdx >= 0)
+                {
+                    int insertIdx = origIdx + 1;
+                    while (insertIdx < _allImages.Count && VirtualCopyHelper.IsVirtualCopy(_allImages[insertIdx]) &&
+                           string.Equals(VirtualCopyHelper.ResolveDiskPath(_allImages[insertIdx]), originalPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        insertIdx++;
+                    }
+                    _allImages.Insert(insertIdx, vcPath);
+                }
+                else
+                {
+                    _allImages.Add(vcPath);
+                }
+            }
+            ApplyFilterAndSort();
+            SetActiveImage(vcPath);
+            SetSelection(new[] { vcPath });
+        }
+
+        var ctx = _uiContext;
+        if (ctx != null && System.Threading.SynchronizationContext.Current != ctx)
+            ctx.Post(_ => DoAdd(), null);
+        else
+            DoAdd();
+    }
+
+    public void RemoveVirtualCopy(string vcPath)
+    {
+        if (!VirtualCopyHelper.IsVirtualCopy(vcPath)) return;
+        void DoRemove()
+        {
+            int idx = _images.IndexOf(vcPath);
+            _allImages.Remove(vcPath);
+            _selection.Remove(vcPath);
+
+            string? nextToSelect = null;
+            if (string.Equals(ActiveImage, vcPath, StringComparison.OrdinalIgnoreCase))
+            {
+                if (idx >= 0 && _images.Count > 1)
+                {
+                    nextToSelect = idx < _images.Count - 1 ? _images[idx + 1] : _images[idx - 1];
+                }
+            }
+
+            ApplyFilterAndSort();
+            if (nextToSelect != null)
+            {
+                SetActiveImage(nextToSelect);
+                SetSelection(new[] { nextToSelect });
+            }
+        }
+
+        var ctx = _uiContext;
+        if (ctx != null && System.Threading.SynchronizationContext.Current != ctx)
+            ctx.Post(_ => DoRemove(), null);
+        else
+            DoRemove();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
@@ -41,8 +41,9 @@ public class ThumbnailService : IThumbnailService, IDisposable
 
     public string? TryGetThumbnailPath(string imagePath, int size = 256)
     {
-        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath)) return null;
-        var thumbPath = GetThumbPath(imagePath, size);
+        var diskPath = VirtualCopyHelper.ResolveDiskPath(imagePath);
+        if (string.IsNullOrWhiteSpace(diskPath) || !File.Exists(diskPath)) return null;
+        var thumbPath = GetThumbPath(diskPath, size);
         if (File.Exists(thumbPath)) return thumbPath;
         RequestThumbnail(imagePath, size);
         return null;
@@ -64,13 +65,14 @@ public class ThumbnailService : IThumbnailService, IDisposable
             {
                 try
                 {
-                    if (!File.Exists(req.ImagePath))
+                    var diskPath = VirtualCopyHelper.ResolveDiskPath(req.ImagePath);
+                    if (!File.Exists(diskPath))
                     {
                         _inFlight.TryRemove(req.Key, out _);
                         continue;
                     }
 
-                    var thumbPath = GetThumbPath(req.ImagePath, req.Size);
+                    var thumbPath = GetThumbPath(diskPath, req.Size);
                     if (File.Exists(thumbPath))
                     {
                         _inFlight.TryRemove(req.Key, out _);
@@ -78,7 +80,7 @@ public class ThumbnailService : IThumbnailService, IDisposable
                         continue;
                     }
 
-                    GenerateThumbnail(req.ImagePath, thumbPath, req.Size);
+                    GenerateThumbnail(diskPath, thumbPath, req.Size);
                     _inFlight.TryRemove(req.Key, out _);
                     ThumbnailReady?.Invoke(this, new ThumbnailReadyEventArgs(req.ImagePath, thumbPath, req.Size));
                 }

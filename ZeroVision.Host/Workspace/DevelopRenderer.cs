@@ -127,14 +127,15 @@ public sealed class DevelopRenderer
 
     private LinearImage? GetOrBuildProxy(string path, CancellationToken token)
     {
+        string diskPath = VirtualCopyHelper.ResolveDiskPath(path);
         lock (_cacheLock)
         {
-            if (string.Equals(_cachedPath, path, StringComparison.OrdinalIgnoreCase) && _cachedProxy != null)
+            if (string.Equals(_cachedPath, diskPath, StringComparison.OrdinalIgnoreCase) && _cachedProxy != null)
                 return _cachedProxy;
         }
 
-        if (!_decoders.CanDecode(path)) return null;
-        var decoded = _decoders.Decode(path);
+        if (!_decoders.CanDecode(diskPath)) return null;
+        var decoded = _decoders.Decode(diskPath);
         token.ThrowIfCancellationRequested();
         var full = decoded.Image;
 
@@ -144,7 +145,7 @@ public sealed class DevelopRenderer
 
         lock (_cacheLock)
         {
-            _cachedPath = path;
+            _cachedPath = diskPath;
             _cachedProxy = proxy;
             _cachedScale = scale;
             _cachedFullW = full.Width;
