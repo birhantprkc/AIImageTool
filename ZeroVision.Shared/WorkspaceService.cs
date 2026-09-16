@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using ZeroVision.Core;
 
 namespace ZeroVision.Shared;
@@ -131,6 +131,7 @@ public class WorkspaceService : IWorkspaceService
             || Filter.HideRejected || Sort == WorkspaceSort.RatingDesc);
 
         string? search = string.IsNullOrWhiteSpace(Filter.Search) ? null : Filter.Search.Trim();
+        string? searchNorm = search != null ? ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(search) : null;
         // Search cũng cần meta (để khớp keyword/tags), không chỉ tên file.
         bool needMetaForSearch = search != null && _meta != null;
 
@@ -140,10 +141,11 @@ public class WorkspaceService : IWorkspaceService
 
             ImageMeta? m = (needMeta || needMetaForSearch) ? _meta!.Get(p) : null;
 
-            // Search: khớp tên file HOẶC keyword/tags (phân cấp, không phân biệt hoa thường).
+            // Search: khớp tên file HOẶC keyword/tags (phân cấp, không phân biệt hoa thường, hỗ trợ tiếng Việt không dấu).
             if (search != null)
             {
-                bool nameMatch = name.Contains(search, StringComparison.OrdinalIgnoreCase);
+                bool nameMatch = name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    (searchNorm != null && ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(name).Contains(searchNorm, StringComparison.OrdinalIgnoreCase));
                 bool tagMatch = m != null && m.Tags.Count > 0 && KeywordHelper.Matches(m.Tags, search);
                 if (!nameMatch && !tagMatch) continue;
             }

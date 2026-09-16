@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using ZeroVision.Shared;
 using Xunit;
@@ -140,4 +140,21 @@ public class KeywordHelperTests
     {
         Assert.Empty(KeywordHelper.CountTags(null!));
     }
+
+    [Fact]
+    public void Matches_VietnameseUnaccentedSearch()
+    {
+        var kws = new[] { "Động vật/Chó", "Chân dung/Ngoại cảnh" };
+        // Query không dấu khớp keyword có dấu
+        Assert.True(KeywordHelper.Matches(kws, "cho"));
+        Assert.True(KeywordHelper.Matches(kws, "dong vat"));
+        Assert.True(KeywordHelper.Matches(kws, "dong vat/cho"));
+        Assert.True(KeywordHelper.Matches(kws, "chan dung"));
+        Assert.True(KeywordHelper.Matches(kws, "ngoai canh"));
+
+        // Query sai không khớp
+        Assert.False(KeywordHelper.Matches(kws, "meo"));
+        Assert.False(KeywordHelper.Matches(kws, "dong")); // không phải segment hoàn chỉnh
+    }
 }
+

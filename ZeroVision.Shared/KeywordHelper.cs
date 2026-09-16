@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -87,12 +87,14 @@ public static class KeywordHelper
     /// <summary>
     /// 1 ảnh có tập <paramref name="imageKeywords"/> có khớp truy vấn <paramref name="query"/> không?
     /// Khớp nếu: query là tiền tố nhánh (ảnh ở dưới nhánh đó), hoặc khớp 1 segment bất kỳ
-    /// (không phân biệt hoa thường). Ví dụ ảnh "Animal/Dog" khớp "animal", "dog", "Animal/Dog".
+    /// (không phân biệt hoa thường, hỗ trợ tiếng Việt không dấu qua ZeroPrimitives). Ví dụ ảnh "Animal/Dog" khớp "animal", "dog", "Animal/Dog".
     /// </summary>
     public static bool Matches(IEnumerable<string> imageKeywords, string query)
     {
         var q = Normalize(query);
         if (q == null) return false;
+        string qNorm = ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(q);
+
         foreach (var kw in imageKeywords)
         {
             var n = Normalize(kw);
@@ -106,6 +108,28 @@ public static class KeywordHelper
             {
                 var segs = n.Split(Separator);
                 if (segs.Any(s => s.Equals(q, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+            }
+
+            // Vietnamese unaccented matching (ZeroPrimitives)
+            if (!string.IsNullOrEmpty(qNorm))
+            {
+                var segs = n.Split(Separator);
+                // Khớp segment đơn không dấu
+                if (!q.Contains(Separator))
+                {
+                    if (segs.Any(s => ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(s).Equals(qNorm, StringComparison.OrdinalIgnoreCase)))
+                        return true;
+                }
+
+                // Khớp nhánh / tiền tố phân cấp không dấu
+                string nNormHierarchical = string.Join(Separator, segs.Select(s => ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(s)));
+                string qNormHierarchical = q.Contains(Separator)
+                    ? string.Join(Separator, q.Split(Separator).Select(s => ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(s)))
+                    : qNorm;
+
+                if (nNormHierarchical.Equals(qNormHierarchical, StringComparison.OrdinalIgnoreCase) ||
+                    nNormHierarchical.StartsWith(qNormHierarchical + Separator, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
         }

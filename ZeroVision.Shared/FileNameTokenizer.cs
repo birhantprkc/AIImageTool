@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -39,22 +39,30 @@ public static class FileNameTokenizer
     public static string Resolve(string pattern, Context ctx)
     {
         if (string.IsNullOrEmpty(pattern)) pattern = "{name}";
-        var sb = new StringBuilder();
-        int i = 0;
-        while (i < pattern.Length)
+        Span<char> initialBuffer = stackalloc char[256];
+        var sb = new ZeroPrimitives.Text.ValueStringBuilder(initialBuffer);
+        try
         {
-            char c = pattern[i];
-            if (c == '{')
+            int i = 0;
+            while (i < pattern.Length)
             {
-                int end = pattern.IndexOf('}', i + 1);
-                if (end < 0) { sb.Append(pattern.Substring(i)); break; }
-                string token = pattern.Substring(i + 1, end - i - 1);
-                sb.Append(ResolveToken(token, ctx));
-                i = end + 1;
+                char c = pattern[i];
+                if (c == '{')
+                {
+                    int end = pattern.IndexOf('}', i + 1);
+                    if (end < 0) { sb.Append(pattern.AsSpan(i)); break; }
+                    string token = pattern.Substring(i + 1, end - i - 1);
+                    sb.Append(ResolveToken(token, ctx));
+                    i = end + 1;
+                }
+                else { sb.Append(c); i++; }
             }
-            else { sb.Append(c); i++; }
+            return Sanitize(sb.ToString());
         }
-        return Sanitize(sb.ToString());
+        finally
+        {
+            sb.Dispose();
+        }
     }
 
     private static string ResolveToken(string token, Context ctx)
@@ -88,11 +96,20 @@ public static class FileNameTokenizer
     /// <summary>Loại ký tự không hợp lệ cho tên file (giữ chấm và gạch).</summary>
     public static string Sanitize(string name)
     {
+        if (string.IsNullOrEmpty(name)) return name;
         var invalid = Path.GetInvalidFileNameChars();
-        var sb = new StringBuilder(name.Length);
-        foreach (var c in name)
-            sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
-        return sb.ToString();
+        Span<char> initialBuffer = stackalloc char[name.Length];
+        var sb = new ZeroPrimitives.Text.ValueStringBuilder(initialBuffer);
+        try
+        {
+            foreach (var c in name)
+                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
+            return sb.ToString();
+        }
+        finally
+        {
+            sb.Dispose();
+        }
     }
 
     /// <summary>
