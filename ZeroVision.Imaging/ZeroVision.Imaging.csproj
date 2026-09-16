@@ -1,10 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  <ItemGroup Condition="Exists('..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Core\ZeroGraphics.Core.csproj')">
     <ProjectReference Include="..\ZeroVision.Core\ZeroVision.Core.csproj" />
     <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Core\ZeroGraphics.Core.csproj" />
     <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Imaging\ZeroGraphics.Imaging.csproj" />
     <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Vision\ZeroGraphics.Vision.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="!Exists('..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Core\ZeroGraphics.Core.csproj')">
+    <ProjectReference Include="..\ZeroVision.Core\ZeroVision.Core.csproj" />
+    <PackageReference Include="ZeroGraphics.Core" Version="1.2.0" />
+    <PackageReference Include="ZeroGraphics.Imaging" Version="1.2.0" />
+    <PackageReference Include="ZeroGraphics.Vision" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
