@@ -264,9 +264,8 @@ public partial class CenterPreview : UserControl, IImageToolHost
         if (_compareMode)
         {
             _compareMode = false;
-            paneCompare.Visibility = Visibility.Collapsed;
-            imgCompareBefore.Source = null;
-            imgCompareAfter.Source = null;
+            ctrlCompare.Visibility = Visibility.Collapsed;
+            ctrlCompare.Clear();
             btnCompare.Background = ThemeManager.GetBrush("BgHoverBrush");
         }
         paneSingle.Visibility = m == LighttableMode.Single ? Visibility.Visible : Visibility.Collapsed;
