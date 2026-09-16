@@ -1,7 +1,7 @@
 # 🌌 ZeroVision — High-Performance RAW & Image Processing Workstation
 
 [![Type: Desktop Application](https://img.shields.io/badge/Type-Desktop%20Application-007ACC?style=flat-square&logo=windows)](https://github.com/kzxl/ZeroVision)
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg?style=flat-square)](https://github.com/kzxl/ZeroVision)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg?style=flat-square)](https://github.com/kzxl/ZeroVision)
 [![Ecosystem](https://img.shields.io/badge/Ecosystem-ZeroUniverse-8A2BE2?style=flat-square)](https://github.com/kzxl/ZeroUniverse)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows)](https://dotnet.microsoft.com/)
 [![Distribution: Standalone Single-File](https://img.shields.io/badge/Distribution-Standalone%20Single--File-2ea44f?style=flat-square)](https://github.com/kzxl/ZeroVision)
@@ -107,8 +107,10 @@ Binaries are generated in:
 
 | Version | Release Date | Key Milestones & Highlights |
 | :--- | :---: | :--- |
-| **`v1.1.0`** | 2026-09-16 | **Computational Photography & Multi-Frame Fusion Suite**:<br/>• Integrated Mertens Multi-Exposure HDR Fusion (`ExposureFusionService`) without tone-mapping halos.<br/>• Integrated Multi-Band Focus Stacking for synthetic deep depth-of-field.<br/>• Added À-Trous Wavelet Denoising (`WaveletDenoiseOp`) with soft/hard thresholding.<br/>• Added Fast Marching Inpainting (`AiInpaintOp`) for blemish and watermark removal.<br/>• Added Fast Guided Filter (`GuidedFilterOp`) & Directed Median (`DirectedMedianOp`).<br/>• Added Minkowski Gray-Edge Auto White Balance (`AutoWhiteBalance`).<br/>• Expanded test suite to **878 automated tests (100% pass rate)**. |
-| **`v1.0.0`** | 2026-09-14 | **Initial Workstation Release**:<br/>• High-performance WPF .NET 8 desktop workstation architecture.<br/>• Non-destructive 32-bit float Linear Light image processing pipeline.<br/>• Out-of-process DirectML ONNX AI models (Upscaler, FaceRestorer, VisionTagger).<br/>• Integrated ZeroUI custom controls (SegmentedControl, CurveEditor, ColorWheel, MaskGizmo).<br/>• Virtual copies, selective copy settings, and auto-advance culling workflow.<br/>• Dual-mode deployment packager (Full Self-Contained & Lite Framework-Dependent). |
+| **`v2.0.0`** | 2026-09-16 | **Major Workstation & Computational Photography Release**:<br/>• Complete sovereign rebranding & architecture as **ZeroVision** (.NET 8 WPF desktop workstation).<br/>• Non-destructive 32-bit float Linear Light develop pipeline with 16 modular adjustment blocks.<br/>• Out-of-process DirectML ONNX AI suite (Real-ESRGAN upscaler, GFPGAN face restorer, VisionTagger).<br/>• Full integration of **ZeroUI v1.8.0** creative media editors (CurveEditor, ColorWheel, MaskGizmos, Scope).<br/>• Added **Multi-Frame Fusion Engine**: Mertens Exposure Fusion, Focus Stacking, À-Trous Wavelets, Fast Marching Inpainting, Fast Guided Filter, Directed Median, and Minkowski Gray-Edge AWB.<br/>• Dual-mode release packager (`publish.ps1` for Full Self-Contained and Lite single-file executables).<br/>• **878 automated unit & integration tests (100% pass rate)**. |
+| **`v1.2.0`** | 2026-06-02 | **Aurora Studio Layout Modernization**:<br/>• Migrated presets and history panels to collapsible left dock.<br/>• Introduced vertical tabbed right inspector panel and preview zoom controls. |
+| **`v1.1.0`** | 2026-05-06 | **VisionTagger & ColorLab Expansion**:<br/>• Integrated VisionTagger AI classification plugin.<br/>• Added 3D LUT parser, Kelvin white balance picker, and noise reduction filters. |
+| **`v1.0.0`** | 2026-04-09 | **Initial AI ImageTool Prototype**:<br/>• DirectML prototype engine and initial WPF user interface. |
 
 ---
 
