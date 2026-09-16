@@ -15,7 +15,7 @@
                 <Border Background="{DynamicResource BgPanelAltBrush}" Padding="10,4" Margin="0,0,0,2">
                     <TextBlock Text="ĐÁNH GIÁ &amp; LỌC" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </Border>
-                <Border Margin="6,2,6,4" Background="{DynamicResource BgPanelBrush}" Padding="8,6" CornerRadius="4" opt:RenderOptimizer.Elevation="1" opt:RenderOptimizer.CornerRadius="4">
+                <Border Margin="6,2,6,4" Background="{DynamicResource BgPanelBrush}" Padding="8,6" CornerRadius="4">
                     <StackPanel>
                         <!-- Rating Stars + Reset -->
                         <DockPanel Margin="0,0,0,6">

@@ -9,8 +9,7 @@
         WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterScreen" AllowDrop="True"
         DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop">
-    <Border Background="{DynamicResource BgBaseBrush}" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1" CornerRadius="6"
-            opt:RenderOptimizer.Elevation="3" opt:RenderOptimizer.CornerRadius="6">
+    <Border Background="{DynamicResource BgBaseBrush}" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1" CornerRadius="6">
     <Grid>
     <DockPanel>
         <!-- ========== CUSTOM TITLE BAR ========== -->

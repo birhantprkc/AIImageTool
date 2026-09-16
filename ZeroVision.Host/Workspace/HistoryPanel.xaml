@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.HistoryPanel"
+<UserControl x:Class="ZeroVision.Host.Workspace.HistoryPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{DynamicResource BgBaseBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
@@ -95,7 +95,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock Text="Chưa có chỉnh sửa nào.&#x0a;Chọn ảnh và kéo slider để bắt đầu."
-                           FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextAlignment="Center"
+                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" TextWrapping="Wrap"
                            Visibility="{Binding HasItems, ElementName=icHistory, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>

@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.CenterPreview"
+<UserControl x:Class="ZeroVision.Host.Workspace.CenterPreview"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{DynamicResource BgBaseBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Focusable="True"
@@ -72,7 +72,7 @@
                 <TextBlock x:Name="txtPlaceholder"
                            Text="Chọn ảnh ở Browser hoặc bấm 📁  Open Folder"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextDimBrush}" FontSize="16"/>
+                           Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" FontSize="16"/>
                 <Image x:Name="imgPreview" Stretch="Uniform" Margin="20" RenderTransformOrigin="0,0">
                     <Image.RenderTransform>
                         <TransformGroup>

@@ -60,7 +60,7 @@ public static class ThemeManager
         try { dict = new ResourceDictionary { Source = uri }; }
         catch { return; }
 
-        // Xoá theme cũ (file nào trong Themes/) rồi chèn theme mới ở đầu để style khác override được.
+        // Xoá theme cũ (file nào trong Themes/) rồi thêm theme mới vào cuối để ưu tiên áp dụng.
         var merged = app.Resources.MergedDictionaries;
         for (int i = merged.Count - 1; i >= 0; i--)
         {
@@ -68,7 +68,7 @@ public static class ThemeManager
             if (src.Contains("Theme.xaml", StringComparison.OrdinalIgnoreCase))
                 merged.RemoveAt(i);
         }
-        merged.Insert(0, dict);
+        merged.Add(dict);
         _current = theme;
     }
 

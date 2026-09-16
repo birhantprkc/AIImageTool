@@ -15,7 +15,6 @@
                     <DataTemplate>
                         <Border Width="100" Height="112" Margin="3" Background="{DynamicResource BgPanelAltBrush}"
                                 BorderThickness="2" CornerRadius="6" Cursor="Hand"
-                                opt:RenderOptimizer.Elevation="1" opt:RenderOptimizer.CornerRadius="6"
                                 MouseLeftButtonUp="StripItem_MouseLeftButtonUp"
                                 MouseRightButtonUp="StripItem_MouseRightButtonUp">
                             <Border.Style>

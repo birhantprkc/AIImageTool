@@ -46,7 +46,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock Text="Chưa có style nào.&#x0a;Chỉnh 1 ảnh rồi bấm + Save để lưu thành style."
-                           FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextAlignment="Center"
+                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="12,24,12,0" TextWrapping="Wrap"
                            Visibility="{Binding HasItems, ElementName=icStyles, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>

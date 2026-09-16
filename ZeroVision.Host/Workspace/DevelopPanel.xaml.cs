@@ -1868,7 +1868,7 @@ public partial class DevelopPanel : UserControl
     private void SetEnabled(bool on)
     {
         panelSliders.IsEnabled = on;
-        panelSliders.Opacity = on ? 1.0 : 0.4;
+        panelSliders.Opacity = on ? 1.0 : 0.65;
         txtNoImage.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
         btnReset.IsEnabled = on;
         btnAuto.IsEnabled = on;

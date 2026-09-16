@@ -135,7 +135,6 @@
                         <DataTemplate>
                             <Border Width="130" Height="140" Margin="4" Background="{DynamicResource BgInputBrush}"
                                     BorderThickness="2" CornerRadius="4"
-                                    opt:RenderOptimizer.Elevation="1" opt:RenderOptimizer.CornerRadius="4"
                                     Cursor="Hand"
                                     MouseLeftButtonUp="Thumbnail_MouseLeftButtonUp"
                                     MouseRightButtonUp="Thumbnail_MouseRightButtonUp">

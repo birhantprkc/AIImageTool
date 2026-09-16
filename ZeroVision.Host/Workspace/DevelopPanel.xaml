@@ -46,7 +46,7 @@
         </StackPanel>
 
         <TextBlock x:Name="txtNoImage" DockPanel.Dock="Top" Text="Chọn 1 ảnh để bắt đầu chỉnh"
-                   Foreground="{DynamicResource TextDimBrush}" Margin="12,8" Visibility="Collapsed"/>
+                   Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic" FontSize="11" Margin="12,8" Visibility="Collapsed"/>
 
         <!-- Tab Filter Bar & Solo Mode Toggle -->
         <Border DockPanel.Dock="Top" Padding="6,4" Background="{DynamicResource BgPanelAltBrush}"
