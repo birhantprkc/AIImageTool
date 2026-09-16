@@ -244,18 +244,16 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         }
     }
 
-    private void Thumbnail_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void ThumbnailGrid_ItemClicked(object? sender, ZeroUI.Wpf.Editors.ThumbnailGridItemClickEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ThumbItem item && _workspace != null)
+        if (e.Item is ThumbItem item && _workspace != null)
         {
-            bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-            bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
-            if (ctrl)
+            if (e.IsControlDown)
             {
                 if (_workspace.Selection.Contains(item.ImagePath)) _workspace.RemoveFromSelection(item.ImagePath);
                 else _workspace.AddToSelection(item.ImagePath);
             }
-            else if (shift && _workspace.ActiveImage != null)
+            else if (e.IsShiftDown && _workspace.ActiveImage != null)
             {
                 int from = Thumbnails.IndexOf(Thumbnails.FirstOrDefault(t => t.ImagePath == _workspace.ActiveImage)!);
                 int to = Thumbnails.IndexOf(item);
@@ -273,9 +271,9 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         }
     }
 
-    private void Thumbnail_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    private void ThumbnailGrid_ItemRightClicked(object? sender, object itemObj)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ThumbItem item &&
+        if (itemObj is ThumbItem item &&
             _workspace != null && _meta != null && _history != null && _clipboard != null)
         {
             if (!_workspace.Selection.Contains(item.ImagePath))
@@ -283,9 +281,8 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
                 _workspace.SetSelection(new[] { item.ImagePath });
                 _workspace.SetActiveImage(item.ImagePath);
             }
-            fe.ContextMenu = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard);
-            fe.ContextMenu.IsOpen = true;
-            e.Handled = true;
+            var cm = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard);
+            cm.IsOpen = true;
         }
     }
 

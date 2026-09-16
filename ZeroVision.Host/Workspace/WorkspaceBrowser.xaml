@@ -122,62 +122,10 @@
 
         <!-- Thumbnails (workspace OR preview, swapped via _isPreviewing) -->
         <Border Grid.Row="8" Background="{DynamicResource BgPanelBrush}">
-            <!-- Fixes #1: Set CanContentScroll to False to enable smooth physical scrolling for WrapPanel -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          CanContentScroll="False">
-                <ItemsControl x:Name="icThumbnails" ItemsSource="{Binding Thumbnails}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" IsItemsHost="True"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Width="130" Height="140" Margin="4" Background="{DynamicResource BgInputBrush}"
-                                    BorderThickness="2" CornerRadius="4"
-                                    Cursor="Hand"
-                                    MouseLeftButtonUp="Thumbnail_MouseLeftButtonUp"
-                                    MouseRightButtonUp="Thumbnail_MouseRightButtonUp">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderHoverBrush}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentWarmBrush}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <Grid>
-                                    <Image Source="{Binding Thumb}" Stretch="Uniform" Margin="3"/>
-                                    <Border Width="10" Height="10" CornerRadius="5"
-                                            HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6"
-                                            Background="{Binding LabelBrush}"/>
-                                    <TextBlock Text="{Binding PickDisplay}" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold"
-                                               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,6,0"/>
-                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6,0,0,24"
-                                            Background="#007ACC" CornerRadius="2" Padding="3,1"
-                                            Visibility="{Binding IsVirtualCopy, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Virtual Copy">
-                                        <TextBlock Text="{Binding VirtualCopyBadge}" Foreground="#FFF" FontSize="9" FontWeight="Bold"/>
-                                    </Border>
-                                    <Border VerticalAlignment="Bottom" Background="#AA000000" Padding="4,2">
-                                        <DockPanel>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding RatingDisplay}"
-                                                       Foreground="{DynamicResource RatingBrush}" FontSize="10"/>
-                                            <TextBlock Text="{Binding FileName}" Foreground="#DDD" FontSize="10"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                        </DockPanel>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <edit:ThumbnailGridControl x:Name="gridThumbnails"
+                                       ItemsSource="{Binding Thumbnails}"
+                                       ItemClicked="ThumbnailGrid_ItemClicked"
+                                       ItemRightClicked="ThumbnailGrid_ItemRightClicked"/>
         </Border>
     </Grid>
 </UserControl>
