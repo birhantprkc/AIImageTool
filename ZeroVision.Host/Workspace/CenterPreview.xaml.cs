@@ -215,6 +215,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
             RefreshProofOverlayIfActive();
+            RefreshZoneOverlayIfActive();
             RefreshCompareAfter(bmp);
             NotifyViewportChanged();
         }
@@ -262,6 +263,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
             RefreshProofOverlayIfActive();
+            RefreshZoneOverlayIfActive();
             RefreshCompareAfter(bmp);
             NotifyViewportChanged();
         }
@@ -403,7 +405,13 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 }
                 e.Handled = true;
                 break;
-            case Key.Z: // toggle 100% / fit zoom
+            case Key.Z: // toggle 100% / fit zoom or Shift+Z for Zone System
+                if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+                {
+                    ToggleZoneSystemOverlay();
+                    e.Handled = true;
+                    break;
+                }
                 if (_mode == LighttableMode.Cull) ToggleSurveyZoom();
                 else ToggleZoom();
                 e.Handled = true;
@@ -694,6 +702,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         if (_clipOverlay) SyncClipTransform();
         if (_peakOverlay) SyncPeakTransform();
         if (_proofOverlay) SyncProofTransform();
+        if (_zoneOverlayActive) SyncZoneTransform();
         RedrawMaskGizmo();
     }
 

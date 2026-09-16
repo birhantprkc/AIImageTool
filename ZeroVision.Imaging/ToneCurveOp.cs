@@ -17,6 +17,13 @@ namespace ZeroVision.Imaging;
 /// Tham số serialize: "rgb" / "r" / "g" / "b" = chuỗi "x0,y0;x1,y1;..." (điểm sắp theo x tăng).
 /// Mặc định (identity) = "0,0;1,1". "preserveHue" = "true"/"false".
 /// </summary>
+public enum ToneCurveHueMode
+{
+    RgbPerChannel = 0,
+    LuminanceRatio = 1,
+    PerceptualOklab = 2
+}
+
 public sealed class ToneCurveOp : IEditOp
 {
     public const string Type = "ToneCurve";
@@ -27,8 +34,21 @@ public sealed class ToneCurveOp : IEditOp
     private readonly Curve _g;
     private readonly Curve _b;
 
-    /// <summary>D1.4: master curve áp theo luminance (giữ hue) thay vì per-channel.</summary>
-    public bool PreserveHue { get; set; }
+    /// <summary>Mode for preserving hue and preventing color shifts during master curve evaluation.</summary>
+    public ToneCurveHueMode HueMode { get; set; } = ToneCurveHueMode.RgbPerChannel;
+
+    /// <summary>Backward-compatible toggle: when true, activates luminance-ratio hue preservation.</summary>
+    public bool PreserveHue
+    {
+        get => HueMode != ToneCurveHueMode.RgbPerChannel;
+        set
+        {
+            if (value && HueMode == ToneCurveHueMode.RgbPerChannel)
+                HueMode = ToneCurveHueMode.LuminanceRatio;
+            else if (!value)
+                HueMode = ToneCurveHueMode.RgbPerChannel;
+        }
+    }
 
     public ToneCurveOp(IReadOnlyList<(float x, float y)>? rgb = null,
                        IReadOnlyList<(float x, float y)>? r = null,
@@ -47,44 +67,79 @@ public sealed class ToneCurveOp : IEditOp
     {
         if (IsIdentity) return;
         var rgb = _rgb; var rr = _r; var gg = _g; var bb = _b;
-        bool preserve = PreserveHue && !rgb.IsIdentity;
+        var mode = HueMode;
+        bool hasMaster = !rgb.IsIdentity;
+        bool hasChannelCurves = !rr.IsIdentity || !gg.IsIdentity || !bb.IsIdentity;
 
         image.ProcessPixels((ref float r, ref float g, ref float b, ref float a) =>
         {
-            float sr = ColorSpace.LinearToSrgb(r);
-            float sg = ColorSpace.LinearToSrgb(g);
-            float sb = ColorSpace.LinearToSrgb(b);
-
-            if (preserve)
+            if (hasMaster)
             {
-                // áp master lên luminance (sRGB perceptual), scale theo tỉ lệ giữ hue.
-                float lin = ColorSpace.LumR * sr + ColorSpace.LumG * sg + ColorSpace.LumB * sb;
-                if (lin > 1e-5f)
+                if (mode == ToneCurveHueMode.PerceptualOklab)
                 {
-                    float lout = rgb.Eval(lin);
-                    float ratio = lout / lin;
-                    sr = Math.Clamp(sr * ratio, 0f, 1f);
-                    sg = Math.Clamp(sg * ratio, 0f, 1f);
-                    sb = Math.Clamp(sb * ratio, 0f, 1f);
+                    // Evaluate master curve in OKLab uniform lightness, then compress gamut along constant hue
+                    OklabColor.LinearRgbToOklab(r, g, b, out float L, out float okA, out float okB);
+                    float newL = rgb.Eval(Math.Clamp(L, 0f, 1f));
+                    OklabColor.CompressToGamut(ref newL, ref okA, ref okB);
+                    OklabColor.OklabToLinearRgb(newL, okA, okB, out r, out g, out b);
+                }
+                else if (mode == ToneCurveHueMode.LuminanceRatio)
+                {
+                    float sr = ColorSpace.LinearToSrgb(r);
+                    float sg = ColorSpace.LinearToSrgb(g);
+                    float sb = ColorSpace.LinearToSrgb(b);
+
+                    float lin = ColorSpace.LumR * sr + ColorSpace.LumG * sg + ColorSpace.LumB * sb;
+                    if (lin > 1e-5f)
+                    {
+                        float lout = rgb.Eval(lin);
+                        float ratio = lout / lin;
+                        sr = Math.Clamp(sr * ratio, 0f, 1f);
+                        sg = Math.Clamp(sg * ratio, 0f, 1f);
+                        sb = Math.Clamp(sb * ratio, 0f, 1f);
+                    }
+                    else
+                    {
+                        float lout = rgb.Eval(0f);
+                        sr = sg = sb = lout;
+                    }
+
+                    r = ColorSpace.SrgbToLinear(sr);
+                    g = ColorSpace.SrgbToLinear(sg);
+                    b = ColorSpace.SrgbToLinear(sb);
                 }
                 else
                 {
-                    float lout = rgb.Eval(0f);
-                    sr = sg = sb = lout;
+                    // Standard per-channel master curve in sRGB space
+                    float sr = ColorSpace.LinearToSrgb(r);
+                    float sg = ColorSpace.LinearToSrgb(g);
+                    float sb = ColorSpace.LinearToSrgb(b);
+
+                    sr = rgb.Eval(sr);
+                    sg = rgb.Eval(sg);
+                    sb = rgb.Eval(sb);
+
+                    r = ColorSpace.SrgbToLinear(sr);
+                    g = ColorSpace.SrgbToLinear(sg);
+                    b = ColorSpace.SrgbToLinear(sb);
                 }
             }
-            else
+
+            // Per-channel R/G/B curves always evaluate in sRGB space afterwards
+            if (hasChannelCurves)
             {
-                // master per-channel (mặc định, như cũ).
-                sr = rgb.Eval(sr); sg = rgb.Eval(sg); sb = rgb.Eval(sb);
+                float sr = ColorSpace.LinearToSrgb(r);
+                float sg = ColorSpace.LinearToSrgb(g);
+                float sb = ColorSpace.LinearToSrgb(b);
+
+                sr = rr.Eval(sr);
+                sg = gg.Eval(sg);
+                sb = bb.Eval(sb);
+
+                r = ColorSpace.SrgbToLinear(sr);
+                g = ColorSpace.SrgbToLinear(sg);
+                b = ColorSpace.SrgbToLinear(sb);
             }
-
-            // per-channel R/G/B luôn áp sau.
-            sr = rr.Eval(sr); sg = gg.Eval(sg); sb = bb.Eval(sb);
-
-            r = ColorSpace.SrgbToLinear(sr);
-            g = ColorSpace.SrgbToLinear(sg);
-            b = ColorSpace.SrgbToLinear(sb);
         });
     }
 
@@ -95,16 +150,29 @@ public sealed class ToneCurveOp : IEditOp
         ["g"] = _g.Serialize(),
         ["b"] = _b.Serialize(),
         ["preserveHue"] = PreserveHue ? "true" : "false",
+        ["hueMode"] = HueMode.ToString(),
     };
 
-    public static ToneCurveOp FromParams(IReadOnlyDictionary<string, string> p) => new(
-        Curve.Parse(EditOpRegistry.S(p, "rgb")),
-        Curve.Parse(EditOpRegistry.S(p, "r")),
-        Curve.Parse(EditOpRegistry.S(p, "g")),
-        Curve.Parse(EditOpRegistry.S(p, "b")))
+    public static ToneCurveOp FromParams(IReadOnlyDictionary<string, string> p)
     {
-        PreserveHue = EditOpRegistry.B(p, "preserveHue"),
-    };
+        var op = new ToneCurveOp(
+            Curve.Parse(EditOpRegistry.S(p, "rgb")),
+            Curve.Parse(EditOpRegistry.S(p, "r")),
+            Curve.Parse(EditOpRegistry.S(p, "g")),
+            Curve.Parse(EditOpRegistry.S(p, "b")));
+
+        if (p.TryGetValue("hueMode", out var modeStr) &&
+            Enum.TryParse<ToneCurveHueMode>(modeStr, true, out var mode))
+        {
+            op.HueMode = mode;
+        }
+        else
+        {
+            op.PreserveHue = EditOpRegistry.B(p, "preserveHue");
+        }
+
+        return op;
+    }
 
     public static void Register(EditOpRegistry reg) => reg.Register(Type, FromParams);
 
