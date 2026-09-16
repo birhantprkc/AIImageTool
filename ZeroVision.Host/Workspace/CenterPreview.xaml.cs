@@ -323,50 +323,24 @@ public partial class CenterPreview : UserControl, IImageToolHost
     public LighttableMode CurrentMode => _mode;
     public event EventHandler<LighttableMode>? ModeChanged;
 
-    private void RebuildCullView()
-    {
-        paneCull.Children.Clear();
-        if (_workspace == null) return;
-        var sel = _workspace.Selection.Take(4).ToList();
-        if (sel.Count == 0 && _workspace.ActiveImage != null) sel.Add(_workspace.ActiveImage);
-        if (sel.Count == 0) return;
-
-        paneCull.Columns = sel.Count <= 1 ? 1 : (sel.Count <= 2 ? 2 : 2);
-        paneCull.Rows = sel.Count <= 2 ? 1 : 2;
-
-        foreach (var p in sel)
-        {
-            var img = new Image { Stretch = System.Windows.Media.Stretch.Uniform, Margin = new Thickness(4) };
-            try
-            {
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(p);
-                bmp.DecodePixelWidth = 1600;
-                bmp.EndInit();
-                bmp.Freeze();
-                img.Source = bmp;
-            }
-            catch { }
-            var border = new Border
-            {
-                BorderBrush = ThemeManager.GetBrush("BorderHoverBrush"),
-                BorderThickness = new Thickness(1),
-                Margin = new Thickness(2),
-                Child = img
-            };
-            paneCull.Children.Add(border);
-        }
-    }
-
     private void UserControl_KeyDown(object sender, KeyEventArgs e)
     {
         switch (e.Key)
         {
             case Key.G: SetMode(LighttableMode.Grid); e.Handled = true; break;
             case Key.E: SetMode(LighttableMode.Single); e.Handled = true; break;
-            case Key.C: SetMode(LighttableMode.Cull); e.Handled = true; break;
+            case Key.C:
+            case Key.N:
+                ToggleSurveyMode();
+                e.Handled = true;
+                break;
+            case Key.Delete:
+            case Key.Back:
+                if (_mode == LighttableMode.Cull && DismissActiveFromSurvey())
+                {
+                    e.Handled = true;
+                }
+                break;
             case Key.F: SetMode(LighttableMode.Full); e.Handled = true; break;
             case Key.R:
                 if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
@@ -439,7 +413,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 if (_cropMode) { ToggleCropMode(); e.Handled = true; }       // exit crop first
                 else if (_zoom > 1.0) { ResetZoom(); e.Handled = true; }
                 else if (_compareMode) { ToggleCompareMode(); e.Handled = true; }
-                else if (_mode == LighttableMode.Full) { SetMode(LighttableMode.Single); e.Handled = true; }
+                else if (_mode == LighttableMode.Full || _mode == LighttableMode.Cull) { SetMode(LighttableMode.Single); e.Handled = true; }
                 break;
             case Key.Enter: // Enter applies crop when in crop mode
                 if (_cropMode) { ToggleCropMode(); e.Handled = true; }

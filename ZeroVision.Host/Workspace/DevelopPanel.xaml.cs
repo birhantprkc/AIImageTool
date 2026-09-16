@@ -430,6 +430,7 @@ public partial class DevelopPanel : UserControl
 
         // Detail
         var gDetail = AddGroup("Detail", false);
+        gDetail.Children.Add(BuildDetailLoupeWidget());
         AddSlider(gDetail, "sharpen", "Sharpen", 0, 1, 0);
         AddSlider(gDetail, "sharpenRadius", "Sharpen Radius", 0.5, 3, 1, "0.0");
         AddSlider(gDetail, "sharpenMask", "Sharpen Masking", 0, 1, 0);
@@ -437,6 +438,8 @@ public partial class DevelopPanel : UserControl
         AddSlider(gDetail, "colorNR", "Color NR", 0, 1, 0);
         AddSlider(gDetail, "chromaNR", "Chroma NR (edge)", 0, 1, 0);
         AddSlider(gDetail, "diffuse", "Diffuse/Sharpen", -1, 1, 0);
+        AddSlider(gDetail, "diffuse_iter", "Diffuse Iterations", 1, 12, 6, "0");
+        AddSlider(gDetail, "diffuse_edge", "Diffuse Edge Sens", 0, 1, 0.5, "0.00");
         AddSlider(gDetail, "fsep_smooth", "Skin Smooth", 0, 1, 0);
         AddSlider(gDetail, "fsep_radius", "Skin Radius", 2, 30, 8, "0");
         AddSlider(gDetail, "fsep_detail", "Skin Detail", 0.5, 2, 1, "0.00");
@@ -467,6 +470,8 @@ public partial class DevelopPanel : UserControl
         AddSlider(gFx, "grain_rough", "Grain Roughness", 0, 1, 0.5, "0.00");
         AddSlider(gFx, "grain_color", "Grain Color", 0, 1, 0, "0.00");
         AddSlider(gFx, "glow", "Glow / Soften", 0, 1, 0);
+        AddSlider(gFx, "glow_radius", "Glow Radius", 2, 50, 12, "0");
+        AddSlider(gFx, "glow_thresh", "Glow Threshold", 0, 1, 0, "0.00");
         var (rowInvert, swInvert) = CreateToggleRow("Negative / Invert");
         _chkInvert = swInvert;
         _chkInvert.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
@@ -782,6 +787,12 @@ public partial class DevelopPanel : UserControl
         ["fsep_smooth"] = "Smooth skin blemishes (frequency separation) while preserving texture.",
         ["fsep_radius"] = "Frequency separation blur radius.",
         ["fsep_detail"] = "High-frequency detail retention (pores, texture).",
+        ["diffuse"] = "Anisotropic diffusion: negative = edge-preserving denoise, positive = edge-aware sharpen.",
+        ["diffuse_iter"] = "Number of PDE diffusion rounds (more iterations = stronger effect).",
+        ["diffuse_edge"] = "Edge sensitivity: higher values cling tighter to image contours.",
+        ["glow"] = "Orton diffusion glow / soft romantic bloom effect.",
+        ["glow_radius"] = "Spread radius of the glowing bloom (px).",
+        ["glow_thresh"] = "Minimum luminance threshold to trigger glow diffusion.",
     };
 
     private static (DockPanel Row, ToggleSwitch Switch) CreateToggleRow(string label, string? tip = null)
@@ -1003,7 +1014,10 @@ public partial class DevelopPanel : UserControl
         SetVal("lumaNR", Param(path!, LumaNoiseReductionOp.Type, "amount"));
         SetVal("colorNR", Param(path!, ColorNoiseReductionOp.Type, "amount"));
         SetVal("chromaNR", Param(path!, ChromaDenoiseOp.Type, "amount"));
-        SetVal("diffuse", Param(path!, DiffuseOp.Type, "amount"));
+        var diffP = FindOp(path!, DiffuseOp.Type);
+        SetVal("diffuse", diffP != null ? Param(path!, DiffuseOp.Type, "amount") : 0);
+        SetVal("diffuse_iter", diffP != null ? Param(path!, DiffuseOp.Type, "iters") : 6);
+        SetVal("diffuse_edge", diffP != null ? Param(path!, DiffuseOp.Type, "edge") : 0.5);
         // Frequency separation (#7): radius/detail có default khác 0 nên đọc theo op tồn tại.
         var fsepP = FindOp(path!, ZeroVision.Imaging.FrequencySeparationOp.Type);
         SetVal("fsep_smooth", Param(path!, ZeroVision.Imaging.FrequencySeparationOp.Type, "smooth"));
@@ -1028,7 +1042,10 @@ public partial class DevelopPanel : UserControl
         SetVal("grain_size", grainP != null ? Param(path!, GrainOp.Type, "size") : 1);
         SetVal("grain_rough", grainP != null ? Param(path!, GrainOp.Type, "roughness") : 0.5);
         SetVal("grain_color", Param(path!, GrainOp.Type, "color"));
-        SetVal("glow", Param(path!, GlowOp.Type, "amount"));
+        var glowP = FindOp(path!, GlowOp.Type);
+        SetVal("glow", glowP != null ? Param(path!, GlowOp.Type, "amount") : 0);
+        SetVal("glow_radius", glowP != null ? Param(path!, GlowOp.Type, "radius") : 12);
+        SetVal("glow_thresh", glowP != null ? Param(path!, GlowOp.Type, "threshold") : 0);
 
         // Gradient Map (#5): khôi phục màu 3 chặng + midpoint + opacity (preset chỉ là shortcut điền màu).
         var gmP = FindOp(path!, ZeroVision.Imaging.GradientMapOp.Type);
@@ -1692,7 +1709,12 @@ public partial class DevelopPanel : UserControl
         if (!texture.IsIdentity) ops.Add(Op(TextureOp.Type, "Texture", texture.ToParams()));
         var sharpen = new SharpenOp { Amount = (float)GetVal("sharpen"), Radius = (float)GetVal("sharpenRadius"), Masking = (float)GetVal("sharpenMask") };
         if (!sharpen.IsIdentity) ops.Add(Op(SharpenOp.Type, "Sharpen", sharpen.ToParams()));
-        var diffuse = new DiffuseOp { Amount = (float)GetVal("diffuse") };
+        var diffuse = new DiffuseOp
+        {
+            Amount = (float)GetVal("diffuse"),
+            Iterations = (int)Math.Round(GetVal("diffuse_iter")),
+            EdgeSensitivity = (float)GetVal("diffuse_edge")
+        };
         if (!diffuse.IsIdentity) ops.Add(Op(DiffuseOp.Type, "Diffuse/Sharpen", diffuse.ToParams()));
 
         // Frequency Separation (#7): làm mịn da giữ kết cấu.
@@ -1718,7 +1740,12 @@ public partial class DevelopPanel : UserControl
             Roughness = (float)GetVal("grain_rough"), Color = (float)GetVal("grain_color"),
         };
         if (!grain.IsIdentity) ops.Add(Op(GrainOp.Type, "Grain", grain.ToParams()));
-        var glow = new GlowOp { Amount = (float)GetVal("glow") };
+        var glow = new GlowOp
+        {
+            Amount = (float)GetVal("glow"),
+            BaseRadius = (float)GetVal("glow_radius"),
+            Threshold = (float)GetVal("glow_thresh")
+        };
         if (!glow.IsIdentity) ops.Add(Op(GlowOp.Type, "Glow / Soften", glow.ToParams()));
 
         // Lua Scripting

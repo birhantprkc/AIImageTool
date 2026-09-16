@@ -95,6 +95,13 @@ public partial class MainWindow : Window
         centerView.BindCropPanel(developPanel);
         centerView.BindBrushPanel(developPanel);
         centerView.BindWhiteBalancePick(developPanel);
+        centerView.ViewportChanged += (s, e) =>
+        {
+            if (e.Source is System.Windows.Media.Imaging.BitmapSource bmp)
+            {
+                developPanel.UpdateDetailLoupe(bmp);
+            }
+        };
         centerView.BindHealingPanel(developPanel);
         centerView.BindLiquifyPanel(developPanel);
         centerView.BindTat(developPanel);
