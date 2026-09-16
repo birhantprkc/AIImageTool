@@ -148,10 +148,9 @@
                 </Border>
 
                 <!-- Crop overlay: renders crop rectangle + 8 handles. Hidden until crop mode enabled. -->
-                <Canvas x:Name="cropOverlay" Background="#01000000" Visibility="Collapsed"
-                        MouseLeftButtonDown="CropOverlay_MouseDown"
-                        MouseMove="CropOverlay_MouseMove"
-                        MouseLeftButtonUp="CropOverlay_MouseUp"/>
+                <Canvas x:Name="cropOverlay" Background="#01000000" Visibility="Collapsed">
+                    <edit:CropBoxControl x:Name="ctrlCropBox"/>
+                </Canvas>
 
                 <!-- Interactive Masking Gizmo Overlay (Linear Gradient & Radial Direct Drag) -->
                 <Canvas x:Name="maskGizmoOverlay" Background="#01000000" Visibility="Collapsed"
