@@ -153,6 +153,11 @@ public class WorkspaceService : IWorkspaceService
             Filter.MinRating > 0 || Filter.RequiredLabel.HasValue || Filter.RequiredPick.HasValue
             || Filter.HideRejected || Sort == WorkspaceSort.RatingDesc);
 
+        bool needExif = Filter.RequiredDateYear.HasValue ||
+                        !string.IsNullOrEmpty(Filter.RequiredCamera) ||
+                        !string.IsNullOrEmpty(Filter.RequiredLens) ||
+                        Filter.RequiredIso.HasValue;
+
         string? search = string.IsNullOrWhiteSpace(Filter.Search) ? null : Filter.Search.Trim();
         string? searchNorm = search != null ? ZeroPrimitives.Validation.VietnameseSearchNormalizer.ToSearchKeyword(search) : null;
         // Search cũng cần meta (để khớp keyword/tags), không chỉ tên file.
@@ -179,6 +184,30 @@ public class WorkspaceService : IWorkspaceService
                 if (Filter.RequiredLabel.HasValue && m.Label != Filter.RequiredLabel.Value) continue;
                 if (Filter.RequiredPick.HasValue && m.Pick != Filter.RequiredPick.Value) continue;
                 if (Filter.HideRejected && m.Pick == PickFlag.Reject) continue;
+            }
+
+            if (needExif)
+            {
+                var exif = ExifReader.GetOrCreate(p);
+                if (Filter.RequiredDateYear.HasValue)
+                {
+                    int? yr = exif.DateTaken?.Year;
+                    if (yr != Filter.RequiredDateYear.Value) continue;
+                }
+                if (!string.IsNullOrEmpty(Filter.RequiredCamera))
+                {
+                    string cam = exif.CameraModel ?? exif.CameraMake ?? "Unknown Camera";
+                    if (!string.Equals(cam, Filter.RequiredCamera, StringComparison.OrdinalIgnoreCase)) continue;
+                }
+                if (!string.IsNullOrEmpty(Filter.RequiredLens))
+                {
+                    string lens = exif.LensModel ?? "Unknown Lens";
+                    if (!string.Equals(lens, Filter.RequiredLens, StringComparison.OrdinalIgnoreCase)) continue;
+                }
+                if (Filter.RequiredIso.HasValue)
+                {
+                    if (exif.Iso != Filter.RequiredIso.Value) continue;
+                }
             }
 
             rows.Add(new Row(

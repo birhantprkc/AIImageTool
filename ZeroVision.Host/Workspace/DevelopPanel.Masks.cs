@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -31,6 +31,19 @@ public partial class DevelopPanel
 
     /// <summary>Bắn khi user chọn 1 brush mask để bắt đầu vẽ (CenterPreview lắng nghe). null = thôi vẽ.</summary>
     public event EventHandler<LocalMask?>? BrushMaskActivated;
+
+    /// <summary>Bắn khi active mask thay đổi (CenterPreview lắng nghe để vẽ Interactive Gizmo). null = không có mask.</summary>
+    public event EventHandler<LocalMask?>? ActiveMaskChanged;
+
+    /// <summary>CenterPreview Gizmo gọi khi kéo thả tham số hình học của mask để cập nhật UI và render lại.</summary>
+    public void NotifyMaskParamsUpdated(LocalMask mask)
+    {
+        if (_activeMask == mask)
+        {
+            BuildMaskEditor();
+        }
+        Commit();
+    }
 
     /// <summary>Mở rộng + cuộn tới nhóm Local Adjustments (phím M kiểu LR Masking module).</summary>
     public void FocusMasking()
@@ -142,6 +155,7 @@ public partial class DevelopPanel
         // Brush/Polygon mask đang chọn -> báo CenterPreview cho phép vẽ/đặt điểm.
         bool drawable = m != null && (m.MaskType == BrushMask.Type || m.MaskType == PolygonMask.Type || m.MaskType == PathMask.Type);
         BrushMaskActivated?.Invoke(this, drawable ? m : null);
+        ActiveMaskChanged?.Invoke(this, m);
     }
 
     private void RefreshMaskList()

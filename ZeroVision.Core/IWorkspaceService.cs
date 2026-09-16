@@ -39,6 +39,12 @@ public class WorkspaceFilter
 
     /// <summary>Ẩn ảnh đã gắn cờ Reject (luồng cull thông dụng: loại trước, xem lại trước khi xoá).</summary>
     public bool HideRejected { get; set; }
+
+    // Library Metadata Filter Bar
+    public int? RequiredDateYear { get; set; }
+    public string? RequiredCamera { get; set; }
+    public string? RequiredLens { get; set; }
+    public int? RequiredIso { get; set; }
 }
 
 public enum WorkspaceSort { NameAsc, NameDesc, DateAsc, DateDesc, SizeAsc, SizeDesc, RatingDesc }

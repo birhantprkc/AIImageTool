@@ -46,7 +46,12 @@ public partial class CenterPreview : UserControl, IImageToolHost
         InitializeComponent();
         icGrid.ItemsSource = GridItems;
         Focusable = true;
-        paneSingle.SizeChanged += (_, _) => { if (_cropMode) DrawCropOverlay(); };
+        paneSingle.SizeChanged += (_, _) =>
+        {
+            if (_cropMode) DrawCropOverlay();
+            RedrawMaskGizmo();
+            NotifyViewportChanged();
+        };
     }
 
     public void Bind(IWorkspaceService workspace, IThumbnailService? thumbs = null, IImageMetaService? meta = null, IHistoryService? history = null)
@@ -61,6 +66,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         if (_thumbs != null) _thumbs.ThumbnailReady += OnThumbReady;
         if (_meta != null) _meta.MetaChanged += OnMetaChanged;
         if (_history != null) _history.HistoryChanged += OnHistoryChanged;
+        metadataFilterBar.Bind(_workspace);
     }
 
     /// <summary>Cấp DevelopClipboard cho context menu trên grid (gọi sau Bind).</summary>
@@ -199,12 +205,14 @@ public partial class CenterPreview : UserControl, IImageToolHost
             txtFile.Text = Path.GetFileName(path);
             var fi = new FileInfo(path);
             txtMeta.Text = $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  {fi.Length / 1024.0:N0} KB";
+            NotifyViewportChanged();
         }
         catch
         {
             imgPreview.Source = null;
             imgFull.Source = null;
             txtPlaceholder.Visibility = Visibility.Visible;
+            NotifyViewportChanged();
         }
     }
 
@@ -242,6 +250,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
             if (_cropMode) DrawCropOverlay();
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
+            NotifyViewportChanged();
         }
         catch { }
     }
@@ -261,13 +270,20 @@ public partial class CenterPreview : UserControl, IImageToolHost
             btnCompare.Background = ThemeManager.GetBrush("BgHoverBrush");
         }
         paneSingle.Visibility = m == LighttableMode.Single ? Visibility.Visible : Visibility.Collapsed;
-        paneGrid.Visibility = m == LighttableMode.Grid ? Visibility.Visible : Visibility.Collapsed;
+        paneGridHost.Visibility = m == LighttableMode.Grid ? Visibility.Visible : Visibility.Collapsed;
+        btnToggleFilter.Visibility = m == LighttableMode.Grid ? Visibility.Visible : Visibility.Collapsed;
         paneCull.Visibility = m == LighttableMode.Cull ? Visibility.Visible : Visibility.Collapsed;
         paneFull.Visibility = m == LighttableMode.Full ? Visibility.Visible : Visibility.Collapsed;
         paneReference.Visibility = m == LighttableMode.Reference ? Visibility.Visible : Visibility.Collapsed;
         if (m == LighttableMode.Cull) RebuildCullView();
         if (m == LighttableMode.Reference) UpdateReferenceView();
         ModeChanged?.Invoke(this, m);
+    }
+
+    private void BtnToggleFilter_Click(object sender, RoutedEventArgs e)
+    {
+        metadataFilterBar.Visibility = metadataFilterBar.Visibility == Visibility.Visible
+            ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public LighttableMode CurrentMode => _mode;
@@ -345,8 +361,16 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.Y: // Y: bật/tắt so sánh before/after cạnh nhau (không khi giữ Ctrl = redo)
                 if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) { ToggleCompareMode(); e.Handled = true; }
                 break;
-            case Key.Oem5: // phím "\" : xem ảnh gốc (before) khi giữ
-                if (!_showingBefore) ShowBefore(true);
+            case Key.Oem5: // phím "\" : Grid -> toggle Filter Bar; Single -> xem ảnh gốc (before)
+                if (_mode == LighttableMode.Grid)
+                {
+                    metadataFilterBar.Visibility = metadataFilterBar.Visibility == Visibility.Visible
+                        ? Visibility.Collapsed : Visibility.Visible;
+                }
+                else
+                {
+                    if (!_showingBefore) ShowBefore(true);
+                }
                 e.Handled = true;
                 break;
             case Key.Z: // toggle 100% / fit (như Lightroom)
@@ -631,6 +655,65 @@ public partial class CenterPreview : UserControl, IImageToolHost
         zoomPanAfter.Y = zoomPan.Y;
         if (_clipOverlay) SyncClipTransform();
         if (_peakOverlay) SyncPeakTransform();
+        RedrawMaskGizmo();
+    }
+
+    public event EventHandler<ViewportChangedEventArgs>? ViewportChanged;
+
+    public void ZoomToMode(string mode)
+    {
+        if (imgPreview.Source == null) return;
+        switch (mode.ToUpperInvariant())
+        {
+            case "FIT":
+                ResetZoom();
+                break;
+            case "FILL":
+                if (imgPreview.ActualWidth > 0 && imgPreview.ActualHeight > 0 && paneSingle.ActualWidth > 0 && paneSingle.ActualHeight > 0)
+                {
+                    double ratioW = paneSingle.ActualWidth / imgPreview.ActualWidth;
+                    double ratioH = paneSingle.ActualHeight / imgPreview.ActualHeight;
+                    ZoomToCenter(Math.Clamp(Math.Max(ratioW, ratioH), MinZoom, MaxZoom));
+                }
+                break;
+            case "1:1":
+                if (imgPreview.Source is System.Windows.Media.Imaging.BitmapSource bs1 && imgPreview.ActualWidth > 0)
+                {
+                    double target = bs1.PixelWidth / imgPreview.ActualWidth;
+                    ZoomToCenter(Math.Clamp(target, MinZoom, MaxZoom));
+                }
+                else ZoomToCenter(2.0);
+                break;
+            case "2:1":
+                if (imgPreview.Source is System.Windows.Media.Imaging.BitmapSource bs2 && imgPreview.ActualWidth > 0)
+                {
+                    double target = (bs2.PixelWidth / imgPreview.ActualWidth) * 2.0;
+                    ZoomToCenter(Math.Clamp(target, MinZoom, MaxZoom));
+                }
+                else ZoomToCenter(4.0);
+                break;
+        }
+    }
+
+    public void PanToNormalized(double normCenterX, double normCenterY)
+    {
+        if (imgPreview.Source == null) return;
+        if (_zoom <= 1.001)
+        {
+            ZoomToMode("1:1");
+        }
+
+        double paneW = paneSingle.ActualWidth;
+        double paneH = paneSingle.ActualHeight;
+        double imgW = imgPreview.ActualWidth;
+        double imgH = imgPreview.ActualHeight;
+        if (paneW <= 0 || paneH <= 0 || imgW <= 0 || imgH <= 0) return;
+
+        zoomPan.X = (paneW / 2.0) - (normCenterX * imgW) * _zoom;
+        zoomPan.Y = (paneH / 2.0) - (normCenterY * imgH) * _zoom;
+        ClampPan();
+        SyncAfterTransform();
+        UpdateZoomBadge();
     }
 
     private void UpdateZoomBadge()
@@ -646,6 +729,20 @@ public partial class CenterPreview : UserControl, IImageToolHost
             zoomBadge.Visibility = Visibility.Collapsed;
             navigatorOverlay.Visibility = Visibility.Collapsed;
         }
+        NotifyViewportChanged();
+    }
+
+    private void NotifyViewportChanged()
+    {
+        double normX = 0, normY = 0, normW = 1.0, normH = 1.0;
+        if (_zoom > 1.001 && imgPreview.ActualWidth > 0 && imgPreview.ActualHeight > 0)
+        {
+            normX = -zoomPan.X / (_zoom * imgPreview.ActualWidth);
+            normY = -zoomPan.Y / (_zoom * imgPreview.ActualHeight);
+            normW = paneSingle.ActualWidth / (_zoom * imgPreview.ActualWidth);
+            normH = paneSingle.ActualHeight / (_zoom * imgPreview.ActualHeight);
+        }
+        ViewportChanged?.Invoke(this, new ViewportChangedEventArgs(imgPreview.Source, _zoom, normX, normY, normW, normH));
     }
 
     // ===== Navigator mini-map =====
@@ -929,9 +1026,19 @@ public partial class CenterPreview : UserControl, IImageToolHost
     /// <summary>Phát tiến trình (percent, status) cho host hiển thị ở status bar. percent&lt;0 = ẩn.</summary>
     public event EventHandler<(int Percent, string? Status)>? ProgressReported;
 
-    public void SetTemporaryOperations(IReadOnlyList<EditOperation>? ops)
+    public void SetTemporaryOperations(IReadOnlyList<EditOperation>? ops, string? styleName = null)
     {
         _tempPreviewOps = ops;
+        if (ops != null && !string.IsNullOrEmpty(styleName))
+        {
+            txtPresetPreviewName.Text = styleName;
+            badgePresetPreview.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            badgePresetPreview.Visibility = Visibility.Collapsed;
+        }
+
         var active = _workspace?.ActiveImage;
         if (!string.IsNullOrEmpty(active))
         {

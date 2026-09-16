@@ -1,6 +1,7 @@
 <UserControl x:Class="ZeroVision.Host.Workspace.CenterPreview"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ZeroVision.Host.Workspace"
              Background="{DynamicResource BgBaseBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Focusable="True"
              KeyDown="UserControl_KeyDown" KeyUp="UserControl_KeyUp">
     <Grid>
@@ -26,6 +27,9 @@
                     <Button x:Name="btnModeFull" Content="⛶  Full (F)" Padding="10,4" Margin="0,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
                             Click="BtnModeFull_Click" ToolTip="Toàn màn hình (phím F, Esc để thoát)"/>
+                    <Button x:Name="btnToggleFilter" Content="🔍  Filters (\)" Padding="10,4" Margin="8,0,4,0" Visibility="Collapsed"
+                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
+                            Click="BtnToggleFilter_Click" ToolTip="Bật/tắt thanh lọc thư viện Metadata (phím \)"/>
                     <Button x:Name="btnCrop" Content="◳  Crop (R)" Padding="10,4" Margin="12,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
                             Click="BtnCrop_Click" ToolTip="Bật/tắt cắt ảnh (kéo khung)"/>
@@ -127,11 +131,32 @@
                     </DockPanel>
                 </Border>
 
+                <!-- Preset Live Hover Preview Indicator Badge -->
+                <Border x:Name="badgePresetPreview" HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,20,0,0" Background="#EE1E1E1E" BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="1.5" CornerRadius="4" Padding="12,5"
+                        Visibility="Collapsed" IsHitTestVisible="False">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.6"/>
+                    </Border.Effect>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="👁 PREVIEW: " FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
+                        <TextBlock x:Name="txtPresetPreviewName" Text="Vintage Film" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="11"/>
+                        <TextBlock Text=" · Nhấp để áp dụng (Y: So sánh)" Foreground="#AAAAAA" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Crop overlay: vẽ khung cắt + 8 tay nắm. Ẩn cho tới khi bật crop mode. -->
                 <Canvas x:Name="cropOverlay" Background="#01000000" Visibility="Collapsed"
                         MouseLeftButtonDown="CropOverlay_MouseDown"
                         MouseMove="CropOverlay_MouseMove"
                         MouseLeftButtonUp="CropOverlay_MouseUp"/>
+
+                <!-- Interactive Masking Gizmo Overlay (Linear Gradient & Radial Direct Drag) -->
+                <Canvas x:Name="maskGizmoOverlay" Background="#01000000" Visibility="Collapsed"
+                        MouseLeftButtonDown="MaskGizmo_MouseDown"
+                        MouseMove="MaskGizmo_MouseMove"
+                        MouseLeftButtonUp="MaskGizmo_MouseUp"/>
 
                 <!-- Brush overlay: bắt nét vẽ cho local brush mask. Ẩn cho tới khi chọn brush mask. -->
                 <Canvas x:Name="brushOverlay" Background="#01000000" Visibility="Collapsed" Cursor="Cross"
@@ -159,8 +184,14 @@
                 </Border>
             </Grid>
 
-            <!-- GRID mode -->
-            <ScrollViewer x:Name="paneGrid" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <!-- GRID mode with Metadata Filter Bar -->
+            <Grid x:Name="paneGridHost" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <local:MetadataFilterBar x:Name="metadataFilterBar" Grid.Row="0" Visibility="Visible"/>
+                <ScrollViewer x:Name="paneGrid" Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="icGrid">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -223,6 +254,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+            </Grid>
 
             <!-- CULL mode (compare 2-4 selected) -->
             <UniformGrid x:Name="paneCull" Visibility="Collapsed" Background="{DynamicResource BgBaseBrush}"/>

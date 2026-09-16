@@ -95,6 +95,8 @@ public partial class MainWindow : Window
         centerView.BindHealingPanel(developPanel);
         centerView.BindLiquifyPanel(developPanel);
         centerView.BindTat(developPanel);
+        centerView.BindMaskGizmo(developPanel);
+        navigatorPanel.BindCenterPreview(centerView);
 
         // AI Subject mask: DevelopPanel yêu cầu -> AiMaskService sinh mask PNG -> AddRasterMask.
         developPanel.SubjectMaskRequested += async (s, path) =>
@@ -769,7 +771,7 @@ public partial class MainWindow : Window
                 })
                 .ToList();
 
-            centerView.SetTemporaryOperations(merged);
+            centerView.SetTemporaryOperations(merged, style.Name);
         }
     }
 

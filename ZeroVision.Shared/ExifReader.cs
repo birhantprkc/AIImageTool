@@ -1,4 +1,5 @@
-﻿using SixLabors.ImageSharp;
+using System.Collections.Concurrent;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using ZeroVision.Core;
 
@@ -6,6 +7,15 @@ namespace ZeroVision.Shared;
 
 public static class ExifReader
 {
+    private static readonly ConcurrentDictionary<string, CatalogImage> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Đọc metadata từ cache nếu đã có, hoặc gọi ReadMetadata và lưu cache.</summary>
+    public static CatalogImage GetOrCreate(string filePath)
+    {
+        var resolved = VirtualCopyHelper.ResolveDiskPath(filePath);
+        return _cache.GetOrAdd(resolved, ReadMetadata);
+    }
+
     public static CatalogImage ReadMetadata(string filePath)
     {
         var fi = new FileInfo(filePath);
