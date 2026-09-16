@@ -1420,6 +1420,13 @@ public partial class DevelopPanel : UserControl
         if (_curveEditor == null || _curveChannel == null) return;
         int ch = _curveChannel.SelectedIndex < 0 ? 0 : _curveChannel.SelectedIndex;
         _curveEditor.SetPoints(_curveData[ch]);
+        _curveEditor.CurveBrush = ch switch
+        {
+            1 => new SolidColorBrush(Color.FromRgb(244, 67, 54)),
+            2 => new SolidColorBrush(Color.FromRgb(76, 175, 80)),
+            3 => new SolidColorBrush(Color.FromRgb(33, 150, 243)),
+            _ => ThemeManager.GetBrush("TextSecondaryBrush")
+        };
     }
 
     private void CurveEditor_Changed(object? sender, string serialized)
