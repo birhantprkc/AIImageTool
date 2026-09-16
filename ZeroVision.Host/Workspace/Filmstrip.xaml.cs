@@ -1,7 +1,12 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using ZeroUI.Wpf.Editors;
 using ZeroVision.Core;
 
 namespace ZeroVision.Host.Workspace;
@@ -14,12 +19,9 @@ public partial class Filmstrip : UserControl
     private IHistoryService? _history;
     private DevelopClipboard? _clipboard;
 
-    public ObservableCollection<ThumbItem> Items { get; private set; } = new();
-
     public Filmstrip()
     {
         InitializeComponent();
-        icStrip.ItemsSource = Items;
     }
 
     public void Bind(IWorkspaceService workspace, IThumbnailService thumbs, IImageMetaService meta)
@@ -48,19 +50,23 @@ public partial class Filmstrip : UserControl
         var thumbs = _thumbs;
         Task.Run(() =>
         {
-            var list = new List<ThumbItem>(paths.Count);
+            var list = new List<FilmstripItemModel>(paths.Count);
             foreach (var p in paths)
             {
-                var item = new ThumbItem(p);
-                if (meta != null) item.ApplyMeta(meta.Get(p));
+                var item = new FilmstripItemModel
+                {
+                    Id = p,
+                    Title = Path.GetFileName(p)
+                };
+                if (meta != null) ApplyMeta(item, meta.Get(p));
                 var cached = thumbs?.TryGetThumbnailPath(p, 128);
-                if (cached != null) item.SetThumb(cached);
+                if (cached != null) item.Thumbnail = LoadBitmap(cached);
                 list.Add(item);
             }
             Dispatcher.BeginInvoke(() =>
             {
-                Items = new ObservableCollection<ThumbItem>(list);
-                icStrip.ItemsSource = Items;
+                ctrlFilmstrip.Items.Clear();
+                foreach (var itm in list) ctrlFilmstrip.Items.Add(itm);
             });
         });
     }
@@ -69,9 +75,14 @@ public partial class Filmstrip : UserControl
     {
         Dispatcher.BeginInvoke(() =>
         {
-            foreach (var t in Items)
-                if (string.Equals(t.ImagePath, e.ImagePath, StringComparison.OrdinalIgnoreCase))
-                { t.SetThumb(e.ThumbnailPath); break; }
+            foreach (var t in ctrlFilmstrip.Items)
+            {
+                if (string.Equals(t.Id, e.ImagePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    t.Thumbnail = LoadBitmap(e.ThumbnailPath);
+                    break;
+                }
+            }
         });
     }
 
@@ -79,9 +90,14 @@ public partial class Filmstrip : UserControl
     {
         Dispatcher.BeginInvoke(() =>
         {
-            foreach (var t in Items)
-                if (string.Equals(t.ImagePath, e.ImagePath, StringComparison.OrdinalIgnoreCase))
-                { t.ApplyMeta(e.Meta); break; }
+            foreach (var t in ctrlFilmstrip.Items)
+            {
+                if (string.Equals(t.Id, e.ImagePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyMeta(t, e.Meta);
+                    break;
+                }
+            }
         });
     }
 
@@ -89,13 +105,13 @@ public partial class Filmstrip : UserControl
     {
         Dispatcher.BeginInvoke(() =>
         {
-            ThumbItem? hit = null;
-            foreach (var t in Items)
+            FilmstripItemModel? hit = null;
+            foreach (var t in ctrlFilmstrip.Items)
             {
-                t.IsActive = string.Equals(t.ImagePath, e.CurrentPath, StringComparison.OrdinalIgnoreCase);
+                t.IsActive = string.Equals(t.Id, e.CurrentPath, StringComparison.OrdinalIgnoreCase);
                 if (t.IsActive) hit = t;
             }
-            if (hit != null) ScrollIntoView(hit);
+            if (hit != null) ctrlFilmstrip.ScrollIntoView(hit);
         });
     }
 
@@ -104,50 +120,68 @@ public partial class Filmstrip : UserControl
         Dispatcher.BeginInvoke(() =>
         {
             var set = new HashSet<string>(e.Selection, StringComparer.OrdinalIgnoreCase);
-            foreach (var t in Items) t.IsSelected = set.Contains(t.ImagePath);
+            foreach (var t in ctrlFilmstrip.Items)
+            {
+                t.IsSelected = set.Contains(t.Id);
+            }
         });
     }
 
-    private void ScrollIntoView(ThumbItem item)
+    private void CtrlFilmstrip_ItemClicked(object? sender, FilmstripItemClickEventArgs e)
     {
-        var idx = Items.IndexOf(item);
-        if (idx < 0) return;
-        // 90 width + 6 margin
-        scroller.ScrollToHorizontalOffset(Math.Max(0, idx * 96 - scroller.ActualWidth / 2 + 48));
+        if (_workspace == null) return;
+        if (e.IsControlDown)
+        {
+            if (_workspace.Selection.Contains(e.Item.Id)) _workspace.RemoveFromSelection(e.Item.Id);
+            else _workspace.AddToSelection(e.Item.Id);
+        }
+        else
+        {
+            _workspace.SetSelection(new[] { e.Item.Id });
+        }
+        _workspace.SetActiveImage(e.Item.Id);
     }
 
-    private void StripItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void CtrlFilmstrip_ItemRightClicked(object? sender, FilmstripItemModel item)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ThumbItem item && _workspace != null)
+        if (_workspace != null && _meta != null && _history != null && _clipboard != null)
         {
-            bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-            if (ctrl)
+            if (!_workspace.Selection.Contains(item.Id))
             {
-                if (_workspace.Selection.Contains(item.ImagePath)) _workspace.RemoveFromSelection(item.ImagePath);
-                else _workspace.AddToSelection(item.ImagePath);
+                _workspace.SetSelection(new[] { item.Id });
+                _workspace.SetActiveImage(item.Id);
             }
-            else
-            {
-                _workspace.SetSelection(new[] { item.ImagePath });
-            }
-            _workspace.SetActiveImage(item.ImagePath);
+            var menu = ImageContextMenu.Build(item.Id, _workspace, _meta, _history, _clipboard);
+            menu.IsOpen = true;
         }
     }
 
-    private void StripItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    private static void ApplyMeta(FilmstripItemModel item, ImageMeta meta)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ThumbItem item &&
-            _workspace != null && _meta != null && _history != null && _clipboard != null)
+        item.Rating = meta.Rating;
+        item.LabelBrush = meta.Label switch
         {
-            // If photo is not in selection -> select it exclusively (standard UX).
-            if (!_workspace.Selection.Contains(item.ImagePath))
-            {
-                _workspace.SetSelection(new[] { item.ImagePath });
-                _workspace.SetActiveImage(item.ImagePath);
-            }
-            fe.ContextMenu = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard);
-            fe.ContextMenu.IsOpen = true;
-            e.Handled = true;
+            ColorLabel.Red => Brushes.Red,
+            ColorLabel.Yellow => Brushes.Gold,
+            ColorLabel.Green => Brushes.LimeGreen,
+            ColorLabel.Blue => Brushes.DodgerBlue,
+            ColorLabel.Purple => Brushes.MediumPurple,
+            _ => null
+        };
+    }
+
+    private static BitmapImage? LoadBitmap(string path)
+    {
+        try
+        {
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.UriSource = new Uri(path);
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
         }
+        catch { return null; }
     }
 }
