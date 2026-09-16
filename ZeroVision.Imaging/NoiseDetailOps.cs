@@ -147,33 +147,7 @@ public sealed class DefringeOp : IEditOp
     public void Apply(LinearImage image, float scale)
     {
         if (IsIdentity) return;
-        int w = image.Width, h = image.Height;
-        float[] px = image.Pixels;
-        float purple = Math.Clamp(Purple, 0f, 1f);
-        float green = Math.Clamp(Green, 0f, 1f);
-
-        image.ProcessPixels((ref float r, ref float g, ref float b, ref float a) =>
-        {
-            float sr = ColorSpace.LinearToSrgb(r), sg = ColorSpace.LinearToSrgb(g), sb = ColorSpace.LinearToSrgb(b);
-            float max = MathF.Max(sr, MathF.Max(sg, sb)), min = MathF.Min(sr, MathF.Min(sg, sb));
-            float sat = max > 1e-5f ? (max - min) / max : 0f;
-            if (sat < 0.1f) return;
-            // hue thô
-            float hue;
-            if (max == sr) hue = 60f * (((sg - sb) / (max - min)) % 6f);
-            else if (max == sg) hue = 60f * (((sb - sr) / (max - min)) + 2f);
-            else hue = 60f * (((sr - sg) / (max - min)) + 4f);
-            if (hue < 0f) hue += 360f;
-
-            float reduce = 0f;
-            if (purple > 0f && hue >= 260f && hue <= 320f) reduce = purple;       // tím
-            else if (green > 0f && hue >= 80f && hue <= 160f) reduce = green;      // lục
-            if (reduce <= 0f) return;
-
-            // kéo về xám theo luminance.
-            float Y = ColorSpace.Luminance(r, g, b);
-            r = r + (Y - r) * reduce; g = g + (Y - g) * reduce; b = b + (Y - b) * reduce;
-        });
+        ZeroGraphics.Imaging.Filters.DefringeFilter.ApplyRgbaFloat(image.Pixels, image.Width, image.Height, Purple, Green);
     }
 
     public Dictionary<string, string> ToParams() => new() { ["purple"] = F(Purple), ["green"] = F(Green) };
