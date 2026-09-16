@@ -20,18 +20,12 @@ public partial class InfoPanel : UserControl
     private CancellationTokenSource? _cts;
     private string? _currentPath;
 
-    public ObservableCollection<ExifRow> Exif { get; } = new();
-    public ObservableCollection<ColorSwatchVm> Colors { get; } = new();
-    public ObservableCollection<ColorSwatchVm> Suggestions { get; } = new();
     public ObservableCollection<KeywordVm> Keywords { get; } = new();
     public ObservableCollection<KeywordVm> KeywordSuggestions { get; } = new();
 
     public InfoPanel()
     {
         InitializeComponent();
-        icExif.ItemsSource = Exif;
-        icColors.ItemsSource = Colors;
-        icSuggest.ItemsSource = Suggestions;
         icKeywords.ItemsSource = Keywords;
         icKeywordSuggest.ItemsSource = KeywordSuggestions;
     }
@@ -68,13 +62,10 @@ public partial class InfoPanel : UserControl
 
         Dispatcher.BeginInvoke(() =>
         {
-            Exif.Clear();
-            Colors.Clear();
-            Suggestions.Clear();
+            ctrlExifCard.Clear();
+            ctrlDominantPalette.Clear();
             ctrlHistScope.Reset();
             txtHistEmpty.Visibility = Visibility.Visible;
-            txtCaptureSummary.Visibility = Visibility.Collapsed;
-            txtContrastAdvice.Visibility = Visibility.Collapsed;
             btnSaveMeta.IsEnabled = false;
             ClearMetaFields();
             LoadKeywords(path);
@@ -97,21 +88,21 @@ public partial class InfoPanel : UserControl
                 using var img = SixLabors.ImageSharp.Image.Load<Rgba32>(path);
 
                 // EXIF
-                var rows = new List<ExifRow>();
+                var rows = new List<ZeroUI.Wpf.Editors.ExifTelemetryItem>();
                 var fi = new FileInfo(path);
                 double gpsLat = 0, gpsLon = 0;
                 bool hasGps = false;
-                rows.Add(new ExifRow("File", fi.Name));
-                rows.Add(new ExifRow("Size", $"{fi.Length / 1024.0:N0} KB"));
-                rows.Add(new ExifRow("Pixels", $"{img.Width} x {img.Height}"));
-                rows.Add(new ExifRow("Modified", fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm")));
+                rows.Add(new ZeroUI.Wpf.Editors.ExifTelemetryItem("File", fi.Name));
+                rows.Add(new ZeroUI.Wpf.Editors.ExifTelemetryItem("Size", $"{fi.Length / 1024.0:N0} KB"));
+                rows.Add(new ZeroUI.Wpf.Editors.ExifTelemetryItem("Pixels", $"{img.Width} x {img.Height}"));
+                rows.Add(new ZeroUI.Wpf.Editors.ExifTelemetryItem("Modified", fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm")));
 
                 if (img.Metadata.ExifProfile != null)
                 {
                     // GPS (8.5): hiển thị toạ độ + lưu để mở bản đồ.
                     if (ZeroVision.Shared.ExifReader.TryReadGps(img.Metadata.ExifProfile, out var gLat, out var gLon))
                     {
-                        rows.Insert(0, new ExifRow("GPS", ZeroVision.Shared.GpsHelper.Format(gLat, gLon)));
+                        rows.Insert(0, new ZeroUI.Wpf.Editors.ExifTelemetryItem("GPS", ZeroVision.Shared.GpsHelper.Format(gLat, gLon)));
                         gpsLat = gLat; gpsLon = gLon; hasGps = true;
                     }
 
@@ -121,12 +112,12 @@ public partial class InfoPanel : UserControl
                         var val = v.GetValue()?.ToString();
                         if (string.IsNullOrEmpty(val)) continue;
                         if (val.Length > 80) val = val.Substring(0, 80) + "…";
-                        rows.Add(new ExifRow(v.Tag.ToString() ?? "", val));
+                        rows.Add(new ZeroUI.Wpf.Editors.ExifTelemetryItem(v.Tag.ToString() ?? "", val));
                     }
                 }
 
-                // Dòng tóm tắt thông số chụp từ catalog metadata (camera/lens/exposure).
-                string summary = BuildCaptureSummary(path);
+                // Đọc metadata tổng quát (camera/lens/exposure)
+                var ci = ZeroVision.Shared.ExifReader.GetOrCreate(path);
 
                 // Bảng màu chủ đạo (K-Means trên ảnh đã load).
                 var swatches = ZeroVision.Shared.DominantColors.Extract(img, k: 6);
@@ -168,46 +159,55 @@ public partial class InfoPanel : UserControl
                 Dispatcher.BeginInvoke(() =>
                 {
                     if (ct.IsCancellationRequested) return;
-                    Exif.Clear();
-                    foreach (var row in rows) Exif.Add(row);
-                    if (hiWarn) Exif.Insert(0, new ExifRow("⚠ Highlight clip", $"{hiPct:0.0}%"));
-                    if (loWarn) Exif.Insert(hiWarn ? 1 : 0, new ExifRow("⚠ Shadow clip", $"{loPct:0.0}%"));
+
+                    // 1. Cập nhật ExifTelemetryCard
+                    var camera = string.Join(" ", new[] { ci.CameraMake, ci.CameraModel }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+                    ctrlExifCard.SetTelemetry(
+                        camera: !string.IsNullOrEmpty(camera) ? camera : null,
+                        lens: ci.LensModel,
+                        shutter: ci.ShutterSpeed,
+                        aperture: ci.Aperture > 0 ? $"f/{ci.Aperture:0.#}" : null,
+                        iso: ci.Iso > 0 ? $"ISO {ci.Iso}" : null,
+                        focalLength: ci.FocalLength > 0 ? $"{ci.FocalLength:0.#}mm" : null,
+                        captureDateTime: ci.DateTaken?.ToString("yyyy-MM-dd HH:mm")
+                    );
+
+                    if (hasGps)
+                    {
+                        ctrlExifCard.SetGps(gpsLat, gpsLon, ZeroVision.Shared.GpsHelper.Format(gpsLat, gpsLon));
+                    }
+                    else
+                    {
+                        ctrlExifCard.ClearGps();
+                    }
+
+                    if (hiWarn) rows.Insert(0, new ZeroUI.Wpf.Editors.ExifTelemetryItem("⚠ Highlight clip", $"{hiPct:0.0}%"));
+                    if (loWarn) rows.Insert(hiWarn ? 1 : 0, new ZeroUI.Wpf.Editors.ExifTelemetryItem("⚠ Shadow clip", $"{loPct:0.0}%"));
+                    ctrlExifCard.SetExifRows(rows);
+
+                    // 2. Histogram Scope
                     ctrlHistScope.SetChannels(r, g, b);
                     ctrlHistScope.ShadowClipPercent = loWarn ? loPct : 0.0;
                     ctrlHistScope.HighlightClipPercent = hiWarn ? hiPct : 0.0;
                     txtHistEmpty.Visibility = Visibility.Collapsed;
-                    _gpsLat = gpsLat; _gpsLon = gpsLon; _hasGps = hasGps;
-                    btnMap.Visibility = hasGps ? Visibility.Visible : Visibility.Collapsed;
 
-                    // Tóm tắt chụp.
-                    if (!string.IsNullOrEmpty(summary))
-                    {
-                        txtCaptureSummary.Text = summary;
-                        txtCaptureSummary.Visibility = Visibility.Visible;
-                    }
-
-                    // Bảng màu.
-                    Colors.Clear();
-                    foreach (var s in swatches)
-                        Colors.Add(new ColorSwatchVm(s.Hex, s.PercentText,
-                            new SolidColorBrush(System.Windows.Media.Color.FromRgb(s.R, s.G, s.B))));
-
-                    // Gợi ý màu (color theory) từ màu chủ đạo + đánh giá tương phản.
-                    Suggestions.Clear();
+                    // 3. Dominant Palette & Color Harmony
+                    var pSwatches = swatches.Select(s => new ZeroUI.Wpf.Editors.PaletteSwatchItem(s.R, s.G, s.B, s.PercentText, "Dominant", s.Fraction * 100.0)).ToList();
+                    var pSuggestions = new List<ZeroUI.Wpf.Editors.PaletteSwatchItem>();
+                    string? adviceText = null;
                     if (swatches.Count > 0)
                     {
                         var top = swatches[0];
                         foreach (var sg in ZeroVision.Shared.ColorSuggestion.FromDominant(top.R, top.G, top.B))
-                            Suggestions.Add(new ColorSwatchVm(sg.Hex, sg.Role,
-                                new SolidColorBrush(System.Windows.Media.Color.FromRgb(sg.R, sg.G, sg.B))));
+                            pSuggestions.Add(new ZeroUI.Wpf.Editors.PaletteSwatchItem(sg.R, sg.G, sg.B, sg.Role, sg.Role));
 
                         var swList = swatches.Select(s => (s.R, s.G, s.B)).ToList();
                         var (score, advice) = ZeroVision.Shared.ColorSuggestion.AssessContrast(swList);
-                        txtContrastAdvice.Text = $"Color contrast: {score * 100:0}% — {advice}";
-                        txtContrastAdvice.Visibility = Visibility.Visible;
+                        adviceText = $"Color contrast: {score * 100:0}% — {advice}";
                     }
+                    ctrlDominantPalette.SetPalette(pSwatches, pSuggestions, adviceText);
 
-                    // Form sửa metadata.
+                    // 4. Form sửa metadata & keywords
                     LoadMetaFields(path);
                     btnSaveMeta.IsEnabled = true;
                     LoadKeywords(path);
@@ -215,48 +215,6 @@ public partial class InfoPanel : UserControl
             }
             catch (Exception ex) { ZeroVision.Shared.AppLog.Error("InfoPanel.Refresh", path, ex); }
         }, ct);
-    }
-
-    private double _gpsLat, _gpsLon;
-    private bool _hasGps;
-
-    private void BtnMap_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_hasGps) return;
-        try
-        {
-            var url = ZeroVision.Shared.GpsHelper.GoogleMapsUrl(_gpsLat, _gpsLon);
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch (Exception ex) { ZeroVision.Shared.AppLog.Warn("InfoPanel.Map", ex.Message); }
-    }
-
-    /// <summary>Dòng tóm tắt chụp từ EXIF: "Canon R5 · 50mm · f/1.8 · 1/200s · ISO 400".</summary>
-    private static string BuildCaptureSummary(string path)
-    {
-        try
-        {
-            var ci = ZeroVision.Shared.ExifReader.ReadMetadata(path);
-            var parts = new List<string>();
-            var camera = string.Join(" ", new[] { ci.CameraMake, ci.CameraModel }
-                .Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
-            if (!string.IsNullOrWhiteSpace(camera)) parts.Add(camera);
-            if (ci.FocalLength is > 0) parts.Add($"{ci.FocalLength:0.#}mm");
-            if (ci.Aperture is > 0) parts.Add($"f/{ci.Aperture:0.#}");
-            if (!string.IsNullOrWhiteSpace(ci.ShutterSpeed)) parts.Add(ci.ShutterSpeed!);
-            if (ci.Iso is > 0) parts.Add($"ISO {ci.Iso}");
-            return string.Join("  ·  ", parts);
-        }
-        catch { return ""; }
-    }
-
-    private void ColorSwatch_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (sender is FrameworkElement fe && fe.Tag is string hex)
-        {
-            try { System.Windows.Clipboard.SetText(hex); }
-            catch (Exception ex) { ZeroVision.Shared.AppLog.Warn("InfoPanel.CopyHex", ex.Message); }
-        }
     }
 
     // ===== Sửa metadata (gộp từ MetaEditor) =====
@@ -486,14 +444,4 @@ public partial class InfoPanel : UserControl
             _meta.SetLabel(_currentPath, label);
         }
     }
-}
-
-public record ExifRow(string Name, string Value);
-
-/// <summary>1 ô màu chủ đạo cho ItemsControl (gộp từ ColorLab). Brush dùng để vẽ swatch.</summary>
-/// <summary>1 ô màu chủ đạo cho ItemsControl (gộp từ ColorLab). Brush dùng để vẽ swatch.
-/// PercentText dùng cho palette; Role là alias cùng giá trị cho ô gợi ý màu (color theory).</summary>
-public record ColorSwatchVm(string Hex, string PercentText, Brush Brush)
-{
-    public string Role => PercentText;
 }
