@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using ZeroVision.Imaging;
 using Xunit;
 
@@ -69,4 +69,23 @@ public class AutoStraightenTests
         float est = AutoStraighten.EstimateAngle(img);
         Assert.InRange(est, -2f, 2f);
     }
+
+    [Fact]
+    public void Estimate_TiltedWithOutliers_RansacRobust()
+    {
+        // Ảnh nghiêng 6° có thêm điểm nhiễu (salt & pepper) để kiểm tra tính kháng nhiễu của RANSAC
+        var img = TiltedHorizon(6f, 150, 150);
+        var rng = new Random(1234);
+        for (int i = 0; i < 200; i++)
+        {
+            int rx = rng.Next(150), ry = rng.Next(150);
+            int o = (ry * 150 + rx) * 4;
+            float noise = rng.NextSingle() > 0.5f ? 1f : 0f;
+            img.Pixels[o] = noise; img.Pixels[o + 1] = noise; img.Pixels[o + 2] = noise;
+        }
+
+        float est = AutoStraighten.EstimateAngle(img);
+        Assert.InRange(est, 4f, 8f);
+    }
 }
+

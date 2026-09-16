@@ -1,17 +1,14 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
+using ZeroGraphics.Vision.Matching;
+using ZeroGraphics.Vision.Metrology;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Tự cân bằng đường chân trời / phương đứng (auto-straighten): ước lượng góc nghiêng dominant bằng
-/// TRUNG BÌNH HƯỚNG (circular mean) của hướng cạnh, trọng số theo độ lớn gradient.
-///
-/// Kỹ thuật: gradient Sobel trên luminance ĐÃ LÀM MỜ (chống alias biên bậc thang). Hướng cạnh đưa về
-/// dải [-45..45] theo chu kỳ 90° (cạnh ngang/dọc đều phục vụ straighten). Vì góc tuần hoàn 90°, ta
-/// nhân đôi góc rồi lấy vector trung bình (Σ w·e^{i·2θ}) — tránh lỗi "wrap" của trung bình tuyến tính,
-/// và tự loại nhiễu (các hướng tản mát triệt tiêu nhau, chỉ hướng dominant còn lại).
-///
-/// Thuần toán học -> unit test với ảnh biên bậc nghiêng.
+/// Tự cân bằng đường chân trời / phương đứng (auto-straighten):
+/// Ước lượng góc nghiêng dominant kết hợp mô hình RANSAC sub-pixel (ZeroGraphics.Vision)
+/// với fallback TRUNG BÌNH HƯỚNG (circular mean) của vector gradient.
 /// </summary>
 public static class AutoStraighten
 {
@@ -31,7 +28,7 @@ public static class AutoStraighten
 
         float maxA = Math.Clamp(maxAngleDeg, 1f, 45f);
 
-        // Pass 1: ngưỡng theo trung bình magnitude.
+        // Pass 1: tính ngưỡng gradient trung bình.
         double sumMag = 0; long n = 0;
         for (int y = 1; y < h - 1; y++)
             for (int x = 1; x < w - 1; x++)
@@ -44,6 +41,51 @@ public static class AutoStraighten
         float mean = (float)(sumMag / n);
         float thr = mean * 2f;
         if (thr < 1e-6f) return 0f;
+        float thrSq = thr * thr;
+
+        // Pass 1.5: Trích xuất các điểm biên có gradient mạnh cho RANSAC Line Fitting (ZeroGraphics.Vision)
+        var edgePoints = new List<VisionPoint2D>();
+        for (int y = 1; y < h - 1; y++)
+        {
+            for (int x = 1; x < w - 1; x++)
+            {
+                Sobel(lum, w, x, y, out float gx, out float gy);
+                float mag2 = gx * gx + gy * gy;
+                if (mag2 >= thrSq)
+                {
+                    edgePoints.Add(new VisionPoint2D(x, y));
+                }
+            }
+        }
+
+        // Nếu mật độ điểm biên đủ dày, chạy RANSAC để trích xuất đường thẳng dominant (chân trời, kiến trúc)
+        if (edgePoints.Count >= 20)
+        {
+            try
+            {
+                var ransac = RansacFitter.FitLineRansac(
+                    edgePoints,
+                    distanceThreshold: 1.5,
+                    maxIterations: 100,
+                    minInlierRatio: 0.35,
+                    seed: 42);
+
+                if (ransac.InlierRatio >= 0.35 && ransac.InlierCount >= 15)
+                {
+                    float lineAngle = (float)ransac.Model.AngleDegrees;
+                    float a = Mod90To45(lineAngle);
+                    if (MathF.Abs(a) <= maxA)
+                    {
+                        if (MathF.Abs(a) < 0.05f) return 0f;
+                        return Math.Clamp(a, -maxA, maxA);
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback xuống Pass 2 circular mean nếu RANSAC không hội tụ
+            }
+        }
 
         // Pass 2: vector trung bình của góc-nhân-đôi (chu kỳ 90° -> nhân 2 thành chu kỳ 180° -> ×2 rad).
         double sx = 0, sy = 0; double totalW = 0;
