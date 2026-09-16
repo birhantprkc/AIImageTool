@@ -1,35 +1,73 @@
-﻿using System.Globalization;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using ZeroInference.Core.Engine;
+using ZeroInference.Core.Format;
+using ZeroTensor.Core;
 
 namespace ZeroVision.Plugins.VisionTagger;
 
 /// <summary>
 /// WD ViT Tagger v3 wrapper. Input 448x448 BGR float, padded white.
 /// Output: 3 nhóm tag (rating/general/character). Lọc theo threshold.
+/// Hỗ trợ dual-engine: DirectML / ONNX Runtime và Pure C# ZeroInference engine fallback.
 /// </summary>
 public class WdTaggerProcessor : IDisposable
 {
-    private readonly InferenceSession _session;
+    private readonly InferenceSession? _session;
+    private readonly IInferenceSession? _zeroSession;
     private readonly List<TagInfo> _tags;
     private readonly int _inputSize;
 
-    public WdTaggerProcessor(string modelPath, string tagsCsvPath)
-    {
-        var opts = new SessionOptions
-        {
-            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
-        };
-        try { opts.AppendExecutionProvider_DML(0); } catch { /* fallback CPU */ }
-        _session = new InferenceSession(modelPath, opts);
+    public bool IsZeroInferenceActive => _zeroSession != null;
 
-        var input = _session.InputMetadata.Values.First();
-        // shape: [1, H, W, 3] với H=W=448 cho v3
-        _inputSize = input.Dimensions.Length >= 2 && input.Dimensions[1] > 0 ? input.Dimensions[1] : 448;
+    public WdTaggerProcessor(string modelPath, string tagsCsvPath, bool preferZeroInference = false)
+    {
+        _inputSize = 448;
+
+        if (preferZeroInference)
+        {
+            try
+            {
+                var graph = OnnxModelParser.ParseFile(modelPath);
+                _zeroSession = InferenceEngine.CreateSession(graph, optimize: true);
+            }
+            catch
+            {
+                // Fallback to ONNX Runtime
+            }
+        }
+
+        if (_zeroSession == null)
+        {
+            try
+            {
+                var opts = new SessionOptions
+                {
+                    GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
+                };
+                try { opts.AppendExecutionProvider_DML(0); } catch { /* fallback CPU */ }
+                _session = new InferenceSession(modelPath, opts);
+
+                var input = _session.InputMetadata.Values.First();
+                // shape: [1, H, W, 3] với H=W=448 cho v3
+                _inputSize = input.Dimensions.Length >= 2 && input.Dimensions[1] > 0 ? input.Dimensions[1] : 448;
+            }
+            catch
+            {
+                // Fallback to pure C# ZeroInference nếu môi trường thiếu native directml runtime
+                var graph = OnnxModelParser.ParseFile(modelPath);
+                _zeroSession = InferenceEngine.CreateSession(graph, optimize: true);
+                _inputSize = 448;
+            }
+        }
 
         _tags = LoadTagsCsv(tagsCsvPath);
     }
@@ -67,10 +105,24 @@ public class WdTaggerProcessor : IDisposable
             }
         });
 
-        var tensor = new DenseTensor<float>(data, new[] { 1, _inputSize, _inputSize, 3 });
-        var inputName = _session.InputMetadata.Keys.First();
-        using var results = _session.Run(new[] { NamedOnnxValue.CreateFromTensor(inputName, tensor) });
-        var output = results.First().AsTensor<float>().ToArray();
+        float[] output;
+        if (_session != null)
+        {
+            var tensor = new DenseTensor<float>(data, new[] { 1, _inputSize, _inputSize, 3 });
+            var inputName = _session.InputMetadata.Keys.First();
+            using var results = _session.Run(new[] { NamedOnnxValue.CreateFromTensor(inputName, tensor) });
+            output = results.First().AsTensor<float>().ToArray();
+        }
+        else if (_zeroSession != null)
+        {
+            var tensor = ZeroTensor.Core.Tensor.FromArray(data, 1, _inputSize, _inputSize, 3);
+            var outTensor = _zeroSession.Run(tensor);
+            output = outTensor.ToArray();
+        }
+        else
+        {
+            throw new InvalidOperationException("No inference engine session is initialized.");
+        }
 
         var rating = new List<(string Tag, float Score)>();
         var general = new List<(string Tag, float Score)>();
@@ -130,7 +182,11 @@ public class WdTaggerProcessor : IDisposable
         return result.ToArray();
     }
 
-    public void Dispose() => _session.Dispose();
+    public void Dispose()
+    {
+        _session?.Dispose();
+        _zeroSession?.Dispose();
+    }
 
     private record TagInfo(string Name, int Category);
 }
