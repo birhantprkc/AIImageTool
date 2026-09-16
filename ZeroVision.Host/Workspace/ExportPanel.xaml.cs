@@ -22,6 +22,10 @@ public partial class ExportPanel : UserControl
         foreach (var s in ZeroVision.Shared.SocialPresets.All)
             cmbSocial.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s });
         cmbSocial.SelectedIndex = 0;
+
+        txtPattern.RegisterToken("{w}", "{w}", "Image pixel width", "4000");
+        txtPattern.RegisterToken("{h}", "{h}", "Image pixel height", "3000");
+        txtPattern.RegisterToken("{parent}", "{parent}", "Parent folder name", "Photos");
     }
 
     public void Bind(IWorkspaceService workspace, IBatchService batch, ISettingsService? settings = null)

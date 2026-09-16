@@ -124,6 +124,7 @@
         <Border Grid.Row="8" Background="{DynamicResource BgPanelBrush}">
             <edit:ThumbnailGridControl x:Name="gridThumbnails"
                                        ItemsSource="{Binding Thumbnails}"
+                                       EmptyMessage="Workspace folder contains no photos."
                                        ItemClicked="ThumbnailGrid_ItemClicked"
                                        ItemRightClicked="ThumbnailGrid_ItemRightClicked"/>
         </Border>

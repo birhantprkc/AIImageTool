@@ -6,6 +6,7 @@
     <Grid>
         <edit:BatchTaskQueueControl x:Name="queueControl"
                                     HeaderTitle="BATCH QUEUE"
+                                    ParallelLabel="Parallel:"
                                     EmptyMessage="Queue is empty.&#x0a;Export photos or run plugins to add tasks."/>
     </Grid>
 </UserControl>

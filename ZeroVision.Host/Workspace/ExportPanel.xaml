@@ -143,7 +143,7 @@
                     <TextBox x:Name="txtOutDir" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22"/>
                 </DockPanel>
 
-                <edit:TokenPatternEditor x:Name="txtPattern" Pattern="{}{name}_export.{ext}" Margin="0,0,0,10"/>
+                <edit:TokenPatternEditor x:Name="txtPattern" LabelText="Filename Pattern" Pattern="{}{name}_export.{ext}" Margin="0,0,0,10"/>
 
                 <DockPanel Margin="0,0,0,12">
                     <edit:ToggleSwitch x:Name="chkCopyExif" DockPanel.Dock="Right" Width="30" Height="16" IsChecked="True"/>
