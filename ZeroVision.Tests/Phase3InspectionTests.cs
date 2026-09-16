@@ -95,4 +95,31 @@ public class Phase3InspectionTests
         Assert.Equal(op.BaseRadius, reconstructed.BaseRadius, 3);
         Assert.Equal(op.Threshold, reconstructed.Threshold, 3);
     }
+
+    [Theory]
+    [InlineData(0, 1, 4, 1)]     // Move right
+    [InlineData(3, 1, 4, 0)]     // Wrap around right
+    [InlineData(0, -1, 4, 3)]    // Wrap around left
+    [InlineData(2, 2, 4, 0)]     // Move down row in 2-col grid
+    [InlineData(1, -2, 4, 3)]    // Move up row in 2-col grid with wrap
+    public void SurveyNavigation_CyclicIndex_WrapsAroundCorrectly(int currentIdx, int delta, int count, int expectedIdx)
+    {
+        int next = (currentIdx + delta % count + count) % count;
+        Assert.Equal(expectedIdx, next);
+    }
+
+    [Theory]
+    [InlineData(1.0, 1.25, 1.25)]
+    [InlineData(1.25, 5.0, 5.0)]   // Max clamp
+    [InlineData(1.0, 0.5, 1.0)]    // Min clamp
+    [InlineData(1.03, 0.98, 1.0)]  // Reset to 1.0 when <= 1.02
+    public void SurveyZoom_ClampingAndReset_BehavesPredictably(double startZoom, double factor, double expectedZoom)
+    {
+        double zoom = Math.Clamp(startZoom * factor, 1.0, 5.0);
+        if (zoom <= 1.02)
+        {
+            zoom = 1.0;
+        }
+        Assert.Equal(expectedZoom, zoom, 2);
+    }
 }

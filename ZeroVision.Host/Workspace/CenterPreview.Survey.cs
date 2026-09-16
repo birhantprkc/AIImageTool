@@ -7,11 +7,72 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ZeroVision.Core;
 
 namespace ZeroVision.Host.Workspace;
 
 public partial class CenterPreview
 {
+    private double _surveyZoom = 1.0;
+    private double _surveyPanX;
+    private double _surveyPanY;
+    private bool _isDraggingSurveyPan;
+    private Point _surveyPanStartMouse;
+    private double _surveyPanStartX;
+    private double _surveyPanStartY;
+    private bool _surveyPeakingActive;
+    private bool _surveyEventsInitialized;
+    private readonly List<TranslateTransform> _surveyPanTransforms = new();
+    private readonly List<ScaleTransform> _surveyScaleTransforms = new();
+
+    private void EnsureSurveyEvents()
+    {
+        if (_surveyEventsInitialized) return;
+        _surveyEventsInitialized = true;
+
+        paneCull.ClipToBounds = true;
+        paneCull.MouseWheel += (s, e) =>
+        {
+            if (_mode != LighttableMode.Cull) return;
+            double factor = e.Delta > 0 ? 1.2 : 1.0 / 1.2;
+            StepSurveyZoom(factor);
+            e.Handled = true;
+        };
+
+        paneCull.MouseRightButtonDown += (s, e) =>
+        {
+            if (_mode != LighttableMode.Cull || _surveyZoom <= 1.0) return;
+            _isDraggingSurveyPan = true;
+            _surveyPanStartMouse = e.GetPosition(paneCull);
+            _surveyPanStartX = _surveyPanX;
+            _surveyPanStartY = _surveyPanY;
+            paneCull.Cursor = Cursors.Hand;
+            paneCull.CaptureMouse();
+            e.Handled = true;
+        };
+
+        paneCull.MouseMove += (s, e) =>
+        {
+            if (!_isDraggingSurveyPan || _mode != LighttableMode.Cull) return;
+            var cur = e.GetPosition(paneCull);
+            _surveyPanX = _surveyPanStartX + (cur.X - _surveyPanStartMouse.X);
+            _surveyPanY = _surveyPanStartY + (cur.Y - _surveyPanStartMouse.Y);
+            ApplySurveyTransforms();
+            e.Handled = true;
+        };
+
+        paneCull.MouseRightButtonUp += (s, e) =>
+        {
+            if (_isDraggingSurveyPan)
+            {
+                _isDraggingSurveyPan = false;
+                paneCull.ReleaseMouseCapture();
+                paneCull.Cursor = Cursors.Arrow;
+                e.Handled = true;
+            }
+        };
+    }
+
     /// <summary>Toggles between Survey (Cull) mode and Single Loupe mode.</summary>
     public void ToggleSurveyMode()
     {
@@ -23,6 +84,87 @@ public partial class CenterPreview
         {
             SetMode(LighttableMode.Cull);
         }
+    }
+
+    /// <summary>Toggles High-Frequency Focus Peaking across all visible survey candidates.</summary>
+    public void ToggleSurveyPeaking()
+    {
+        _surveyPeakingActive = !_surveyPeakingActive;
+        RebuildCullView();
+    }
+
+    /// <summary>Toggles synchronous zoom between Fit (1.0) and 2.0 on all candidate viewports.</summary>
+    public void ToggleSurveyZoom()
+    {
+        if (_surveyZoom > 1.05)
+        {
+            _surveyZoom = 1.0;
+            _surveyPanX = 0;
+            _surveyPanY = 0;
+        }
+        else
+        {
+            _surveyZoom = 2.0;
+        }
+        ApplySurveyTransforms();
+    }
+
+    /// <summary>Steps synchronous zoom on all candidate viewports by the given factor.</summary>
+    public void StepSurveyZoom(double factor)
+    {
+        _surveyZoom = Math.Clamp(_surveyZoom * factor, 1.0, 5.0);
+        if (_surveyZoom <= 1.02)
+        {
+            _surveyZoom = 1.0;
+            _surveyPanX = 0;
+            _surveyPanY = 0;
+        }
+        ApplySurveyTransforms();
+    }
+
+    private void ApplySurveyTransforms()
+    {
+        foreach (var st in _surveyScaleTransforms)
+        {
+            st.ScaleX = _surveyZoom;
+            st.ScaleY = _surveyZoom;
+        }
+        foreach (var tt in _surveyPanTransforms)
+        {
+            tt.X = _surveyPanX;
+            tt.Y = _surveyPanY;
+        }
+    }
+
+    /// <summary>
+    /// Navigates the active photo index strictly within the Survey candidate set.
+    /// </summary>
+    public void NavigateSurveyActive(int delta)
+    {
+        if (_workspace == null) return;
+        var sel = _workspace.Selection.ToList();
+        if (sel.Count == 0 && _workspace.ActiveImage != null) sel.Add(_workspace.ActiveImage);
+        if (sel.Count <= 1) return;
+
+        int idx = sel.FindIndex(p => string.Equals(p, _workspace.ActiveImage, StringComparison.OrdinalIgnoreCase));
+        if (idx < 0) idx = 0;
+        int next = (idx + delta + sel.Count) % sel.Count;
+        _workspace.SetActiveImage(sel[next]);
+        RebuildCullView();
+    }
+
+    /// <summary>
+    /// Navigates rows of active photo in the Survey grid.
+    /// </summary>
+    public void NavigateSurveyRow(int deltaRow)
+    {
+        if (_workspace == null || paneCull.Columns <= 0) return;
+        var sel = _workspace.Selection.ToList();
+        if (sel.Count == 0 && _workspace.ActiveImage != null) sel.Add(_workspace.ActiveImage);
+        if (sel.Count <= 1) return;
+
+        int cols = paneCull.Columns;
+        NavigateSurveyActive(deltaRow * cols);
     }
 
     /// <summary>
@@ -56,7 +198,11 @@ public partial class CenterPreview
     /// </summary>
     public void RebuildCullView()
     {
+        EnsureSurveyEvents();
         paneCull.Children.Clear();
+        _surveyScaleTransforms.Clear();
+        _surveyPanTransforms.Clear();
+
         if (_workspace == null) return;
 
         // Collect photos for survey comparison
@@ -105,13 +251,35 @@ public partial class CenterPreview
 
             var cardGrid = new Grid();
 
-            // 1. Image preview
-            var img = new Image
+            // Viewport container for synchronized zoom & pan
+            var viewportBorder = new Border
             {
-                Stretch = Stretch.Uniform,
+                ClipToBounds = true,
                 Margin = new Thickness(6, 30, 6, 26)
             };
 
+            var imageHostGrid = new Grid();
+
+            // Transform group for locked sync zoom and pan
+            var scaleTrans = new ScaleTransform(_surveyZoom, _surveyZoom);
+            var panTrans = new TranslateTransform(_surveyPanX, _surveyPanY);
+            var transGroup = new TransformGroup();
+            transGroup.Children.Add(scaleTrans);
+            transGroup.Children.Add(panTrans);
+
+            _surveyScaleTransforms.Add(scaleTrans);
+            _surveyPanTransforms.Add(panTrans);
+
+            imageHostGrid.RenderTransform = transGroup;
+            imageHostGrid.RenderTransformOrigin = new Point(0.5, 0.5);
+
+            // 1. Image preview
+            var img = new Image
+            {
+                Stretch = Stretch.Uniform
+            };
+
+            BitmapSource? loadedBitmap = null;
             try
             {
                 var bmp = new BitmapImage();
@@ -122,11 +290,32 @@ public partial class CenterPreview
                 bmp.EndInit();
                 bmp.Freeze();
                 img.Source = bmp;
+                loadedBitmap = bmp;
             }
             catch { }
-            cardGrid.Children.Add(img);
+            imageHostGrid.Children.Add(img);
 
-            // 2. Top Header Bar (Number badge + Active indicator + Dismiss button)
+            // 1b. Focus Peaking Overlay if active
+            if (_surveyPeakingActive && loadedBitmap != null)
+            {
+                try
+                {
+                    var peakMask = BuildPeakMask(loadedBitmap);
+                    var peakImg = new Image
+                    {
+                        Source = peakMask,
+                        Stretch = Stretch.Uniform,
+                        IsHitTestVisible = false
+                    };
+                    imageHostGrid.Children.Add(peakImg);
+                }
+                catch { }
+            }
+
+            viewportBorder.Child = imageHostGrid;
+            cardGrid.Children.Add(viewportBorder);
+
+            // 2. Top Header Bar (Number badge + Active indicator + Focus Peaking status + Dismiss button)
             var topBar = new DockPanel
             {
                 VerticalAlignment = VerticalAlignment.Top,
@@ -159,7 +348,8 @@ public partial class CenterPreview
                 var activeBadge = new Border
                 {
                     CornerRadius = new CornerRadius(3),
-                    Padding = new Thickness(6, 2, 6, 2)
+                    Padding = new Thickness(6, 2, 6, 2),
+                    Margin = new Thickness(0, 0, 6, 0)
                 };
                 activeBadge.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
                 activeBadge.Child = new TextBlock
@@ -171,6 +361,25 @@ public partial class CenterPreview
                 };
                 leftBadges.Children.Add(activeBadge);
             }
+
+            if (_surveyPeakingActive)
+            {
+                var peakBadge = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(200, 30, 140, 30)),
+                    CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(5, 2, 5, 2)
+                };
+                peakBadge.Child = new TextBlock
+                {
+                    Text = "PEAK",
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White
+                };
+                leftBadges.Children.Add(peakBadge);
+            }
+
             topBar.Children.Add(leftBadges);
 
             // Dismiss Button (✖)
@@ -205,12 +414,91 @@ public partial class CenterPreview
 
             cardGrid.Children.Add(topBar);
 
-            // 3. Bottom Info Bar (File name and rating)
+            // 3. Bottom Info Bar (File name, Rating, Pick/Reject flag, Color Label)
             var bottomBar = new DockPanel
             {
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(8, 0, 8, 6)
             };
+
+            var metaRight = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(metaRight, Dock.Right);
+
+            // Fetch live metadata
+            var meta = _meta?.Get(p);
+            if (meta != null)
+            {
+                // Rating stars
+                if (meta.Rating > 0)
+                {
+                    var txtRating = new TextBlock
+                    {
+                        Text = new string('★', meta.Rating),
+                        Foreground = new SolidColorBrush(Color.FromRgb(255, 190, 40)),
+                        FontSize = 11,
+                        FontWeight = FontWeights.Bold,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 6, 0)
+                    };
+                    metaRight.Children.Add(txtRating);
+                }
+
+                // Pick / Reject Flag
+                if (meta.Pick == PickFlag.Pick)
+                {
+                    var pickBadge = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(180, 40, 160, 60)),
+                        CornerRadius = new CornerRadius(2),
+                        Padding = new Thickness(4, 1, 4, 1),
+                        Margin = new Thickness(0, 0, 6, 0)
+                    };
+                    pickBadge.Child = new TextBlock { Text = "PICK", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.White };
+                    metaRight.Children.Add(pickBadge);
+                }
+                else if (meta.Pick == PickFlag.Reject)
+                {
+                    var rejectBadge = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(180, 200, 40, 40)),
+                        CornerRadius = new CornerRadius(2),
+                        Padding = new Thickness(4, 1, 4, 1),
+                        Margin = new Thickness(0, 0, 6, 0)
+                    };
+                    rejectBadge.Child = new TextBlock { Text = "REJECT", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.White };
+                    metaRight.Children.Add(rejectBadge);
+                }
+
+                // Color Label
+                if (meta.Label != ColorLabel.None)
+                {
+                    var labelColor = meta.Label switch
+                    {
+                        ColorLabel.Red => Color.FromRgb(231, 76, 60),
+                        ColorLabel.Yellow => Color.FromRgb(241, 196, 15),
+                        ColorLabel.Green => Color.FromRgb(46, 204, 113),
+                        ColorLabel.Blue => Color.FromRgb(52, 152, 219),
+                        ColorLabel.Purple => Color.FromRgb(155, 89, 182),
+                        _ => Colors.Transparent
+                    };
+                    var labelSwatch = new Border
+                    {
+                        Width = 10,
+                        Height = 10,
+                        CornerRadius = new CornerRadius(5),
+                        Background = new SolidColorBrush(labelColor),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 4, 0)
+                    };
+                    metaRight.Children.Add(labelSwatch);
+                }
+            }
+
+            bottomBar.Children.Add(metaRight);
 
             var txtName = new TextBlock
             {

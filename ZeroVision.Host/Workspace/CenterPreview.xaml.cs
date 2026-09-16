@@ -381,7 +381,11 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 }
                 break;
             case Key.J: ToggleClipOverlay(); e.Handled = true; break;
-            case Key.K: TogglePeakOverlay(); e.Handled = true; break; // focus peaking
+            case Key.K:
+                if (_mode == LighttableMode.Cull) ToggleSurveyPeaking();
+                else TogglePeakOverlay();
+                e.Handled = true;
+                break;
             case Key.OemOpenBrackets: _developPanel?.RotateActive(-1); e.Handled = true; break; // [
             case Key.OemCloseBrackets: _developPanel?.RotateActive(1); e.Handled = true; break;  // ]
             case Key.Y: // Y: toggle before/after comparison side-by-side (unless Ctrl = redo)
@@ -400,15 +404,22 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 e.Handled = true;
                 break;
             case Key.Z: // toggle 100% / fit zoom
-                ToggleZoom();
+                if (_mode == LighttableMode.Cull) ToggleSurveyZoom();
+                else ToggleZoom();
                 e.Handled = true;
                 break;
             case Key.OemPlus:
             case Key.Add:
-                StepZoom(1.25); e.Handled = true; break;
+                if (_mode == LighttableMode.Cull) StepSurveyZoom(1.25);
+                else StepZoom(1.25);
+                e.Handled = true;
+                break;
             case Key.OemMinus:
             case Key.Subtract:
-                StepZoom(1 / 1.25); e.Handled = true; break;
+                if (_mode == LighttableMode.Cull) StepSurveyZoom(1 / 1.25);
+                else StepZoom(1 / 1.25);
+                e.Handled = true;
+                break;
             case Key.Escape:
                 if (_cropMode) { ToggleCropMode(); e.Handled = true; }       // exit crop first
                 else if (_zoom > 1.0) { ResetZoom(); e.Handled = true; }

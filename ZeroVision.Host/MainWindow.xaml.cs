@@ -321,8 +321,18 @@ public partial class MainWindow : Window
         // and regardless of focus in Grid/Filmstrip/Browser (PreviewKeyDown tunneling).
         if (!typingNow && !ctrlMod && _workspace.Images.Count > 0)
         {
-            if (e.Key == System.Windows.Input.Key.Left) { NavigateActiveImage(-1); e.Handled = true; return; }
-            if (e.Key == System.Windows.Input.Key.Right) { NavigateActiveImage(+1); e.Handled = true; return; }
+            if (centerView.CurrentMode == LighttableMode.Cull)
+            {
+                if (e.Key == System.Windows.Input.Key.Left) { centerView.NavigateSurveyActive(-1); e.Handled = true; return; }
+                if (e.Key == System.Windows.Input.Key.Right) { centerView.NavigateSurveyActive(+1); e.Handled = true; return; }
+                if (e.Key == System.Windows.Input.Key.Up) { centerView.NavigateSurveyRow(-1); e.Handled = true; return; }
+                if (e.Key == System.Windows.Input.Key.Down) { centerView.NavigateSurveyRow(+1); e.Handled = true; return; }
+            }
+            else
+            {
+                if (e.Key == System.Windows.Input.Key.Left) { NavigateActiveImage(-1); e.Handled = true; return; }
+                if (e.Key == System.Windows.Input.Key.Right) { NavigateActiveImage(+1); e.Handled = true; return; }
+            }
         }
 
         if (_workspace.ActiveImage == null) return;
