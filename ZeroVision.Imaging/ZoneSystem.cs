@@ -9,8 +9,8 @@ namespace ZeroVision.Imaging;
 public static class ZoneSystem
 {
     public const float MiddleGrayLinear = ZoneSystemMeter.MiddleGrayLinear;
-    public static readonly (byte B, byte G, byte R, byte A)[] ZoneColors = ZoneSystemMeter.ZoneColors;
-    public static readonly (byte B, byte G, byte R, byte A)[] LuminanceZoneLut = ZoneSystemMeter.LuminanceZoneLut;
+    public static readonly (byte B, byte G, byte R, byte A)[] ZoneColors = Array.ConvertAll(ZoneSystemMeter.ZoneColors, c => (c.B, c.G, c.R, c.A));
+    public static readonly (byte B, byte G, byte R, byte A)[] LuminanceZoneLut = Array.ConvertAll(ZoneSystemMeter.LuminanceZoneLut, c => (c.B, c.G, c.R, c.A));
 
     public static int GetZoneIndex(float linearY)
     {
