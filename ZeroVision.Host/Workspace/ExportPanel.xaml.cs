@@ -433,6 +433,36 @@ public partial class ExportPanel : UserControl
         }
     }
 
+    private void BtnPdfCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace == null) return;
+        var paths = _workspace.Selection.ToList();
+        if (paths.Count < 1)
+        {
+            MessageBox.Show("Chọn ít nhất 1 ảnh để tạo catalog PDF.", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        string outDir = string.IsNullOrWhiteSpace(txtOutDir.Text)
+            ? System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Output")
+            : txtOutDir.Text;
+        string outPath = FileNameTokenizer.EnsureUniquePath(System.IO.Path.Combine(outDir, "photo_catalog.pdf"));
+
+        int cols = Math.Clamp((int)Math.Ceiling(Math.Sqrt(paths.Count)), 2, 4);
+        var opt = new ContactSheet.Options { Columns = cols, ShowFileName = true };
+
+        try
+        {
+            int drawn = ContactSheet.RenderPdf(paths, outPath, opt, documentTitle: "Aurora Studio - Photo Catalog");
+            MessageBox.Show(drawn > 0 ? $"Đã tạo PDF Catalog qua ZeroReports ({drawn} ảnh):\n{outPath}" : "Không tạo được catalog.",
+                "PDF Catalog", MessageBoxButton.OK, drawn > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            ZeroVision.Shared.AppLog.Error("ExportPanel.PdfCatalog", outPath, ex);
+            MessageBox.Show("Lỗi tạo PDF catalog (xem app.log).", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void BtnWebGallery_Click(object sender, RoutedEventArgs e)
     {
         if (_workspace == null) return;

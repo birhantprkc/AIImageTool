@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using ZeroVision.Shared;
@@ -102,4 +102,31 @@ public class ContactSheetTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void RenderPdf_GeneratesValidPdfFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "imgtool_pdf_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var paths = new List<string>();
+            for (int i = 0; i < 8; i++)
+            {
+                paths.Add(Path.Combine(dir, $"photo_{i}.jpg"));
+            }
+            var outPdf = Path.Combine(dir, "catalog.pdf");
+            int drawn = ContactSheet.RenderPdf(paths, outPdf, new ContactSheet.Options { Columns = 3, ShowFileName = true });
+            Assert.Equal(8, drawn);
+            Assert.True(File.Exists(outPdf));
+
+            var bytes = File.ReadAllBytes(outPdf);
+            Assert.True(bytes.Length > 200);
+            // PDF file starts with %PDF-1.4 header
+            string header = System.Text.Encoding.ASCII.GetString(bytes, 0, 8);
+            Assert.StartsWith("%PDF-1.4", header);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }
+
