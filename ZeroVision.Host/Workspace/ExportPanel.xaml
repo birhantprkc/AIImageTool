@@ -143,9 +143,7 @@
                     <TextBox x:Name="txtOutDir" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22"/>
                 </DockPanel>
 
-                <TextBlock Text="Filename Pattern" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                <TextBox x:Name="txtPattern" Text="{}{name}_export.{ext}" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22" Margin="0,0,0,8"/>
-                <TextBlock Text="Tokens: {name} {ext} {w} {h} {n:000} {date} {date:yyyyMMdd} {parent}" FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                <edit:TokenPatternEditor x:Name="txtPattern" Pattern="{}{name}_export.{ext}" Margin="0,0,0,10"/>
 
                 <DockPanel Margin="0,0,0,12">
                     <edit:ToggleSwitch x:Name="chkCopyExif" DockPanel.Dock="Right" Width="30" Height="16" IsChecked="True"/>
