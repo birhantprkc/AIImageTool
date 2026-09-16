@@ -1,7 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows;
+using System.Linq;
 using System.Windows.Controls;
-using System.Windows.Media;
+using ZeroUI.Wpf.Editors;
 using ZeroVision.Core;
 
 namespace ZeroVision.Host.Workspace;
@@ -9,17 +8,40 @@ namespace ZeroVision.Host.Workspace;
 public partial class BatchQueuePanel : UserControl
 {
     private IBatchService? _batch;
-    public ObservableCollection<JobRow> Rows { get; } = new();
 
     public BatchQueuePanel()
     {
         InitializeComponent();
-        icJobs.ItemsSource = Rows;
+
+        queueControl.MaxParallelChanged += (s, n) =>
+        {
+            if (_batch != null) _batch.MaxParallel = n;
+        };
+
+        queueControl.PauseResumeClicked += (s, isPaused) =>
+        {
+            if (_batch == null) return;
+            if (isPaused) _batch.Pause(); else _batch.Resume();
+        };
+
+        queueControl.ClearCompletedClicked += (s, e) => _batch?.ClearCompleted();
+
+        queueControl.RetryTaskClicked += (s, task) =>
+        {
+            if (!string.IsNullOrEmpty(task?.Id)) _batch?.RetryJob(task.Id);
+        };
+
+        queueControl.RemoveTaskClicked += (s, task) =>
+        {
+            if (!string.IsNullOrEmpty(task?.Id)) _batch?.RemoveJob(task.Id);
+        };
     }
 
     public void Bind(IBatchService batch)
     {
         _batch = batch;
+        queueControl.MaxParallel = _batch.MaxParallel;
+        queueControl.IsPaused = _batch.IsPaused;
         _batch.QueueChanged += (s, e) => Refresh();
         _batch.JobUpdated += (s, j) => Refresh();
         Refresh();
@@ -30,94 +52,37 @@ public partial class BatchQueuePanel : UserControl
         Dispatcher.BeginInvoke(() =>
         {
             if (_batch == null) return;
-            // Đồng bộ Rows với _batch.Jobs (theo index, bảo toàn binding)
+            queueControl.IsPaused = _batch.IsPaused;
             var src = _batch.Jobs.ToList();
+            var tasks = queueControl.Tasks;
+
             for (int i = 0; i < src.Count; i++)
             {
-                if (i < Rows.Count)
+                var j = src[i];
+                if (i < tasks.Count)
                 {
-                    Rows[i].UpdateFrom(src[i]);
+                    var item = tasks[i];
+                    item.Id = j.Id;
+                    item.Update(j.DisplayName, j.Progress, MapStatus(j.Status), j.Error);
                 }
                 else
                 {
-                    Rows.Add(new JobRow().UpdateFrom(src[i]));
+                    var item = new BatchTaskItemModel(j.Id, j.DisplayName);
+                    item.Update(j.DisplayName, j.Progress, MapStatus(j.Status), j.Error);
+                    tasks.Add(item);
                 }
             }
-            while (Rows.Count > src.Count) Rows.RemoveAt(Rows.Count - 1);
+            while (tasks.Count > src.Count) tasks.RemoveAt(tasks.Count - 1);
         });
     }
 
-    private void BtnPauseResume_Click(object sender, RoutedEventArgs e)
+    private static BatchTaskStatus MapStatus(BatchJobStatus s) => s switch
     {
-        if (_batch == null) return;
-        if (_batch.IsPaused) _batch.Resume(); else _batch.Pause();
-        btnPause.Content = _batch.IsPaused ? "▶" : "⏸";
-    }
-
-    private void BtnClear_Click(object sender, RoutedEventArgs e) => _batch?.ClearCompleted();
-
-    private void BtnRetry_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement fe && fe.Tag is string id) _batch?.RetryJob(id);
-    }
-
-    private void BtnRemove_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement fe && fe.Tag is string id) _batch?.RemoveJob(id);
-    }
-
-    private void CmbParallel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_batch == null || cmbParallel.SelectedItem is not ComboBoxItem item) return;
-        if (int.TryParse(item.Content?.ToString(), out var n)) _batch.MaxParallel = n;
-    }
-}
-
-public class JobRow : System.ComponentModel.INotifyPropertyChanged
-{
-    public string Id { get; private set; } = "";
-    public string DisplayName { get; private set; } = "";
-    public int Progress { get; private set; }
-    public string StatusText { get; private set; } = "";
-    public string StatusGlyph { get; private set; } = "·";
-    public Brush StatusBrush { get; private set; } = ThemeManager.GetBrush("TextDimBrush");
-
-    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-
-    public JobRow UpdateFrom(BatchJob j)
-    {
-        Id = j.Id;
-        DisplayName = j.DisplayName;
-        Progress = j.Progress;
-        StatusText = j.Status switch
-        {
-            BatchJobStatus.Pending => "queued",
-            BatchJobStatus.Running => $"{j.Progress}%",
-            BatchJobStatus.Completed => "done",
-            BatchJobStatus.Failed => j.Error ?? "failed",
-            BatchJobStatus.Canceled => "canceled",
-            BatchJobStatus.Paused => "paused",
-            _ => ""
-        };
-        (StatusGlyph, StatusBrush) = j.Status switch
-        {
-            BatchJobStatus.Running => ("●", Brushes.DodgerBlue),
-            BatchJobStatus.Completed => ("✓", Brushes.LimeGreen),
-            BatchJobStatus.Failed => ("✗", Brushes.IndianRed),
-            BatchJobStatus.Canceled => ("✕", ThemeManager.GetBrush("TextDimBrush")),
-            BatchJobStatus.Pending => ("○", ThemeManager.GetBrush("TextDimBrush")),
-            _ => ("·", ThemeManager.GetBrush("TextDimBrush"))
-        };
-        var h = PropertyChanged;
-        if (h != null)
-        {
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Id)));
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DisplayName)));
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Progress)));
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(StatusText)));
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(StatusGlyph)));
-            h(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(StatusBrush)));
-        }
-        return this;
-    }
+        BatchJobStatus.Running => BatchTaskStatus.Running,
+        BatchJobStatus.Completed => BatchTaskStatus.Completed,
+        BatchJobStatus.Failed => BatchTaskStatus.Failed,
+        BatchJobStatus.Canceled => BatchTaskStatus.Canceled,
+        BatchJobStatus.Paused => BatchTaskStatus.Paused,
+        _ => BatchTaskStatus.Pending
+    };
 }
