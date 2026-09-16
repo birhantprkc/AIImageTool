@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -289,10 +289,10 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         }
     }
 
-    private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+    private void TxtSearch_DebouncedTextChanged(object? sender, string text)
     {
         if (_workspace == null) return;
-        _workspace.Filter.Search = txtSearch.Text;
+        _workspace.Filter.Search = text;
         _workspace.ApplyFilterAndSort();
     }
 
