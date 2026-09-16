@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace ZeroVision.Shared;
 
@@ -15,6 +15,7 @@ public static class OpDisplayNames
         ["ParametricCurve"] = "Parametric Curve",
         ["HslMixer"] = "HSL / Color Mixer",
         ["Clarity"] = "Clarity",
+        ["Clahe"] = "Local Contrast (CLAHE)",
         ["Texture"] = "Texture",
         ["Sharpen"] = "Sharpen",
         ["Dehaze"] = "Dehaze",

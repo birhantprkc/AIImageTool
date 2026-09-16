@@ -257,6 +257,8 @@ public partial class DevelopPanel : UserControl
         AddSlider(gPres, "vibrance", "Vibrance", -1, 1, 0);
         AddSlider(gPres, "saturation", "Saturation", -1, 1, 0);
         AddSlider(gPres, "clarity", "Clarity", -1, 1, 0);
+        AddSlider(gPres, "clahe", "Local Contrast (CLAHE)", 0, 1, 0);
+        AddSlider(gPres, "clahe_clip", "CLAHE Clip Limit", 1, 10, 3, "0.0");
         AddSlider(gPres, "texture", "Texture", -1, 1, 0);
         AddSlider(gPres, "dehaze", "Dehaze", -1, 1, 0);
         AddSlider(gPres, "velvia", "Velvia", 0, 1, 0);
@@ -1006,6 +1008,9 @@ public partial class DevelopPanel : UserControl
         SetVal("chm_bHue", Param(path!, ChannelMixerOp.Type, "bHue"));
         SetVal("chm_bSat", Param(path!, ChannelMixerOp.Type, "bSat"));
         SetVal("clarity", Param(path!, ClarityOp.Type, "amount"));
+        SetVal("clahe", Param(path!, ClaheOp.Type, "amount"));
+        var claheP = FindOp(path!, ClaheOp.Type);
+        SetVal("clahe_clip", claheP != null ? Param(path!, ClaheOp.Type, "clipLimit") : 3.0);
         SetVal("texture", Param(path!, TextureOp.Type, "amount"));
         SetVal("sharpen", Param(path!, SharpenOp.Type, "amount"));
         var sharpP = FindOp(path!, SharpenOp.Type);
@@ -1705,6 +1710,8 @@ public partial class DevelopPanel : UserControl
         if (!defr.IsIdentity) ops.Add(Op(DefringeOp.Type, "Defringe", defr.ToParams()));
         var clarity = new ClarityOp { Amount = (float)GetVal("clarity") };
         if (!clarity.IsIdentity) ops.Add(Op(ClarityOp.Type, "Clarity", clarity.ToParams()));
+        var clahe = new ClaheOp { Amount = (float)GetVal("clahe"), ClipLimit = (float)GetVal("clahe_clip") };
+        if (!clahe.IsIdentity) ops.Add(Op(ClaheOp.Type, "Local Contrast (CLAHE)", clahe.ToParams()));
         var texture = new TextureOp { Amount = (float)GetVal("texture") };
         if (!texture.IsIdentity) ops.Add(Op(TextureOp.Type, "Texture", texture.ToParams()));
         var sharpen = new SharpenOp { Amount = (float)GetVal("sharpen"), Radius = (float)GetVal("sharpenRadius"), Masking = (float)GetVal("sharpenMask") };
