@@ -21,46 +21,8 @@ public sealed class DehazeOp : IEditOp
     {
         if (IsIdentity) return;
         int w = image.Width, h = image.Height;
-        float[] px = image.Pixels;
-        float radius = MathF.Max(1f, BaseRadius * scale);
-        float amt = Math.Clamp(Amount, -1f, 1f);
-
-        // dark channel = min(r,g,b) mỗi pixel.
-        var dark = new float[w * h];
-        Parallel.For(0, h, y =>
-        {
-            int row = y * w;
-            for (int x = 0; x < w; x++)
-            {
-                int p = (row + x) * 4;
-                dark[row + x] = MathF.Min(px[p], MathF.Min(px[p + 1], px[p + 2]));
-            }
-        });
-        var haze = GaussianBlur.BlurPlane(dark, w, h, radius); // mức mờ cục bộ
-
-        // airlight ~ phân vị cao của dark channel.
-        float air = 0.0f;
-        for (int i = 0; i < dark.Length; i++) if (dark[i] > air) air = dark[i];
-        if (air < 1e-3f) air = 1e-3f;
-
-        Parallel.For(0, h, y =>
-        {
-            int row = y * w;
-            for (int x = 0; x < w; x++)
-            {
-                int p = (row + x) * 4;
-                float t = 1f - 0.95f * (haze[row + x] / air); // transmission ước lượng
-                t = Math.Clamp(t, 0.1f, 1f);
-                // khử mờ: J = (I - A)/t + A, blend theo amount.
-                for (int c = 0; c < 3; c++)
-                {
-                    float I = px[p + c];
-                    float J = (I - air) / t + air;
-                    px[p + c] = I + (J - I) * amt;
-                    if (px[p + c] < 0f) px[p + c] = 0f;
-                }
-            }
-        });
+        int patchRadius = (int)MathF.Max(3f, MathF.Round(BaseRadius * scale * 0.2f));
+        ZeroGraphics.Imaging.Filters.DehazeFilter.ApplyRgbaFloat(image.Pixels, w, h, Amount, 0.95f, patchRadius);
     }
 
     public Dictionary<string, string> ToParams() => new() { ["amount"] = F(Amount) };
