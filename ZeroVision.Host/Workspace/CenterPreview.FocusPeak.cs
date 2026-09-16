@@ -5,8 +5,8 @@ using System.Windows.Media.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Focus Peaking (phím K): tô sáng các CẠNH NÉT (gradient cao) như khi chụp, giúp soi vùng lấy nét.
-// Tính trên ảnh preview hiển thị (Sobel trên luminance) -> nhanh, đồng bộ zoom/pan như clip overlay.
+// Focus Peaking (K key): highlights SHARP EDGES (high gradient) to verify focus area.
+// Evaluated on preview image (Sobel on luminance) -> fast, syncs zoom/pan identically to clip overlay.
 public partial class CenterPreview
 {
     private bool _peakOverlay;
@@ -47,8 +47,8 @@ public partial class CenterPreview
     }
 
     /// <summary>
-    /// Mask focus peaking: pixel có biên độ gradient (Sobel trên luminance) vượt ngưỡng -> tô màu nổi
-    /// (vàng-xanh lá), còn lại trong suốt. Ngưỡng thích nghi theo phân vị để hợp nhiều loại ảnh.
+    /// Focus peaking mask: pixels with gradient magnitude (Sobel on luminance) exceeding threshold -> highlight
+    /// (yellow-green), rest transparent. Adaptive threshold based on percentile.
     /// </summary>
     private static BitmapSource BuildPeakMask(BitmapSource src)
     {
@@ -79,7 +79,7 @@ public partial class CenterPreview
                 if (m > maxMag) maxMag = m;
             }
 
-        // Ngưỡng: phần các cạnh mạnh nhất (~ top vùng gradient). Dùng tỉ lệ của max + sàn tối thiểu.
+        // Threshold: strongest edges (~ top gradient region). Ratio of max + floor.
         float threshold = MathF.Max(40f, maxMag * 0.35f);
 
         var outPx = new byte[stride * h];
@@ -87,10 +87,10 @@ public partial class CenterPreview
         {
             if (mag[i] >= threshold)
             {
-                // Vàng-xanh nổi bật (kiểu focus peaking máy ảnh).
+                // High-visibility yellow-green (camera focus peaking style).
                 outPx[p] = 30; outPx[p + 1] = 255; outPx[p + 2] = 230; outPx[p + 3] = 230;
             }
-            // còn lại để 0 (trong suốt).
+            // remaining set to 0 (transparent).
         }
 
         var wb = new WriteableBitmap(w, h, src.DpiX, src.DpiY, PixelFormats.Bgra32, null);

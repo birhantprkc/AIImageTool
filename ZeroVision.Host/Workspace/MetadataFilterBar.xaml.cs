@@ -54,7 +54,7 @@ public partial class MetadataFilterBar : UserControl
         {
             Dispatcher.BeginInvoke(() =>
             {
-                txtSummary.Text = "· Không có ảnh";
+                txtSummary.Text = "· No photos";
                 lstDate.ItemsSource = null;
                 lstCamera.ItemsSource = null;
                 lstLens.ItemsSource = null;
@@ -91,7 +91,7 @@ public partial class MetadataFilterBar : UserControl
                 }
             }
 
-            // Dựng danh sách UI
+            // Build UI list
             var dateList = new List<FilterEntry<int>> { new("All Dates", images.Count, 0, true) };
             dateList.AddRange(dateCounts.OrderByDescending(kv => kv.Key).Select(kv => new FilterEntry<int>(kv.Key.ToString(), kv.Value, kv.Key)));
 
@@ -109,7 +109,7 @@ public partial class MetadataFilterBar : UserControl
                 _suppressSelectionEvents = true;
                 try
                 {
-                    txtSummary.Text = $"· {images.Count} ảnh";
+                    txtSummary.Text = $"· {images.Count} photo(s)";
                     lstDate.ItemsSource = dateList;
                     lstDate.SelectedIndex = FindSelectedIndex(dateList, _workspace.Filter.RequiredDateYear);
 

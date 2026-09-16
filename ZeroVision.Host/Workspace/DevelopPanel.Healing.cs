@@ -8,7 +8,7 @@ using ZeroVision.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Healing/Clone brush UI (#6). Spots lưu ở DevelopPanel, round-trip qua history như 1 HealingOp.
+// Healing/Clone brush UI (#6). Spots stored in DevelopPanel, round-tripped via history as HealingOp.
 public partial class DevelopPanel
 {
     private enum ActiveBrushMode
@@ -26,17 +26,17 @@ public partial class DevelopPanel
     private ComboBox? _cmbHealMode;
     private TextBlock? _healInfo;
 
-    /// <summary>Bắn true khi bật chế độ Heal/Inpaint (CenterPreview cho click chấm vết), false khi tắt.</summary>
+    /// <summary>Fires true when Heal/Inpaint active (CenterPreview enables spot click), false when disabled.</summary>
     public event EventHandler<bool>? HealingModeChanged;
 
-    /// <summary>Bán kính heal hiện tại (chuẩn hoá) — CenterPreview đọc để vẽ + auto-source.</summary>
+    /// <summary>Current heal radius (normalized) — CenterPreview reads to draw + auto-source.</summary>
     public float HealRadius => _healRadius;
 
     private void BuildHealingUI(StackPanel host)
     {
         _chkHealActive = new CheckBox
         {
-            Content = "Bật Healing / AI Inpaint (click vào ảnh để xoá)", FontSize = 11,
+            Content = "Enable Healing / Inpaint (click photo to erase)", FontSize = 11,
             Margin = new Thickness(0, 2, 0, 4)
         };
         _chkHealActive.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
@@ -45,10 +45,10 @@ public partial class DevelopPanel
         host.Children.Add(_chkHealActive);
 
         var modeRow = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        modeRow.Children.Add(new TextBlock { Text = "Chế độ", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        modeRow.Children.Add(new TextBlock { Text = "Mode", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         var cmbMode = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
-        cmbMode.Items.Add(new ComboBoxItem { Content = "Heal (vá liền)" });
-        cmbMode.Items.Add(new ComboBoxItem { Content = "Clone (chép thẳng)" });
+        cmbMode.Items.Add(new ComboBoxItem { Content = "Heal" });
+        cmbMode.Items.Add(new ComboBoxItem { Content = "Clone" });
         cmbMode.Items.Add(new ComboBoxItem { Content = "✨ AI Inpaint (PDE Diffusion)" });
         _cmbHealMode = cmbMode;
         cmbMode.SelectedIndex = 0;
@@ -71,7 +71,7 @@ public partial class DevelopPanel
         slider.ValueChanged += (_, e) => { _healRadius = (float)e.NewValue; };
         host.Children.Add(row);
 
-        var btnUndo = new Button { Content = "↶ Xoá chấm cuối", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 2, 0, 2) };
+        var btnUndo = new Button { Content = "↶ Undo Last Spot", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 2, 0, 2) };
         btnUndo.Click += (_, _) =>
         {
             if (_healSpots.Count > 0) { _healSpots.RemoveAt(_healSpots.Count - 1); UpdateHealInfo(); Commit(); }
@@ -93,11 +93,11 @@ public partial class DevelopPanel
                 ActiveBrushMode.AiInpaint => "AI Inpaint",
                 _ => "Heal"
             };
-            _healInfo.Text = $"{_healSpots.Count} vùng [{modeName}]";
+            _healInfo.Text = $"{_healSpots.Count} spot(s) [{modeName}]";
         }
     }
 
-    /// <summary>CenterPreview gọi khi user click 1 điểm (toạ độ chuẩn hoá). Auto-pick nguồn lân cận sạch.</summary>
+    /// <summary>Called by CenterPreview when user clicks a point. Auto-picks clean neighbor source.</summary>
     public void AddHealSpot(float tx, float ty)
     {
         if (_currentPath == null || _history == null) return;

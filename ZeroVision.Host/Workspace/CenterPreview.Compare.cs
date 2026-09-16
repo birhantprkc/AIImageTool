@@ -19,7 +19,7 @@ public partial class CenterPreview
 
     private void BtnCompare_Click(object sender, RoutedEventArgs e) => ToggleCompareMode();
 
-    /// <summary>Zoom đồng bộ 2 khung compare (8.6) — cuộn chuột phóng cả before lẫn after cùng mức.</summary>
+    /// <summary>Synchronized zoom across 2 compare panes (8.6) — wheel zooms both simultaneously.</summary>
     private void PaneCompare_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         if (!_compareMode) return;
@@ -31,7 +31,7 @@ public partial class CenterPreview
         cmpScaleBefore.ScaleX = cmpScaleBefore.ScaleY = _cmpZoom;
         cmpScaleAfter.ScaleX = cmpScaleAfter.ScaleY = _cmpZoom;
 
-        // Zoom bám theo vị trí con trỏ chuột
+        // Zoom centered on cursor position
         var mousePos = e.GetPosition(paneCompare);
         bool isAfterSide = mousePos.X > paneCompare.ActualWidth / 2;
         var p = isAfterSide ? e.GetPosition(imgCompareAfter) : e.GetPosition(imgCompareBefore);
@@ -103,7 +103,7 @@ public partial class CenterPreview
         cmpPanBefore.X = Math.Clamp(cmpPanBefore.X, -maxX, 0);
         cmpPanBefore.Y = Math.Clamp(cmpPanBefore.Y, -maxY, 0);
 
-        // Đồng bộ hoàn toàn sang After
+        // Synchronize completely to After pane
         cmpPanAfter.X = cmpPanBefore.X;
         cmpPanAfter.Y = cmpPanBefore.Y;
     }
@@ -125,7 +125,7 @@ public partial class CenterPreview
         _compareMode = !_compareMode;
         if (_compareMode)
         {
-            // tắt crop nếu đang bật để tránh tranh chấp overlay.
+            // Disable crop if active to avoid overlay conflict.
             if (_cropMode) ToggleCropMode();
             paneSingle.Visibility = Visibility.Collapsed;
             paneGrid.Visibility = Visibility.Collapsed;
@@ -146,10 +146,10 @@ public partial class CenterPreview
         }
     }
 
-    /// <summary>Render ảnh gốc (pointer=0) và ảnh đã chỉnh (pointer hiện tại) vào 2 khung.</summary>
+    /// <summary>Render original image (pointer=0) and edited image (current pointer) into 2 panes.</summary>
     private async System.Threading.Tasks.Task LoadCompareAsync(string path)
     {
-        // AFTER: ảnh đã chỉnh. BEFORE: ảnh gốc.
+        // AFTER: edited image. BEFORE: original image.
         var ops = _history?.GetStack(path) ?? (IReadOnlyList<EditOperation>)Array.Empty<EditOperation>();
         int pointer = _history?.GetPointer(path) ?? 0;
 
@@ -167,7 +167,7 @@ public partial class CenterPreview
             catch { }
         }
 
-        // Fallback: ảnh chưa chỉnh hoặc không decode được -> cả 2 khung là ảnh gốc trên đĩa.
+        // Fallback: unedited or undecodable image -> both panes show original file from disk.
         try
         {
             var bmp = new BitmapImage();

@@ -14,10 +14,10 @@ namespace ZeroVision.Host.Workspace;
 /// </summary>
 public sealed class PhotoPrintDialog : Window
 {
-    private readonly ComboBox _paper = NewCombo("A4", "A3", "A5", "Letter", "Legal", "4×6 (ảnh)", "5×7 (ảnh)", "8×10 (ảnh)");
-    private readonly ComboBox _orient = NewCombo("Dọc (Portrait)", "Ngang (Landscape)");
-    private readonly ComboBox _dpi = NewCombo("150 DPI", "200 DPI", "300 DPI (in chất lượng)");
-    private readonly ComboBox _fit = NewCombo("Fit (vừa khít, có viền)", "Fill (lấp đầy, cắt bớt)");
+    private readonly ComboBox _paper = NewCombo("A4", "A3", "A5", "Letter", "Legal", "4×6 (Photo)", "5×7 (Photo)", "8×10 (Photo)");
+    private readonly ComboBox _orient = NewCombo("Portrait", "Landscape");
+    private readonly ComboBox _dpi = NewCombo("150 DPI (Draft)", "200 DPI (Normal)", "300 DPI (High Quality)");
+    private readonly ComboBox _fit = NewCombo("Fit (Preserve aspect, border)", "Fill (Crop to fill)");
     private readonly TextBox _rows = NewBox("1");
     private readonly TextBox _cols = NewBox("1");
     private readonly TextBox _margin = NewBox("10");
@@ -28,7 +28,7 @@ public sealed class PhotoPrintDialog : Window
 
     public PhotoPrintDialog(int imageCount)
     {
-        Title = $"In ấn — {imageCount} ảnh";
+        Title = $"Print Module — {imageCount} photo(s)";
         Width = 360;
         Height = 480;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -51,26 +51,26 @@ public sealed class PhotoPrintDialog : Window
 
         _showName = new CheckBox
         {
-            Content = "Hiện tên file dưới mỗi ảnh",
+            Content = "Show file name under each photo",
             Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 4, 0, 6)
         };
 
         var sp = new StackPanel { Margin = new Thickness(16) };
-        sp.Children.Add(Label("Khổ giấy"));
+        sp.Children.Add(Label("Paper Size"));
         sp.Children.Add(_paper);
-        sp.Children.Add(Label("Hướng"));
+        sp.Children.Add(Label("Orientation"));
         sp.Children.Add(_orient);
-        sp.Children.Add(Label("Độ phân giải in"));
+        sp.Children.Add(Label("Print Resolution"));
         sp.Children.Add(_dpi);
-        sp.Children.Add(Row("Lưới: hàng × cột", _rows, _cols));
-        sp.Children.Add(Row("Lề (mm) · khoảng cách (mm)", _margin, _gap));
-        sp.Children.Add(Label("Cách đặt ảnh"));
+        sp.Children.Add(Row("Grid: Rows × Columns", _rows, _cols));
+        sp.Children.Add(Row("Margins (mm) · Spacing (mm)", _margin, _gap));
+        sp.Children.Add(Label("Image Fitting Mode"));
         sp.Children.Add(_fit);
         sp.Children.Add(_showName);
 
         var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
-        var ok = new Button { Content = "Tạo file in", Width = 96, Height = 28, IsDefault = true };
-        var cancel = new Button { Content = "Huỷ", Width = 72, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+        var ok = new Button { Content = "Render Print", Width = 96, Height = 28, IsDefault = true };
+        var cancel = new Button { Content = "Cancel", Width = 72, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
         ok.Click += OnOk;
         cancel.Click += (_, _) => DialogResult = false;
         btnPanel.Children.Add(ok);

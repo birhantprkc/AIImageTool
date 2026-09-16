@@ -18,7 +18,7 @@
             <DockPanel>
                 <TextBlock Text="✦ Copy Settings" FontSize="14" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="Chọn các nhóm thông số cần sao chép sang clipboard" FontSize="11"
+                <TextBlock Text="Select adjustment categories to copy to clipboard" FontSize="11"
                            Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
                            HorizontalAlignment="Right"/>
             </DockPanel>

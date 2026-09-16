@@ -58,12 +58,12 @@ public partial class MainWindow : Window
         _hostProvider = hostProvider;
         _hostProvider.Host = centerView; // CenterPreview implement IImageToolHost
         _developClipboard = serviceProvider.GetRequiredService<DevelopClipboard>();
-        _aiMaskService = serviceProvider.GetRequiredService<AiMaskService>(); // đăng ký delegate AI denoise + segmentation
+        _aiMaskService = serviceProvider.GetRequiredService<AiMaskService>(); // Register AI denoise + segmentation delegates
 
         // Load saved batch parallel
         _batch.MaxParallel = Math.Max(1, _settings.Current.BatchParallel);
 
-        // Lắng nghe sự kiện để cập nhật tiến trình Batch Export/Rename
+        // Listen to events to update Batch Export/Rename progress
         _batch.QueueChanged += (s, e) => UpdateBatchStatusOnUI();
         _batch.JobUpdated += (s, job) => UpdateBatchStatusOnUI();
 
@@ -98,24 +98,24 @@ public partial class MainWindow : Window
         centerView.BindMaskGizmo(developPanel);
         navigatorPanel.BindCenterPreview(centerView);
 
-        // AI Subject mask: DevelopPanel yêu cầu -> AiMaskService sinh mask PNG -> AddRasterMask.
+        // AI Subject mask: DevelopPanel requests -> AiMaskService generates PNG mask -> AddRasterMask.
         developPanel.SubjectMaskRequested += async (s, path) =>
         {
-            txtStatus.Text = "AI: đang phân vùng chủ thể (lần đầu sẽ tải model)...";
+            txtStatus.Text = "AI: segmenting subject (model will download on first run)...";
             try
             {
                 var maskPath = await _aiMaskService.GenerateSubjectMaskAsync(path);
                 if (maskPath != null)
                 {
                     developPanel.AddRasterMask(maskPath);
-                    txtStatus.Text = "AI: đã tạo mask chủ thể.";
+                    txtStatus.Text = "AI: subject mask created.";
                 }
-                else txtStatus.Text = "AI: không tạo được mask (xem app.log).";
+                else txtStatus.Text = "AI: failed to create mask (see app.log).";
             }
             catch (Exception ex)
             {
                 ZeroVision.Shared.AppLog.Error("MainWindow.SubjectMask", path, ex);
-                txtStatus.Text = "AI: lỗi tạo mask.";
+                txtStatus.Text = "AI: error creating mask.";
             }
         };
 
@@ -159,7 +159,7 @@ public partial class MainWindow : Window
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
 
-        // Toast: tự ẩn sau timer.
+        // Toast: auto hide after timer.
         _toastTimer.Tick += (s, e) =>
         {
             _toastTimer.Stop();
@@ -169,13 +169,13 @@ public partial class MainWindow : Window
             fadeOut.Completed += (_, _) => toastBorder.Visibility = Visibility.Collapsed;
             toastBorder.BeginAnimation(OpacityProperty, fadeOut);
         };
-        // Báo khi job batch xong (export/style/upscale...).
+        // Notify when batch job finishes (export/style/upscale...).
         _batch.JobUpdated += (s, job) =>
         {
             if (job.Status == BatchJobStatus.Completed)
-                Dispatcher.BeginInvoke(() => ShowToast($"Xong: {job.DisplayName}"));
+                Dispatcher.BeginInvoke(() => ShowToast($"Completed: {job.DisplayName}"));
             else if (job.Status == BatchJobStatus.Failed)
-                Dispatcher.BeginInvoke(() => ShowToast($"Lỗi: {job.DisplayName}"));
+                Dispatcher.BeginInvoke(() => ShowToast($"Failed: {job.DisplayName}"));
         };
 
         // Track recent images when user makes edits
@@ -254,7 +254,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(UpdateAutoAdvanceBadge);
         }
 
-        // Bảng phím tắt: F1 hoặc ? (Shift+/) bật/tắt; Esc đóng. Hoạt động cả khi chưa chọn ảnh.
+        // Keyboard shortcuts: F1 or ? (Shift+/) toggle; Esc to close. Works even without selected photo.
         if (!typingNow && (e.Key == System.Windows.Input.Key.F1
             || (e.Key == System.Windows.Input.Key.OemQuestion && !ctrlMod)))
         {
@@ -307,8 +307,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Điều hướng ảnh bằng ← → hoạt động cả khi chưa có ảnh active (miễn là có ảnh trong danh sách),
-        // và bất kể focus đang ở Grid/Filmstrip/Browser (PreviewKeyDown tunneling).
+        // Photo navigation with ← → works even without an active image (as long as images exist),
+        // and regardless of focus in Grid/Filmstrip/Browser (PreviewKeyDown tunneling).
         if (!typingNow && !ctrlMod && _workspace.Images.Count > 0)
         {
             if (e.Key == System.Windows.Input.Key.Left) { NavigateActiveImage(-1); e.Handled = true; return; }
@@ -320,11 +320,11 @@ public partial class MainWindow : Window
         bool ctrl = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0;
         bool shift = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0;
 
-        // Không nuốt phím khi đang gõ vào ô nhập liệu (TextBox/ComboBox editable).
+        // Do not swallow keys when typing into editable inputs (TextBox/ComboBox).
         bool typing = System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox
             || System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase;
 
-        // Phím chuyển module kiểu Lightroom (không khi đang gõ, không khi giữ modifier).
+        // Lightroom-style module switcher keys (when not typing and no modifier pressed).
         if (!typing && !ctrl && !shift)
         {
             switch (e.Key)
@@ -362,13 +362,13 @@ public partial class MainWindow : Window
                 case System.Windows.Input.Key.Z:
                 {
                     var op = _history.Undo(path);
-                    txtStatus.Text = op != null ? $"Hoàn tác: {OpLabel(op)}" : "Không còn gì để hoàn tác";
+                    txtStatus.Text = op != null ? $"Undo: {OpLabel(op)}" : "Nothing to undo";
                     e.Handled = true; return;
                 }
                 case System.Windows.Input.Key.Y:
                 {
                     var op = _history.Redo(path);
-                    txtStatus.Text = op != null ? $"Làm lại: {OpLabel(op)}" : "Không còn gì để làm lại";
+                    txtStatus.Text = op != null ? $"Redo: {OpLabel(op)}" : "Nothing to redo";
                     e.Handled = true; return;
                 }
             }
@@ -452,7 +452,7 @@ public partial class MainWindow : Window
                     e.Handled = true;
                 }
                 break;
-            // (← → điều hướng ảnh đã xử lý sớm phía trên, trước guard ActiveImage.)
+            // (← → photo navigation handled earlier above, before ActiveImage guard.)
         }
     }
 
@@ -592,7 +592,7 @@ public partial class MainWindow : Window
     {
         var path = _workspace.ActiveImage;
         if (string.IsNullOrEmpty(path) || !VirtualCopyHelper.IsVirtualCopy(path)) return;
-        if (System.Windows.MessageBox.Show("Xoá Virtual Copy này?", "Virtual Copy",
+        if (System.Windows.MessageBox.Show("Delete this Virtual Copy?", "Virtual Copy",
             System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question) == System.Windows.MessageBoxResult.OK)
         {
             _history.DeleteVirtualCopy(path);
@@ -601,7 +601,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Chuyển ảnh active sang ảnh kế tiếp (+1) / trước đó (-1) trong danh sách hiện tại.</summary>
+    /// <summary>Navigate active image to next (+1) / previous (-1) in current list.</summary>
     private void NavigateActiveImage(int delta)
     {
         var images = _workspace.Images;
@@ -615,7 +615,7 @@ public partial class MainWindow : Window
         _workspace.SetSelection(new[] { path });
     }
 
-    /// <summary>Ảnh đích cho thao tác meta nhanh: toàn bộ selection, nếu rỗng thì ảnh active.</summary>
+    /// <summary>Target images for quick metadata actions: entire selection, or active image if empty.</summary>
     private List<string> MetaTargets()
         => _workspace.Selection.Count > 0
             ? _workspace.Selection.ToList()
@@ -632,14 +632,14 @@ public partial class MainWindow : Window
         {
             try
             {
-                txtStatus.Text = "Đang import ảnh vào thư viện...";
+                txtStatus.Text = "Importing photo into catalog...";
                 await catalog.ImportAsync(new[] { active }, new ImportOptions { Mode = ImportMode.AddInPlace });
-                txtStatus.Text = "Đã import ảnh.";
+                txtStatus.Text = "Photo imported.";
             }
             catch (Exception ex)
             {
-                AppLog.Warn("MainWindow.QuickCollection", $"Không thể tự động import ảnh {active}: {ex.Message}");
-                ShowToast("Không thể import ảnh này vào thư viện.");
+                AppLog.Warn("MainWindow.QuickCollection", $"Failed to auto-import photo {active}: {ex.Message}");
+                ShowToast("Failed to import photo into catalog.");
                 return;
             }
         }
@@ -657,12 +657,12 @@ public partial class MainWindow : Window
         if (exists)
         {
             catalog.RemoveFromCollection(quickCol.Id, new[] { active });
-            ShowToast("Đã xoá khỏi Quick Collection");
+            ShowToast("Removed from Quick Collection");
         }
         else
         {
             catalog.AddToCollection(quickCol.Id, new[] { active });
-            ShowToast("Đã thêm vào Quick Collection");
+            ShowToast("Added to Quick Collection");
         }
     }
 
@@ -671,7 +671,7 @@ public partial class MainWindow : Window
         var t = MetaTargets();
         if (t.Count == 0) return;
         _meta.SetRatingMany(t, rating);
-        if (t.Count > 1) txtStatus.Text = $"Đặt {rating}★ cho {t.Count} ảnh";
+        if (t.Count > 1) txtStatus.Text = $"Set {rating}★ for {t.Count} photos";
     }
 
     private void ApplyPickToTargets(PickFlag pick)
@@ -681,8 +681,8 @@ public partial class MainWindow : Window
         _meta.SetPickMany(t, pick);
         if (t.Count > 1)
         {
-            string label = pick == PickFlag.Pick ? "Pick" : pick == PickFlag.Reject ? "Reject" : "bỏ cờ";
-            txtStatus.Text = $"Đặt {label} cho {t.Count} ảnh";
+            string label = pick == PickFlag.Pick ? "Pick" : pick == PickFlag.Reject ? "Reject" : "Unflag";
+            txtStatus.Text = $"Set {label} for {t.Count} photos";
         }
     }
 
@@ -691,14 +691,14 @@ public partial class MainWindow : Window
         var t = MetaTargets();
         if (t.Count == 0) return;
         _meta.SetLabelMany(t, label);
-        if (t.Count > 1) txtStatus.Text = $"Gắn nhãn {label} cho {t.Count} ảnh";
+        if (t.Count > 1) txtStatus.Text = $"Set {label} label for {t.Count} photos";
     }
 
     // ===== Copy/Paste Develop settings =====
     private static string OpLabel(EditOperation op)
         => ZeroVision.Shared.OpDisplayNames.Get(op.OpType, op.Title);
 
-    /// <summary>Chọn tab panel phải theo header (kiểu LR module switch D/M).</summary>
+    /// <summary>Select right panel tab by header (LR-style module switch D/M).</summary>
     private void SelectRightTab(string header)
     {
         foreach (var item in rightTabs.Items)
@@ -711,7 +711,7 @@ public partial class MainWindow : Window
 
     private readonly System.Windows.Threading.DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
-    /// <summary>Hiển thị toast không chặn bằng ZeroUI ToastNotification, fallback overlay nếu cần.</summary>
+    /// <summary>Show non-blocking toast using ZeroUI ToastNotification, fallback to overlay if needed.</summary>
     public void ShowToast(string message)
     {
         Dispatcher.BeginInvoke(() =>
@@ -787,8 +787,8 @@ public partial class MainWindow : Window
             if (_developClipboard.Copy(_history, src, dlg.SelectedKeys))
             {
                 txtStatus.Text = _developClipboard.HasData
-                    ? $"Đã copy settings ({_developClipboard.Count} bước, {dlg.SelectedKeys.Count} nhóm) từ {Path.GetFileName(src)}"
-                    : "Đã copy (ảnh gốc, không có chỉnh sửa)";
+                    ? $"Copied settings ({_developClipboard.Count} steps, {dlg.SelectedKeys.Count} groups) from {Path.GetFileName(src)}"
+                    : "Copied settings (original photo, no adjustments)";
             }
         }
         else
@@ -796,8 +796,8 @@ public partial class MainWindow : Window
             if (_developClipboard.Copy(_history, src))
             {
                 txtStatus.Text = _developClipboard.HasData
-                    ? $"Đã copy settings ({_developClipboard.Count} bước) từ {Path.GetFileName(src)}"
-                    : "Đã copy (ảnh gốc, không có chỉnh sửa)";
+                    ? $"Copied settings ({_developClipboard.Count} steps) from {Path.GetFileName(src)}"
+                    : "Copied settings (original photo, no adjustments)";
             }
         }
     }
@@ -806,16 +806,16 @@ public partial class MainWindow : Window
     {
         if (!_developClipboard.HasCopied)
         {
-            txtStatus.Text = "Chưa có settings nào được copy (Ctrl+Shift+C trước)";
+            txtStatus.Text = "No settings copied (press Ctrl+Shift+C or Ctrl+C first)";
             return;
         }
-        // Áp cho toàn bộ ảnh đang chọn; nếu không có selection thì ảnh active.
+        // Apply to all selected images; fallback to active image if empty.
         var targets = _workspace.Selection.Count > 0
             ? _workspace.Selection.ToList()
             : (_workspace.ActiveImage != null ? new List<string> { _workspace.ActiveImage } : new List<string>());
         if (targets.Count == 0) return;
         int n = _developClipboard.PasteToMany(_history, targets);
-        txtStatus.Text = $"Đã dán settings vào {n} ảnh";
+        txtStatus.Text = $"Pasted settings to {n} photos";
     }
 
     private void LoadPlugins()
@@ -830,8 +830,8 @@ public partial class MainWindow : Window
             try { plugin.Initialize(_serviceProvider); }
             catch (Exception ex)
             {
-                failures.Add($"{plugin.Name}: khởi tạo lỗi - {ex.Message}");
-                AppLog.Error("MainWindow.LoadPlugins", $"Initialize plugin '{plugin.Name}' lỗi", ex);
+                failures.Add($"{plugin.Name}: initialization error - {ex.Message}");
+                AppLog.Error("MainWindow.LoadPlugins", $"Initialize plugin '{plugin.Name}' error", ex);
             }
         }
 
@@ -844,8 +844,8 @@ public partial class MainWindow : Window
 
         if (failures.Count > 0)
             ShowToast(failures.Count == 1
-                ? $"Plugin lỗi: {failures[0]}"
-                : $"{failures.Count} plugin nạp lỗi (xem app.log)");
+                ? $"Plugin error: {failures[0]}"
+                : $"{failures.Count} plugins failed to load (see app.log)");
     }
 
     private void LstPlugins_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -856,15 +856,15 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 contentPresenter.Content = null;
-                AppLog.Error("MainWindow.PluginUI", $"GetUIComponent '{entry.Name}' lỗi", ex);
-                ShowToast($"Không mở được giao diện plugin '{entry.Name}'");
+                AppLog.Error("MainWindow.PluginUI", $"GetUIComponent '{entry.Name}' error", ex);
+                ShowToast($"Failed to load UI for plugin '{entry.Name}'");
             }
         }
     }
 
     private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục ảnh" };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Select Photo Folder" };
         if (!string.IsNullOrEmpty(_settings.Current.LastFolder))
             dlg.InitialDirectory = _settings.Current.LastFolder;
         if (dlg.ShowDialog() == true)
@@ -881,22 +881,22 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
-    /// <summary>Menu công cụ tổng (Merge HDR / Focus Stack / Batch Rename) trên selection — đưa tính
-    /// năng vốn ẩn trong context menu ra toolbar cho dễ tìm.</summary>
+    /// <summary>Master tools menu (Merge HDR / Focus Stack / Batch Rename) on selection — exposes
+    /// context menu actions directly on toolbar for quick access.</summary>
     private void BtnMore_Click(object sender, RoutedEventArgs e)
     {
-        var targets = MetaTargets(); // selection, hoặc ảnh active nếu selection rỗng
+        var targets = MetaTargets(); // selection, or active image if selection is empty
         var menu = new System.Windows.Controls.ContextMenu();
 
         var miHdr = new System.Windows.Controls.MenuItem { Header = "Merge to HDR (Exposure Fusion)", IsEnabled = targets.Count >= 2 };
         miHdr.Click += (_, _) => ImageContextMenu.RunMerge(targets, ZeroVision.Shared.MergeService.Mode.Hdr);
         menu.Items.Add(miHdr);
 
-        var miFocus = new System.Windows.Controls.MenuItem { Header = "Focus Stack (nét toàn bộ)", IsEnabled = targets.Count >= 2 };
+        var miFocus = new System.Windows.Controls.MenuItem { Header = "Focus Stack (Full Depth of Field)", IsEnabled = targets.Count >= 2 };
         miFocus.Click += (_, _) => ImageContextMenu.RunMerge(targets, ZeroVision.Shared.MergeService.Mode.FocusStack);
         menu.Items.Add(miFocus);
 
-        var miPano = new System.Windows.Controls.MenuItem { Header = "Panorama (ghép ảnh chồng lấn)", IsEnabled = targets.Count >= 2 };
+        var miPano = new System.Windows.Controls.MenuItem { Header = "Panorama Stitcher", IsEnabled = targets.Count >= 2 };
         miPano.Click += (_, _) => ImageContextMenu.RunMerge(targets, ZeroVision.Shared.MergeService.Mode.Panorama);
         menu.Items.Add(miPano);
 
@@ -908,36 +908,36 @@ public partial class MainWindow : Window
 
         menu.Items.Add(new System.Windows.Controls.Separator());
 
-        var miDup = new System.Windows.Controls.MenuItem { Header = "Tìm ảnh trùng/gần trùng", IsEnabled = _workspace.Images.Count >= 2 };
+        var miDup = new System.Windows.Controls.MenuItem { Header = "Find Duplicate / Similar Photos", IsEnabled = _workspace.Images.Count >= 2 };
         miDup.Click += (_, _) => FindDuplicates();
         menu.Items.Add(miDup);
 
-        var miUrl = new System.Windows.Controls.MenuItem { Header = "Import ảnh từ URL..." };
+        var miUrl = new System.Windows.Controls.MenuItem { Header = "Import Photo from URL..." };
         miUrl.Click += (_, _) => ImportFromUrl();
         menu.Items.Add(miUrl);
 
         var miWatch = new System.Windows.Controls.MenuItem
         {
-            Header = _folderWatcher?.IsWatching == true ? "Tắt theo dõi thư mục" : "Theo dõi thư mục (auto-import)",
+            Header = _folderWatcher?.IsWatching == true ? "Disable Auto-Import Watcher" : "Enable Auto-Import Folder Watcher",
             IsEnabled = !string.IsNullOrEmpty(_workspace.CurrentFolder),
         };
         miWatch.Click += (_, _) => ToggleWatchFolder();
         menu.Items.Add(miWatch);
 
         if (targets.Count == 0)
-            menu.Items.Add(new System.Windows.Controls.MenuItem { Header = "(chọn ảnh trước)", IsEnabled = false });
+            menu.Items.Add(new System.Windows.Controls.MenuItem { Header = "(Select photo first)", IsEnabled = false });
 
         menu.PlacementTarget = btnMore;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         menu.IsOpen = true;
     }
 
-    /// <summary>Tìm ảnh gần trùng (#1) trong danh sách hiện tại, chọn toàn bộ nhóm trùng để xem/cull.</summary>
+    /// <summary>Find duplicate/similar photos (#1) in current list, selecting all duplicate groups for review/culling.</summary>
     private async void FindDuplicates()
     {
         var paths = _workspace.Images.ToList();
         if (paths.Count < 2) return;
-        txtStatus.Text = "Đang quét ảnh trùng...";
+        txtStatus.Text = "Scanning for duplicates...";
         try
         {
             var decoders = ZeroVision.Imaging.ImageDecoderRegistry.CreateDefault();
@@ -947,40 +947,40 @@ public partial class MainWindow : Window
             if (groups.Count == 0)
             {
                 txtStatus.Text = "";
-                MessageBox.Show("Không tìm thấy ảnh trùng/gần trùng.", "Tìm ảnh trùng",
+                MessageBox.Show("No duplicate or similar photos found.", "Find Duplicates",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // Chọn toàn bộ ảnh thuộc các nhóm trùng -> user xem/lọc/xoá.
+            // Select all photos in duplicate groups -> user can review/filter/delete.
             var selection = new List<string>();
             int dupCount = 0;
             foreach (var g in groups) { selection.AddRange(g); dupCount += g.Count - 1; }
             _workspace.SetSelection(selection);
             if (selection.Count > 0) _workspace.SetActiveImage(selection[0]);
-            txtStatus.Text = $"Tìm thấy {groups.Count} nhóm, {dupCount} ảnh trùng (đã chọn {selection.Count}).";
+            txtStatus.Text = $"Found {groups.Count} groups, {dupCount} duplicates ({selection.Count} selected).";
         }
         catch (Exception ex)
         {
             txtStatus.Text = "";
-            AppLog.Error("MainWindow.FindDuplicates", "quét trùng lỗi", ex);
-            MessageBox.Show($"Lỗi quét ảnh trùng: {ex.Message}", "Tìm ảnh trùng",
+            AppLog.Error("MainWindow.FindDuplicates", "Scan duplicates error", ex);
+            MessageBox.Show($"Error scanning duplicates: {ex.Message}", "Find Duplicates",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private static System.Net.Http.HttpClient? _urlHttp;
 
-    /// <summary>Import ảnh từ URL (dán link): tải an toàn về thư mục hiện tại rồi chọn ảnh.</summary>
+    /// <summary>Import photo from URL (paste link): securely downloads to current folder and selects image.</summary>
     private async void ImportFromUrl()
     {
-        var dlg = new Workspace.InputDialog("Import từ URL", "Dán link ảnh (http/https):", "https://");
+        var dlg = new Workspace.InputDialog("Import from URL", "Enter image URL (http/https):", "https://");
         dlg.Owner = this;
         if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.Result)) return;
         string url = dlg.Result.Trim();
 
         if (!ZeroVision.Shared.UrlImageImporter.IsValidImageUrl(url, out _))
         {
-            MessageBox.Show("URL không hợp lệ (chỉ chấp nhận http/https).", "Import từ URL",
+            MessageBox.Show("Invalid URL (only http/https accepted).", "Import from URL",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -989,14 +989,14 @@ public partial class MainWindow : Window
             ? _workspace.CurrentFolder!
             : System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Downloads");
 
-        txtStatus.Text = "Đang tải ảnh từ URL...";
+        txtStatus.Text = "Downloading image from URL...";
         try
         {
             _urlHttp ??= new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) };
             string saved = await ZeroVision.Shared.UrlImageImporter.DownloadAsync(url, destFolder, _urlHttp);
-            txtStatus.Text = $"Đã tải: {System.IO.Path.GetFileName(saved)}";
+            txtStatus.Text = $"Downloaded: {System.IO.Path.GetFileName(saved)}";
 
-            // Nếu đang ở đúng thư mục tải về -> refresh + chọn ảnh mới; nếu không -> mở thư mục đó.
+            // If already in destination folder -> refresh + select new photo; otherwise open destination folder.
             if (string.Equals(_workspace.CurrentFolder, destFolder, StringComparison.OrdinalIgnoreCase))
                 _workspace.OpenFolder(destFolder);
             else
@@ -1008,18 +1008,18 @@ public partial class MainWindow : Window
         {
             txtStatus.Text = "";
             AppLog.Warn("MainWindow.ImportFromUrl", $"{url}: {ex.Message}");
-            MessageBox.Show($"Không tải được ảnh: {ex.Message}", "Import từ URL",
+            MessageBox.Show($"Failed to download image: {ex.Message}", "Import from URL",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    /// <summary>Bật/tắt theo dõi thư mục hiện tại (#2): ảnh mới copy vào sẽ tự refresh + chọn.</summary>
+    /// <summary>Toggle watch folder (#2): newly added photos automatically refresh and select.</summary>
     private void ToggleWatchFolder()
     {
         if (_folderWatcher?.IsWatching == true)
         {
             _folderWatcher.Stop();
-            txtStatus.Text = "Đã tắt theo dõi thư mục.";
+            txtStatus.Text = "Folder watcher disabled.";
             return;
         }
         var folder = _workspace.CurrentFolder;
@@ -1029,12 +1029,12 @@ public partial class MainWindow : Window
         _folderWatcher.ImageAdded -= OnWatchedImageAdded;
         _folderWatcher.ImageAdded += OnWatchedImageAdded;
         _folderWatcher.Start(folder);
-        txtStatus.Text = $"Đang theo dõi: {System.IO.Path.GetFileName(folder)} (ảnh mới sẽ tự nạp).";
+        txtStatus.Text = $"Watching: {System.IO.Path.GetFileName(folder)} (new photos will auto-load).";
     }
 
     private void OnWatchedImageAdded(object? sender, string path)
     {
-        // FolderWatcher chạy ở thread nền -> đưa về UI thread.
+        // FolderWatcher runs on background thread -> dispatch to UI thread.
         Dispatcher.BeginInvoke(() =>
         {
             try
@@ -1042,10 +1042,10 @@ public partial class MainWindow : Window
                 var folder = _folderWatcher?.Folder;
                 if (folder != null && string.Equals(_workspace.CurrentFolder, folder, StringComparison.OrdinalIgnoreCase))
                 {
-                    _workspace.OpenFolder(folder);          // refresh danh sách
+                    _workspace.OpenFolder(folder);          // refresh list
                     _workspace.SetActiveImage(path);
                     _workspace.SetSelection(new[] { path });
-                    txtStatus.Text = $"Ảnh mới: {System.IO.Path.GetFileName(path)}";
+                    txtStatus.Text = $"New photo: {System.IO.Path.GetFileName(path)}";
                 }
             }
             catch (Exception ex) { AppLog.Warn("MainWindow.OnWatchedImageAdded", ex.Message); }
@@ -1117,7 +1117,7 @@ public partial class MainWindow : Window
         var applied = ThemeManager.Toggle();
         _settings.Current.Theme = applied;
         _settings.Save();
-        txtStatus.Text = $"Giao diện: {applied}";
+        txtStatus.Text = $"Theme: {applied}";
     }
 
     // ===== Custom Window Chrome handlers =====
@@ -1179,42 +1179,42 @@ public partial class MainWindow : Window
         var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
         if (files == null || files.Length == 0) return;
 
-        // Nếu thả 1 thư mục -> mở trong workspace
+        // If a single folder is dropped -> open in workspace
         if (files.Length == 1 && Directory.Exists(files[0]))
         {
             _workspace.OpenFolder(files[0]);
             return;
         }
 
-        // Lọc file ảnh được hỗ trợ
+        // Filter supported image files
         var imageFiles = files.Where(f =>
             File.Exists(f) && SupportedImageExtensions.Contains(Path.GetExtension(f)))
             .ToList();
 
         if (imageFiles.Count == 0)
         {
-            ShowToast("Không tìm thấy file ảnh được hỗ trợ.");
+            ShowToast("No supported image files found.");
             return;
         }
 
-        // Nếu chỉ có 1 ảnh -> mở thư mục chứa nó và set active
+        // If single image -> open parent folder and set active
         if (imageFiles.Count == 1)
         {
             var dir = Path.GetDirectoryName(imageFiles[0]);
             if (dir != null)
             {
                 _workspace.OpenFolder(dir);
-                // Delay nhỏ để folder load xong rồi set active
+                // Small delay for folder loading before setting active
                 Dispatcher.BeginInvoke(() => _workspace.SetActiveImage(imageFiles[0]),
                     System.Windows.Threading.DispatcherPriority.Background);
             }
             return;
         }
 
-        // Nhiều ảnh -> mở thư mục chứa ảnh đầu tiên
+        // Multiple images -> open folder of first image
         var firstDir = Path.GetDirectoryName(imageFiles[0]);
         if (firstDir != null) _workspace.OpenFolder(firstDir);
-        ShowToast($"Đã nhận {imageFiles.Count} ảnh.");
+        ShowToast($"Loaded {imageFiles.Count} photos.");
     }
 
     private void BtnPopOutTools_Click(object sender, RoutedEventArgs e)
@@ -1315,7 +1315,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ===== Nhớ bề rộng panel trái/phải (11.10) =====
+    // ===== Remember left/right panel width (11.10) =====
     private void RestorePanelLayout()
     {
         var s = _settings.Current;
@@ -1339,13 +1339,13 @@ public partial class MainWindow : Window
                 _settings.Save();
             }
         }
-        catch { /* không chặn đóng app */ }
+        catch { /* do not block window close */ }
     }
 
     private void FilterPick_Click(object sender, RoutedEventArgs e)
     {
         if (_workspace == null) return;
-        // Toggle "chỉ hiện Pick". Bật cái này tự tắt Reject + HideRejected (loại trừ nhau).
+        // Toggle "Show Picked only". Enabling auto-disables Reject + HideRejected (mutually exclusive).
         bool on = _workspace.Filter.RequiredPick != PickFlag.Pick;
         _workspace.Filter.RequiredPick = on ? PickFlag.Pick : (PickFlag?)null;
         if (on) _workspace.Filter.HideRejected = false;
@@ -1368,14 +1368,14 @@ public partial class MainWindow : Window
         if (_workspace == null) return;
         bool on = !_workspace.Filter.HideRejected;
         _workspace.Filter.HideRejected = on;
-        // Ẩn Reject mâu thuẫn với "chỉ hiện Reject" -> gỡ bộ lọc pick nếu nó đang là Reject.
+        // Hide Reject contradicts "Show Reject only" -> clear pick filter if it was Reject.
         if (on && _workspace.Filter.RequiredPick == PickFlag.Reject)
             _workspace.Filter.RequiredPick = null;
         SyncPickFilterButtons();
         _workspace.ApplyFilterAndSort();
     }
 
-    /// <summary>Cập nhật trạng thái "đang bật" (nền sáng) cho 3 nút lọc cờ.</summary>
+    /// <summary>Update active highlight state for flag filter buttons.</summary>
     private void SyncPickFilterButtons()
     {
         if (_workspace == null) return;
@@ -1391,7 +1391,7 @@ public partial class MainWindow : Window
 
     private void PlaceOnSecondaryMonitor(Window w)
     {
-        // Đặt cửa sổ Tools vào virtual screen bên phải MainWindow nếu có monitor khác.
+        // Place Tools window on virtual screen to the right of MainWindow if multi-monitor.
         double vsLeft = SystemParameters.VirtualScreenLeft;
         double vsTop = SystemParameters.VirtualScreenTop;
         double vsWidth = SystemParameters.VirtualScreenWidth;

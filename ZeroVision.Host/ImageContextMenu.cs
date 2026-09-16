@@ -46,7 +46,7 @@ public static class ImageContextMenu
 
         // --- Selective paste theo module (D6.1) ---
         var available = clipboard.ModulesAvailable();
-        var miPasteSel = new MenuItem { Header = "Paste Settings (chọn module)", IsEnabled = clipboard.HasCopied && available.Count > 0 };
+        var miPasteSel = new MenuItem { Header = "Paste Settings (Selective)...", IsEnabled = clipboard.HasCopied && available.Count > 0 };
         if (available.Count > 0)
         {
             var picked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -59,7 +59,7 @@ public static class ImageContextMenu
                 miPasteSel.Items.Add(item);
             }
             miPasteSel.Items.Add(new Separator());
-            var apply = new MenuItem { Header = "Áp module đã chọn" };
+            var apply = new MenuItem { Header = "Apply Selected Settings" };
             apply.Click += (_, _) =>
             {
                 if (picked.Count == 0) return;
@@ -156,7 +156,7 @@ public static class ImageContextMenu
             var miDelVc = new MenuItem { Header = "Delete Virtual Copy\tDel" };
             miDelVc.Click += (_, _) =>
             {
-                if (MessageBox.Show("Xoá Virtual Copy này?", "Virtual Copy",
+                if (MessageBox.Show("Delete this Virtual Copy?", "Virtual Copy",
                     MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
                 {
                     history.DeleteVirtualCopy(imagePath);
@@ -175,11 +175,11 @@ public static class ImageContextMenu
         var miMerge = new MenuItem { Header = "Merge..." };
         var miHdr = new MenuItem { Header = "Merge to HDR (Exposure Fusion)" };
         miHdr.Click += (_, _) => RunMerge(Targets(), MergeService.Mode.Hdr);
-        var miFocus = new MenuItem { Header = "Focus Stack (nét toàn bộ)" };
+        var miFocus = new MenuItem { Header = "Focus Stack (Full Depth of Field)" };
         miFocus.Click += (_, _) => RunMerge(Targets(), MergeService.Mode.FocusStack);
         miMerge.Items.Add(miHdr);
         miMerge.Items.Add(miFocus);
-        var miPano = new MenuItem { Header = "Panorama (ghép ảnh chồng lấn)" };
+        var miPano = new MenuItem { Header = "Panorama Stitcher" };
         miPano.Click += (_, _) => RunMerge(Targets(), MergeService.Mode.Panorama);
         miMerge.Items.Add(miPano);
         menu.Items.Add(miMerge);
@@ -192,7 +192,7 @@ public static class ImageContextMenu
     {
         if (targets == null || targets.Count == 0)
         {
-            MessageBox.Show("Hãy chọn ít nhất 1 ảnh để đổi tên hàng loạt.", "Batch Rename",
+            MessageBox.Show("Select at least 1 photo for batch rename.", "Batch Rename",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -206,7 +206,7 @@ public static class ImageContextMenu
         string label = mode == MergeService.Mode.FocusStack ? "Focus Stack" : "Merge to HDR";
         if (targets.Count < 2)
         {
-            MessageBox.Show($"Hãy chọn ít nhất 2 ảnh để {label}.", label, MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Select at least 2 photos to {label}.", label, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         try
@@ -221,7 +221,7 @@ public static class ImageContextMenu
         catch (Exception ex)
         {
             AppLog.Error("ImageContextMenu.Merge", label, ex);
-            MessageBox.Show($"{label} lỗi: {ex.Message}", label, MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"{label} error: {ex.Message}", label, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

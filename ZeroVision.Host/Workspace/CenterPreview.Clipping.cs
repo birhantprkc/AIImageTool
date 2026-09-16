@@ -5,7 +5,7 @@ using System.Windows.Media.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Clipping overlay (13.9): J phím bật/tắt. Đỏ = highlight cháy (>=250), xanh = shadow crushed (<=5).
+// Clipping overlay (13.9): J key toggles. Red = highlight clipping (>=250), blue = shadow clipping (<=5).
 public partial class CenterPreview
 {
     private bool _clipOverlay;
@@ -27,7 +27,7 @@ public partial class CenterPreview
         }
     }
 
-    /// <summary>Cập nhật overlay khi ảnh preview đổi (nếu đang bật).</summary>
+    /// <summary>Update overlay when preview image changes (if enabled).</summary>
     private void RefreshClipOverlayIfActive()
     {
         if (!_clipOverlay) return;
@@ -38,7 +38,7 @@ public partial class CenterPreview
         }
     }
 
-    /// <summary>Đồng bộ transform overlay với ảnh preview (zoom/pan).</summary>
+    /// <summary>Synchronize overlay transform with preview image (zoom/pan).</summary>
     private void SyncClipTransform()
     {
         zoomScaleClip.ScaleX = zoomScale.ScaleX;
@@ -48,8 +48,8 @@ public partial class CenterPreview
     }
 
     /// <summary>
-    /// Sinh ảnh mask trong suốt: pixel cháy sáng -> đỏ đặc, pixel mất chi tiết tối -> xanh đặc,
-    /// còn lại trong suốt. Dùng để phủ lên preview căn theo cùng transform.
+    /// Generate transparent mask image: clipped highlights -> solid red, crushed shadows -> solid blue,
+    /// remaining pixels transparent. Overlaid onto preview sharing identical transform.
     /// </summary>
     private static BitmapSource BuildClipMask(BitmapSource src)
     {
@@ -76,7 +76,7 @@ public partial class CenterPreview
         return wb;
     }
 
-    /// <summary>Bật/tắt tạm thời chế độ clipping preview (phục vụ phím Alt khi kéo slider QoL).</summary>
+    /// <summary>Temporarily toggle clipping preview (for Alt-drag slider QoL preview).</summary>
     public void SetTemporaryClipOverlay(bool active)
     {
         if (imgPreview.Source is not BitmapSource bs) return;
@@ -88,7 +88,7 @@ public partial class CenterPreview
         }
         else
         {
-            if (!_clipOverlay) // Chỉ ẩn đi nếu người dùng không bật cứng bằng phím J
+            if (!_clipOverlay) // Only hide if user has not permanently toggled J
             {
                 imgClip.Visibility = Visibility.Collapsed;
                 imgClip.Source = null;

@@ -58,14 +58,14 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         collectionsPanel.Bind(catalog, workspace);
     }
 
-    /// <summary>Cấp service cho context menu thumbnail (gọi sau Bind).</summary>
+    /// <summary>Provide service for thumbnail context menu (call after Bind).</summary>
     public void BindContext(IHistoryService history, DevelopClipboard clipboard)
     {
         _history = history;
         _clipboard = clipboard;
     }
 
-    /// <summary>Folder đang được chọn trong tree (null nếu chưa chọn hoặc là placeholder).</summary>
+    /// <summary>Folder currently selected in tree (null if unselected or placeholder).</summary>
     private FolderNode? SelectedFolder =>
         treeFolders.SelectedItem as FolderNode is { IsPlaceholder: false } fn ? fn : null;
 
@@ -77,7 +77,7 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
 
     private void MiImport_Click(object sender, RoutedEventArgs e) => OpenImportDialog(SelectedFolder?.Path);
 
-    /// <summary>Sync Folder (kiểu Lightroom): quét folder, import file mới vào catalog in-place.</summary>
+    /// <summary>Sync Folder (Lightroom style): scan folder, import new files into catalog in-place.</summary>
     private async void MiSync_Click(object sender, RoutedEventArgs e)
     {
         var fn = SelectedFolder;
@@ -88,20 +88,20 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         try
         {
             var result = await _catalog.SyncFolderAsync(fn.Path, recursive: true, removeMissing: false);
-            string msg = $"Đồng bộ xong:\n• {result.Added} file mới thêm vào catalog";
+            string msg = $"Synchronization complete:\n• {result.Added} new photo(s) added to catalog";
             if (result.Missing > 0)
-                msg += $"\n• {result.Missing} file trong catalog không còn trên đĩa";
+                msg += $"\n• {result.Missing} photo(s) in catalog no longer on disk";
             if (result.Added == 0 && result.Missing == 0)
-                msg = "Không có thay đổi — catalog đã khớp thư mục.";
+                msg = "No changes found — catalog is up to date.";
             MessageBox.Show(msg, "Sync Folder", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            // Mở lại folder để thấy file mới.
+            // Reopen folder to show new files.
             _workspace?.OpenFolder(fn.Path);
         }
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("Browser.Sync", fn.Path, ex);
-            MessageBox.Show($"Lỗi đồng bộ: {ex.Message}", "Sync Folder", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Sync error: {ex.Message}", "Sync Folder", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally { if (miSyncRef != null) miSyncRef.IsEnabled = true; }
     }
@@ -154,7 +154,7 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
 
     private void OnFolderOpened(object? sender, FolderOpenedEventArgs e)
     {
-        // Build list off-thread, swap collection trên UI 1 lần để chỉ raise 1 reset event.
+        // Build list off-thread, swap collection on UI once to raise only 1 reset event.
         var paths = e.Images.ToList();
         var meta = _meta;
         var thumbs = _thumbs;
@@ -340,7 +340,7 @@ public class FolderNode
     {
         Path = path;
         Name = string.IsNullOrEmpty(System.IO.Path.GetFileName(path)) ? path : System.IO.Path.GetFileName(path);
-        // Placeholder để TreeViewItem render expand arrow; tạo qua private ctor để tránh recursion vô hạn.
+        // Placeholder to let TreeViewItem render expand arrow; created via private ctor to avoid infinite recursion.
         Children.Add(new FolderNode());
     }
 
@@ -396,9 +396,9 @@ public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
     public PickFlag Pick { get => _pick; set { if (_pick == value) return; _pick = value; Raise(nameof(Pick), nameof(PickDisplay)); } }
     public bool IsSelected { get => _isSelected; set { if (_isSelected == value) return; _isSelected = value; Raise(nameof(IsSelected)); } }
     public bool IsActive { get => _isActive; set { if (_isActive == value) return; _isActive = value; Raise(nameof(IsActive)); } }
-    /// <summary>True nếu ảnh có chỉnh sửa Develop -> hiển thị badge trong grid/filmstrip.</summary>
+    /// <summary>True if photo has Develop adjustments -> displays badge in grid/filmstrip.</summary>
     public bool IsEdited { get => _isEdited; set { if (_isEdited == value) return; _isEdited = value; Raise(nameof(IsEdited)); } }
-    /// <summary>Số ảnh trong stack khi ảnh này là cover (8.7). 0 = không phải cover stack.</summary>
+    /// <summary>Number of photos in stack when this photo is cover (8.7). 0 = not a stack cover.</summary>
     public int StackCount { get => _stackCount; set { if (_stackCount == value) return; _stackCount = value; Raise(nameof(StackCount), nameof(StackBadge), nameof(IsStackCover)); } }
     public string StackBadge => _stackCount > 1 ? $"⧉ {_stackCount}" : "";
     public bool IsStackCover => _stackCount > 1;

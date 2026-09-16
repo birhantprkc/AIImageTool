@@ -25,7 +25,7 @@ public sealed class BatchRenameDialog : Window
     public BatchRenameDialog(IReadOnlyList<string> paths)
     {
         _paths = paths;
-        Title = $"Batch Rename — {paths.Count} ảnh";
+        Title = $"Batch Rename — {paths.Count} photos";
         Width = 460; Height = 520;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = ThemeManager.GetBrush("BgPanelBrush");
@@ -38,17 +38,17 @@ public sealed class BatchRenameDialog : Window
         _pattern = NewBox("{name}_{n:000}");
         _pattern.TextChanged += (_, _) => UpdatePreview();
         top.Children.Add(_pattern);
-        top.Children.Add(Label("Bắt đầu đánh số từ"));
+        top.Children.Add(Label("Start sequence numbering at:"));
         _startIndex = NewBox("1");
         _startIndex.TextChanged += (_, _) => UpdatePreview();
         top.Children.Add(_startIndex);
-        top.Children.Add(Label("Xem trước:"));
+        top.Children.Add(Label("Preview:"));
         DockPanel.SetDock(top, Dock.Top);
         root.Children.Add(top);
 
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
-        var ok = new Button { Content = "Đổi tên", Width = 90, Height = 28, IsDefault = true };
-        var cancel = new Button { Content = "Đóng", Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+        var ok = new Button { Content = "Rename", Width = 90, Height = 28, IsDefault = true };
+        var cancel = new Button { Content = "Close", Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
         ok.Click += OnRename;
         cancel.Click += (_, _) => Close();
         btnRow.Children.Add(ok); btnRow.Children.Add(cancel);
@@ -90,7 +90,7 @@ public sealed class BatchRenameDialog : Window
         if (fail > 0)
         {
             var firstErr = results.FirstOrDefault(r => !r.Success)?.Error ?? "";
-            MessageBox.Show($"Đổi tên xong: {ok} thành công, {fail} lỗi.\n{firstErr}", "Batch Rename",
+            MessageBox.Show($"Batch rename finished: {ok} succeeded, {fail} failed.\n{firstErr}", "Batch Rename",
                 MessageBoxButton.OK, fail == results.Count ? MessageBoxImage.Error : MessageBoxImage.Warning);
         }
         DialogResult = Renamed;

@@ -8,11 +8,11 @@ using ZeroVision.Shared;
 
 namespace ZeroVision.Host.Workspace;
 
-// Grid stacking UI (8.7): gom ảnh chụp liên tiếp thành nhóm, chỉ hiện cover + badge số lượng.
+// Grid stacking UI (8.7): group consecutive burst photos into stacks, showing cover + count badge.
 public partial class CenterPreview
 {
     private bool _stacked;
-    private List<ThumbItem>? _allGridBackup; // toàn bộ item trước khi gom (để mở lại)
+    private List<ThumbItem>? _allGridBackup; // full item list before stacking (to unstack)
 
     private void BtnStack_Click(object sender, RoutedEventArgs e) => ToggleStacking();
 
@@ -20,7 +20,7 @@ public partial class CenterPreview
     {
         if (_stacked)
         {
-            // mở nhóm: khôi phục toàn bộ.
+            // unstack: restore full list.
             if (_allGridBackup != null)
             {
                 foreach (var it in _allGridBackup) it.StackCount = 0;
@@ -37,7 +37,7 @@ public partial class CenterPreview
         if (current.Count == 0) return;
         _allGridBackup = current;
 
-        // gom theo thời gian sửa file (xấp xỉ thời gian chụp khi không có EXIF nhanh).
+        // group by file modification time (approximates capture time when fast EXIF is unavailable).
         var byPath = current.ToDictionary(t => t.ImagePath, StringComparer.OrdinalIgnoreCase);
         var timed = current.Select(t =>
         {

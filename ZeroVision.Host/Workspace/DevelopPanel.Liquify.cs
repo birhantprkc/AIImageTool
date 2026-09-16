@@ -8,7 +8,7 @@ using ZeroVision.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Liquify/Warp UI (D3.5). Handle lưu ở DevelopPanel, round-trip qua history như 1 LiquifyOp.
+// Liquify/Warp UI (D3.5). Handles stored in DevelopPanel, round-tripped via history as LiquifyOp.
 public partial class DevelopPanel
 {
     private readonly List<LiquifyOp.Warp> _warps = new();
@@ -16,20 +16,20 @@ public partial class DevelopPanel
     private CheckBox? _chkLiquifyActive;
     private TextBlock? _liquifyInfo;
 
-    /// <summary>Bắn true khi bật Liquify (CenterPreview cho kéo handle), false khi tắt.</summary>
+    /// <summary>Fires true when Liquify enabled (CenterPreview allows handle drag), false when disabled.</summary>
     public event EventHandler<bool>? LiquifyActivated;
 
-    /// <summary>Bắn khi danh sách warp đổi (CenterPreview vẽ lại overlay).</summary>
+    /// <summary>Fires when warp list changes (CenterPreview redraws overlay).</summary>
     public event EventHandler? LiquifyChanged;
 
-    /// <summary>CenterPreview đọc danh sách warp hiện tại để vẽ overlay.</summary>
+    /// <summary>CenterPreview reads current warp list to render overlay.</summary>
     public IReadOnlyList<LiquifyOp.Warp> GetWarps() => _warps;
 
     private void BuildLiquifyUI(StackPanel host)
     {
         _chkLiquifyActive = new CheckBox
         {
-            Content = "Bật Liquify (kéo trên ảnh để đẩy/kéo)", FontSize = 11,
+            Content = "Enable Liquify (drag on photo to warp)", FontSize = 11,
             Margin = new Thickness(0, 2, 0, 4)
         };
         _chkLiquifyActive.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
@@ -41,7 +41,7 @@ public partial class DevelopPanel
         slider.ValueChanged += (_, e) => { _liquifyRadius = (float)e.NewValue; };
         host.Children.Add(row);
 
-        var btnUndo = new Button { Content = "↶ Xoá handle cuối", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 2, 0, 2) };
+        var btnUndo = new Button { Content = "↶ Undo Last Handle", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 2, 0, 2) };
         btnUndo.Click += (_, _) =>
         {
             if (_warps.Count > 0)
@@ -54,7 +54,7 @@ public partial class DevelopPanel
         };
         host.Children.Add(btnUndo);
 
-        var btnClear = new Button { Content = "✕ Xoá tất cả handle", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 0, 2) };
+        var btnClear = new Button { Content = "✕ Clear All Handles", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 0, 2) };
         btnClear.Click += (_, _) =>
         {
             if (_warps.Count > 0)
@@ -77,7 +77,7 @@ public partial class DevelopPanel
         if (_liquifyInfo != null) _liquifyInfo.Text = $"{_warps.Count} handle";
     }
 
-    /// <summary>CenterPreview gọi khi kéo xong 1 warp (tâm chuẩn hoá + vector dịch theo cạnh dài).</summary>
+    /// <summary>Called by CenterPreview when a warp drag completes.</summary>
     public void AddWarp(float cx, float cy, float dx, float dy)
     {
         if (_currentPath == null || _history == null) return;
@@ -87,7 +87,7 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Sinh LiquifyOp từ handle (gọi trong BuildOps). Rỗng nếu chưa có / không dịch.</summary>
+    /// <summary>Generates LiquifyOp from handles (called in BuildOps).</summary>
     private void AppendLiquifyOp(List<EditOperation> ops)
     {
         if (_warps.Count == 0) return;
@@ -97,7 +97,7 @@ public partial class DevelopPanel
         ops.Add(Op(LiquifyOp.Type, "Liquify", op.ToParams()));
     }
 
-    /// <summary>Nạp lại handle từ history (gọi trong LoadFor).</summary>
+    /// <summary>Loads handles from history (called in LoadFor).</summary>
     private void LoadLiquify(string path)
     {
         _warps.Clear();

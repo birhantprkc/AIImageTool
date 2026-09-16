@@ -45,7 +45,7 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Mở rộng + cuộn tới nhóm Local Adjustments (phím M kiểu LR Masking module).</summary>
+    /// <summary>Expand + scroll to Local Adjustments section (M key Lightroom Masking module style).</summary>
     public void FocusMasking()
     {
         if (_maskExpander == null) return;
@@ -53,7 +53,7 @@ public partial class DevelopPanel
         _maskExpander.BringIntoView();
     }
 
-    /// <summary>Dựng nhóm "Local Adjustments" (gọi từ BuildUI).</summary>
+    /// <summary>Build "Local Adjustments" group (called from BuildUI).</summary>
     private void BuildMaskUI(StackPanel host)
     {
         var addRow = new WrapPanel { Margin = new Thickness(0, 2, 0, 4) };
@@ -65,7 +65,7 @@ public partial class DevelopPanel
         AddMaskButton(addRow, "+ Lum", LuminanceRangeMask.Type);
         AddMaskButton(addRow, "+ Color", ColorRangeMask.Type);
         AddMaskButton(addRow, "+ Param", ParametricMask.Type);
-        var btnSubject = new Button { Content = "✦ AI Subject", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 4), FontSize = 11, ToolTip = "Tự chọn chủ thể bằng AI (tải model lần đầu)" };
+        var btnSubject = new Button { Content = "✦ AI Subject", Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 4), FontSize = 11, ToolTip = "Auto-select subject with AI (downloads model on first run)" };
         btnSubject.Click += (_, _) => RequestSubjectMask();
         addRow.Children.Add(btnSubject);
         AddMaskButton(addRow, "+ Sky", SkyMask.Type);
@@ -76,7 +76,7 @@ public partial class DevelopPanel
 
         _maskHint = new TextBlock
         {
-            Text = "Thêm mask để chỉnh cục bộ. Brush: chọn mask rồi vẽ trên ảnh.",
+            Text = "Add a mask for local adjustments. Brush: select mask and draw on photo.",
             Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 4)
         };
         host.Children.Add(_maskHint);
@@ -102,7 +102,7 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Bắn khi user bấm "AI Subject" — Host (có AiMaskService) lắng nghe, sinh mask rồi gọi AddRasterMask.</summary>
+    /// <summary>Fires when user clicks "AI Subject" — Host generates mask and calls AddRasterMask.</summary>
     public event EventHandler<string>? SubjectMaskRequested;
 
     private void RequestSubjectMask()
@@ -111,7 +111,7 @@ public partial class DevelopPanel
         SubjectMaskRequested?.Invoke(this, _currentPath);
     }
 
-    /// <summary>Host gọi lại sau khi AI sinh xong mask PNG: tạo 1 local mask kiểu Raster trỏ tới file đó.</summary>
+    /// <summary>Host callback once AI PNG mask is generated: creates Raster local mask.</summary>
     public void AddRasterMask(string maskFilePath, string name = "AI Subject")
     {
         if (_currentPath == null || _history == null) return;
@@ -135,7 +135,7 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Nhân bản 1 mask thành instance mới (D4.4) — chèn ngay sau bản gốc, chọn bản mới.</summary>
+    /// <summary>Duplicate a mask instance (D4.4) — inserts directly after original and selects it.</summary>
     private void DuplicateMask(LocalMask m)
     {
         if (_currentPath == null || _history == null) return;
@@ -170,7 +170,7 @@ public partial class DevelopPanel
                 var del = new Button { Content = "✕", Padding = new Thickness(5, 0, 5, 0), FontSize = 10, Margin = new Thickness(4, 0, 0, 0) };
                 del.Click += (_, _) => RemoveMask(mm);
                 DockPanel.SetDock(del, Dock.Right);
-                var dup = new Button { Content = "⧉", Padding = new Thickness(5, 0, 5, 0), FontSize = 10, Margin = new Thickness(4, 0, 0, 0), ToolTip = "Nhân bản mask (instance mới)" };
+                var dup = new Button { Content = "⧉", Padding = new Thickness(5, 0, 5, 0), FontSize = 10, Margin = new Thickness(4, 0, 0, 0), ToolTip = "Duplicate mask (new instance)" };
                 dup.Click += (_, _) => DuplicateMask(mm);
                 DockPanel.SetDock(dup, Dock.Right);
                 var sel = new Button
@@ -199,7 +199,7 @@ public partial class DevelopPanel
             {
                 _externalLayersHost.Children.Add(new TextBlock
                 {
-                    Text = "(Không có mask hoạt động)",
+                    Text = "(No active mask)",
                     Foreground = ThemeManager.GetBrush("TextDimBrush"),
                     FontSize = 10,
                     FontStyle = FontStyles.Italic,
@@ -229,7 +229,7 @@ public partial class DevelopPanel
                         IsChecked = isVisible,
                         Background = Brushes.Transparent,
                         BorderThickness = new Thickness(0),
-                        ToolTip = "Bật/Tắt mask"
+                        ToolTip = "Toggle mask enabled/disabled"
                     };
                     eye.Click += (_, _) =>
                     {
@@ -295,7 +295,7 @@ public partial class DevelopPanel
                 AddMaskGeomSlider(m, "hardness", "Hardness", 0, 0.99, 0.5);
                 _maskEditPanel.Children.Add(new TextBlock
                 {
-                    Text = "Vẽ trực tiếp trên ảnh (giữ chuột kéo). Chuột phải = xoá nét.",
+                    Text = "Paint directly on photo (drag to paint). Right-click to erase.",
                     Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap
                 });
                 break;
@@ -304,16 +304,16 @@ public partial class DevelopPanel
                 AddMaskInvertToggle(m);
                 _maskEditPanel.Children.Add(new TextBlock
                 {
-                    Text = "Click trên ảnh để đặt các đỉnh đa giác (≥3 điểm). Vùng trong đa giác được chọn.",
+                    Text = "Click on photo to place polygon vertices (≥3 points). Area inside polygon is selected.",
                     Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap
                 });
                 break;
             case PathMask.Type:
-                AddMaskGeomSlider(m, "dfeather", "Feather (mỗi node)", 0, 0.5, 0.05);
+                AddMaskGeomSlider(m, "dfeather", "Per-Node Feather", 0, 0.5, 0.05);
                 AddMaskInvertToggle(m);
                 _maskEditPanel.Children.Add(new TextBlock
                 {
-                    Text = "Click trên ảnh để đặt node (≥3). Mỗi node ghi giá trị Feather hiện tại — đổi slider giữa các lần click để mép mềm/cứng khác nhau theo từng node (path).",
+                    Text = "Click on photo to place path nodes (≥3). Each node records current Feather — change slider between clicks for variable edge softness.",
                     Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap
                 });
                 break;
@@ -338,13 +338,13 @@ public partial class DevelopPanel
                 AddMaskInvertToggle(m); // AI mask: chỉ cho đảo vùng (chủ thể <-> nền)
                 break;
             case SkyMask.Type:
-                AddMaskGeomSlider(m, "strength", "Ưu tiên vị trí", 0, 1, 0.7);
+                AddMaskGeomSlider(m, "strength", "Position Weight", 0, 1, 0.7);
                 AddMaskGeomSlider(m, "smooth", "Smoothness", 0.001, 0.5, 0.15);
                 break;
             case ParametricMask.Type:
                 _maskEditPanel.Children.Add(new TextBlock
                 {
-                    Text = "Chọn vùng theo nhiều kênh (giao điều kiện). Để Min=0, Max=1 nếu không dùng kênh.",
+                    Text = "Select region across multiple channels (intersect conditions). Keep Min=0, Max=1 for unused channels.",
                     Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 2)
                 });
                 AddParamChannel(m, "l", "Lightness");
@@ -397,7 +397,7 @@ public partial class DevelopPanel
         foreach (var cm in combineModes) cmbCombine.Items.Add(new ComboBoxItem { Content = cm });
         string curCombine = m.MaskParams.TryGetValue("combine", out var cc) ? cc : "none";
         cmbCombine.SelectedIndex = System.Math.Max(0, System.Array.IndexOf(combineModes, curCombine));
-        cmbCombine.ToolTip = "Tinh chỉnh mask theo dải độ sáng (Darktable drawn+parametric): giao/hợp/trừ.";
+        cmbCombine.ToolTip = "Refine mask using parametric range (Darktable drawn+parametric): intersect / union / subtract.";
         cmbCombine.SelectionChanged += (_, _) =>
         {
             if (_loading) return;

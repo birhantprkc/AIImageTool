@@ -11,9 +11,9 @@
             <StackPanel Margin="10">
                 <TextBlock Text="Preset" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <DockPanel Margin="0,0,0,10">
-                    <Button x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋" Width="24" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnSavePreset_Click" ToolTip="Lưu thiết lập hiện tại thành preset"/>
-                    <Button x:Name="btnDeletePreset" DockPanel.Dock="Right" Content="✕" Width="24" Margin="0,0,4,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDeletePreset_Click" ToolTip="Xoá preset đang chọn"/>
-                    <ComboBox x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged" ToolTip="Áp preset đã lưu"/>
+                    <Button x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋" Width="24" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnSavePreset_Click" ToolTip="Save current settings as preset"/>
+                    <Button x:Name="btnDeletePreset" DockPanel.Dock="Right" Content="✕" Width="24" Margin="0,0,4,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDeletePreset_Click" ToolTip="Delete selected preset"/>
+                    <ComboBox x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged" ToolTip="Apply saved preset"/>
                 </DockPanel>
 
                 <TextBlock Text="Format" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
@@ -31,22 +31,22 @@
                     <Slider x:Name="slQuality" Minimum="40" Maximum="100" Value="90"/>
                 </DockPanel>
 
-                <Expander x:Name="expAdvanced" Header="Nén nâng cao" IsExpanded="False" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8">
+                <Expander x:Name="expAdvanced" Header="Advanced Compression" IsExpanded="False" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8">
                     <StackPanel Margin="2,6,0,0">
                         <!-- Target size (jpg/webp lossy) -->
                         <StackPanel x:Name="pnlTargetSize">
-                            <TextBlock Text="Dung lượng mục tiêu (KB, 0 = bỏ qua)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Target File Size (KB, 0 = ignore)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                             <TextBox x:Name="txtTargetKB" Text="0" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22" Margin="0,0,0,8"
-                                     ToolTip="Tự dò quality để file ≤ mục tiêu (chỉ JPEG / WebP lossy)."/>
+                                     ToolTip="Automatically search quality to match target file size (JPEG / lossy WebP only)."/>
                         </StackPanel>
 
                         <!-- JPEG -->
                         <StackPanel x:Name="pnlJpeg">
                             <TextBlock Text="JPEG Chroma Subsampling" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                             <ComboBox x:Name="cmbJpegSubsample" Height="22" SelectedIndex="0" Margin="0,0,0,6">
-                                <ComboBoxItem Content="4:2:0 (nhỏ nhất)" Tag="420"/>
-                                <ComboBoxItem Content="4:2:2 (cân bằng)" Tag="422"/>
-                                <ComboBoxItem Content="4:4:4 (sắc nét, lớn hơn)" Tag="444"/>
+                                <ComboBoxItem Content="4:2:0 (Smallest size)" Tag="420"/>
+                                <ComboBoxItem Content="4:2:2 (Balanced)" Tag="422"/>
+                                <ComboBoxItem Content="4:4:4 (Full chroma, sharp)" Tag="444"/>
                             </ComboBox>
                             <DockPanel Margin="0,0,0,6">
                                 <edit:ToggleSwitch x:Name="chkJpegProgressive" DockPanel.Dock="Right" Width="30" Height="16"/>
@@ -63,10 +63,10 @@
                             </DockPanel>
                             <DockPanel Margin="0,0,0,4">
                                 <edit:ToggleSwitch x:Name="chkPngPalette" DockPanel.Dock="Right" Width="30" Height="16"/>
-                                <TextBlock Text="Palette (PNG-8, giảm mạnh dung lượng)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Indexed Palette (PNG-8, reduced size)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
                             </DockPanel>
                             <DockPanel x:Name="pnlPngColors" Margin="0,0,0,6">
-                                <TextBlock Text="{Binding Value, ElementName=slPngColors, StringFormat={}{0:F0} màu}" DockPanel.Dock="Right" Foreground="{DynamicResource AccentBrush}" Width="60"/>
+                                <TextBlock Text="{Binding Value, ElementName=slPngColors, StringFormat={}{0:F0} colors}" DockPanel.Dock="Right" Foreground="{DynamicResource AccentBrush}" Width="60"/>
                                 <Slider x:Name="slPngColors" Minimum="2" Maximum="256" Value="256" TickFrequency="1" IsSnapToTickEnabled="True"/>
                             </DockPanel>
                         </StackPanel>
@@ -79,7 +79,7 @@
                                 <ComboBoxItem Content="Lossless" Tag="lossless"/>
                                 <ComboBoxItem Content="Near-lossless" Tag="nearlossless"/>
                             </ComboBox>
-                            <TextBlock Text="WebP Effort / Method (0 nhanh – 6 nhỏ nhất)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="WebP Effort / Method (0 fastest – 6 smallest)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="{Binding Value, ElementName=slWebpMethod, StringFormat={}{0:F0}}" DockPanel.Dock="Right" Foreground="{DynamicResource AccentBrush}" Width="24"/>
                                 <Slider x:Name="slWebpMethod" Minimum="0" Maximum="6" Value="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
@@ -91,37 +91,37 @@
                             <TextBlock Text="TIFF Compression" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                             <ComboBox x:Name="cmbTiffCompression" Height="22" SelectedIndex="0" Margin="0,0,0,6">
                                 <ComboBoxItem Content="LZW" Tag="lzw"/>
-                                <ComboBoxItem Content="Deflate (nhỏ nhất)" Tag="deflate"/>
+                                <ComboBoxItem Content="Deflate (smallest size)" Tag="deflate"/>
                                 <ComboBoxItem Content="PackBits" Tag="packbits"/>
-                                <ComboBoxItem Content="None (không nén)" Tag="none"/>
+                                <ComboBoxItem Content="None (uncompressed)" Tag="none"/>
                             </ComboBox>
                         </StackPanel>
 
                         <DockPanel Margin="0,2,0,0">
                             <edit:ToggleSwitch x:Name="chkStripMeta" DockPanel.Dock="Right" Width="30" Height="16"/>
-                            <TextBlock Text="Xoá metadata (giảm dung lượng cho web)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="Strip metadata (reduce size for web)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
                         </DockPanel>
 
-                        <TextBlock Text="Output Color Profile (ICC nhúng)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                        <TextBlock Text="Output Color Profile (Embedded ICC)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <ComboBox x:Name="cmbOutputProfile" Height="22" SelectedIndex="0"
-                                  ToolTip="Nhúng ICC để màu hiển thị đúng trên web/máy khác. sRGB an toàn nhất cho web.">
-                            <ComboBoxItem Content="Không nhúng" Tag="none"/>
-                            <ComboBoxItem Content="sRGB (khuyên dùng cho web)" Tag="srgb"/>
+                                  ToolTip="Embed ICC profile for color accuracy across web and devices. sRGB is recommended for web.">
+                            <ComboBoxItem Content="Do not embed" Tag="none"/>
+                            <ComboBoxItem Content="sRGB (recommended for web)" Tag="srgb"/>
                             <ComboBoxItem Content="Adobe RGB" Tag="adobergb"/>
                             <ComboBoxItem Content="Display P3" Tag="displayp3"/>
                             <ComboBoxItem Content="Rec. 2020" Tag="rec2020"/>
                         </ComboBox>
 
-                        <TextBlock Text="Watermark vô hình (blind, không nhìn thấy)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                        <TextBlock Text="Blind Watermark (invisible copyright)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <TextBox x:Name="txtBlindWm" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22"
-                                 ToolTip="Nhúng chuỗi ẩn vào pixel (DCT) — không thấy bằng mắt, dùng chứng minh bản quyền. Để trống = tắt."/>
+                                 ToolTip="Embeds invisible payload in DCT coefficients to prove copyright ownership. Leave empty to disable."/>
                     </StackPanel>
                 </Expander>
 
-                <TextBlock Text="Max Long Edge (px, 0 = giữ nguyên)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="Max Long Edge (px, 0 = original size)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <TextBox x:Name="txtMaxLong" Text="0" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22" Margin="0,0,0,8"/>
 
-                <TextBlock Text="Xuất đa kích thước (tick = thêm bản, kèm hậu tố tên)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="Multi-size Export (check to export additional variants with name suffix)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <WrapPanel Margin="0,0,0,8">
                     <CheckBox x:Name="chkSize2048" Content="2048" Tag="2048" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,10,0"/>
                     <CheckBox x:Name="chkSize1024" Content="1024" Tag="1024" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,10,0"/>
@@ -132,8 +132,8 @@
                 <TextBlock Text="Output Sharpening" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <ComboBox x:Name="cmbSharpen" Height="22" SelectedIndex="0" Margin="0,0,0,8">
                     <ComboBoxItem Content="None" Tag="none"/>
-                    <ComboBoxItem Content="Screen (web/màn hình)" Tag="screen"/>
-                    <ComboBoxItem Content="Print Low (giấy thường)" Tag="low"/>
+                    <ComboBoxItem Content="Screen (web / display)" Tag="screen"/>
+                    <ComboBoxItem Content="Print (matte paper)" Tag="low"/>
                     <ComboBoxItem Content="Print High (matte/HiRes)" Tag="high"/>
                 </ComboBox>
 
@@ -149,23 +149,23 @@
 
                 <DockPanel Margin="0,0,0,12">
                     <edit:ToggleSwitch x:Name="chkCopyExif" DockPanel.Dock="Right" Width="30" Height="16" IsChecked="True"/>
-                    <TextBlock Text="Giữ EXIF gốc (camera/lens/ngày/GPS)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                    <TextBlock Text="Preserve original EXIF (camera, lens, date, GPS)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <Button x:Name="btnExportSelection" Content="Export Selection" Height="32" Background="{DynamicResource SuccessBrush}" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnExportSelection_Click"/>
                 <TextBlock x:Name="txtEstSize" Text="" FontSize="10" Foreground="{DynamicResource AccentBrush}" Margin="0,6,0,0"/>
-                <Button x:Name="btnContactSheet" Content="Contact Sheet…" Height="28" Margin="0,8,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnContactSheet_Click" ToolTip="Ghép ảnh đang chọn thành 1 file lưới (contact sheet)"/>
-                <Button x:Name="btnPdfCatalog" Content="PDF Catalog (ZeroReports)…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnPdfCatalog_Click" ToolTip="Xuất danh mục ảnh / contact sheet ra file PDF vector nhiều trang (ZeroReports)"/>
-                <Button x:Name="btnWebGallery" Content="Web Gallery…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnWebGallery_Click" ToolTip="Xuất trang HTML gallery (grid + lightbox) từ ảnh đang chọn"/>
-                <Button x:Name="btnPrint" Content="In ấn (Print)…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnPrint_Click" ToolTip="Dựng file ảnh sẵn-sàng-in theo khổ giấy + DPI (1 ảnh hoặc nhiều ảnh N-up trên 1 trang)"/>
+                <Button x:Name="btnContactSheet" Content="Contact Sheet…" Height="28" Margin="0,8,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnContactSheet_Click" ToolTip="Combine selected photos into a contact sheet grid"/>
+                <Button x:Name="btnPdfCatalog" Content="PDF Catalog (ZeroReports)…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnPdfCatalog_Click" ToolTip="Export photo catalog / contact sheet as multi-page PDF document (ZeroReports)"/>
+                <Button x:Name="btnWebGallery" Content="Web Gallery…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnWebGallery_Click" ToolTip="Export HTML web gallery (grid + lightbox) from selected photos"/>
+                <Button x:Name="btnPrint" Content="Print Module…" Height="28" Margin="0,6,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnPrint_Click" ToolTip="Render print-ready file by paper size and DPI (single photo or N-up grid)"/>
 
                 <TextBlock Text="Social Media" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,4"/>
                 <DockPanel Margin="0,0,0,4">
-                    <Button x:Name="btnSocialExport" DockPanel.Dock="Right" Content="Export" Width="64" Margin="6,0,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnSocialExport_Click" ToolTip="Xuất đúng kích thước nền tảng (crop-to-fill + sRGB)"/>
-                    <ComboBox x:Name="cmbSocial" Height="22" SelectedIndex="0" ToolTip="Chọn kích thước chuẩn nền tảng mạng xã hội"/>
+                    <Button x:Name="btnSocialExport" DockPanel.Dock="Right" Content="Export" Width="64" Margin="6,0,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand" Click="BtnSocialExport_Click" ToolTip="Export sized for social platform (crop-to-fill + sRGB)"/>
+                    <ComboBox x:Name="cmbSocial" Height="22" SelectedIndex="0" ToolTip="Select social media dimension preset"/>
                 </DockPanel>
 
-                <TextBlock x:Name="txtHint" Text="Chọn ảnh trong browser rồi bấm Export." FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                <TextBlock x:Name="txtHint" Text="Select photos in browser and click Export." FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

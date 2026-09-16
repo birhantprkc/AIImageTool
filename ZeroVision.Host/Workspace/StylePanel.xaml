@@ -9,14 +9,14 @@
                 <TextBlock Text="STYLES" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                 <Button x:Name="btnSave" DockPanel.Dock="Right" Content="+ Save" Height="22" Padding="8,2"
                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                        Click="BtnSave_Click" ToolTip="Lưu history hiện tại của ảnh đang chọn thành Style"/>
+                        Click="BtnSave_Click" ToolTip="Save current edits of selected photo as Style"/>
                 <Button x:Name="btnImportXmp" DockPanel.Dock="Right" Content="Import XMP" Height="22" Padding="8,2" Margin="0,0,4,0"
                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                        Click="BtnImportXmp_Click" ToolTip="Nhập preset Lightroom (.xmp) thành Style"/>
+                        Click="BtnImportXmp_Click" ToolTip="Import Lightroom Preset (.xmp) as Style"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
                     <TextBlock Text="Append" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <edit:ToggleSwitch x:Name="chkAppend" Width="30" Height="16" IsChecked="True"
-                                       ToolTip="Append: giữ chỉnh sửa hiện có, chỉ thay/thêm module của style. Bỏ chọn = thay toàn bộ."/>
+                                       ToolTip="Append: keep existing edits and only add/replace style modules. Uncheck to replace entire develop history."/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -34,7 +34,7 @@
                                                 Tag="{Binding Id}" Click="BtnApply_Click"/>
                                         <Button Content="✕" Width="22" Height="22" Margin="2,0"
                                                 Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0" Cursor="Hand"
-                                                Tag="{Binding Id}" Click="BtnDelete_Click" ToolTip="Xóa"/>
+                                                Tag="{Binding Id}" Click="BtnDelete_Click" ToolTip="Delete"/>
                                     </StackPanel>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold"/>
@@ -45,7 +45,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Text="Chưa có style nào.&#x0a;Chỉnh 1 ảnh rồi bấm + Save để lưu thành style."
+                <TextBlock Text="No styles available.&#x0a;Edit a photo and click + Save to create a style."
                            FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="12,24,12,0" TextWrapping="Wrap"
                            Visibility="{Binding HasItems, ElementName=icStyles, Converter={StaticResource InverseBoolToVis}}"/>

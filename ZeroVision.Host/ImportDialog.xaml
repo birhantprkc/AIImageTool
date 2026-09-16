@@ -23,7 +23,7 @@
                 <Button x:Name="btnBrowseSource" DockPanel.Dock="Top" Content="📁  Choose Folder..."
                         Height="30" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
                         Click="BtnBrowseSource_Click" Margin="0,0,0,8"/>
-                <TextBlock x:Name="txtSourcePath" DockPanel.Dock="Top" Text="(chưa chọn)"
+                <TextBlock x:Name="txtSourcePath" DockPanel.Dock="Top" Text="(Not selected)"
                            Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <CheckBox x:Name="chkIncludeSubfolders" Content="Include subfolders"
                           Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" IsChecked="True" Margin="0,0,0,8"/>

@@ -14,14 +14,14 @@
             <DockPanel LastChildFill="True">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                     <TextBlock Text="🔍  METADATA DRILL-DOWN" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="txtSummary" Text="· Tất cả ảnh" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtSummary" Text="· All Photos" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button x:Name="btnClose" DockPanel.Dock="Right" Content="✕" Width="22" Height="20" Padding="0" Margin="4,0,0,0"
                         Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"
-                        Click="BtnClose_Click" ToolTip="Ẩn thanh lọc metadata (\)"/>
+                        Click="BtnClose_Click" ToolTip="Hide metadata filter bar (\)"/>
                 <Button x:Name="btnResetAll" DockPanel.Dock="Right" Content="Clear All" Padding="6,1" FontSize="10"
                         Background="Transparent" Foreground="{DynamicResource AccentBrush}" BorderThickness="0" Cursor="Hand"
-                        Click="BtnResetAll_Click" ToolTip="Xoá tất cả điều kiện lọc metadata"/>
+                        Click="BtnResetAll_Click" ToolTip="Reset all metadata filters"/>
             </DockPanel>
         </Border>
 

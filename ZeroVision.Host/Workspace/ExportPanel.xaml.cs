@@ -92,7 +92,7 @@ public partial class ExportPanel : UserControl
             // Nếu đặt dung lượng mục tiêu -> hiển thị mục tiêu thay vì ước lượng theo quality.
             if (int.TryParse(txtTargetKB.Text, out var tkb) && tkb > 0 && format is "jpg" or "jpeg" or "webp")
             {
-                txtEstSize.Text = $"🎯 mục tiêu ≤ {tkb} KB / ảnh";
+                txtEstSize.Text = $"🎯 Target ≤ {tkb} KB / photo";
                 return;
             }
 
@@ -104,13 +104,13 @@ public partial class ExportPanel : UserControl
             {
                 long total = 0;
                 foreach (var sz in sizes) total += ExportSizeEstimator.EstimateBytesWithOptions(format, sw, sh, sz, quality, opts);
-                txtEstSize.Text = $"≈ {ExportSizeEstimator.Format(total)} / ảnh ({sizes.Count} bản)";
+                txtEstSize.Text = $"≈ {ExportSizeEstimator.Format(total)} / photo ({sizes.Count} sizes)";
             }
             else
             {
                 int maxLong = int.TryParse(txtMaxLong.Text, out var ml) ? ml : 0;
                 long b = ExportSizeEstimator.EstimateBytesWithOptions(format, sw, sh, maxLong, quality, opts);
-                txtEstSize.Text = $"≈ {ExportSizeEstimator.Format(b)} / ảnh";
+                txtEstSize.Text = $"≈ {ExportSizeEstimator.Format(b)} / photo";
             }
         }
         catch { txtEstSize.Text = ""; }
@@ -223,7 +223,7 @@ public partial class ExportPanel : UserControl
             Owner = Application.Current.MainWindow
         };
         var sp = new StackPanel { Margin = new Thickness(14) };
-        sp.Children.Add(new TextBlock { Text = "Tên preset:", Foreground = ThemeManager.GetBrush("TextPrimaryBrush"), Margin = new Thickness(0, 0, 0, 6) });
+        sp.Children.Add(new TextBlock { Text = "Preset name:", Foreground = ThemeManager.GetBrush("TextPrimaryBrush"), Margin = new Thickness(0, 0, 0, 6) });
         var txt = new TextBox { Padding = new Thickness(4), FontSize = 13 };
         sp.Children.Add(txt);
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
@@ -241,7 +241,7 @@ public partial class ExportPanel : UserControl
 
     private void BtnBrowse_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn folder xuất" };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Select Destination Folder" };
         if (!string.IsNullOrEmpty(txtOutDir.Text)) dlg.InitialDirectory = txtOutDir.Text;
         if (dlg.ShowDialog() == true) txtOutDir.Text = dlg.FolderName;
     }
@@ -252,7 +252,7 @@ public partial class ExportPanel : UserControl
         var paths = _workspace.Selection.ToList();
         if (paths.Count == 0)
         {
-            MessageBox.Show("Hãy chọn ảnh trước khi export.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select photos before exporting.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -377,7 +377,7 @@ public partial class ExportPanel : UserControl
         var paths = _workspace.Selection.ToList();
         if (paths.Count == 0)
         {
-            MessageBox.Show("Hãy chọn ảnh trước khi export.", "Social Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select photos before exporting.", "Social Export", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (cmbSocial.SelectedItem is not ComboBoxItem item || item.Tag is not ZeroVision.Shared.SocialPresets.Item preset) return;
@@ -408,7 +408,7 @@ public partial class ExportPanel : UserControl
         var paths = _workspace.Selection.ToList();
         if (paths.Count < 2)
         {
-            MessageBox.Show("Chọn ít nhất 2 ảnh để tạo contact sheet.", "Contact Sheet", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Select at least 2 photos to create a contact sheet.", "Contact Sheet", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         string outDir = string.IsNullOrWhiteSpace(txtOutDir.Text)
@@ -423,13 +423,13 @@ public partial class ExportPanel : UserControl
         try
         {
             int drawn = ContactSheet.Render(paths, outPath, opt);
-            MessageBox.Show(drawn > 0 ? $"Đã tạo contact sheet ({drawn} ảnh):\n{outPath}" : "Không ghép được ảnh nào.",
+            MessageBox.Show(drawn > 0 ? $"Contact sheet created ({drawn} photos):\n{outPath}" : "Failed to create contact sheet.",
                 "Contact Sheet", MessageBoxButton.OK, drawn > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("ExportPanel.ContactSheet", outPath, ex);
-            MessageBox.Show("Lỗi tạo contact sheet (xem app.log).", "Contact Sheet", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Error creating contact sheet (see app.log).", "Contact Sheet", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -439,7 +439,7 @@ public partial class ExportPanel : UserControl
         var paths = _workspace.Selection.ToList();
         if (paths.Count < 1)
         {
-            MessageBox.Show("Chọn ít nhất 1 ảnh để tạo catalog PDF.", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Select at least 1 photo to create a PDF catalog.", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         string outDir = string.IsNullOrWhiteSpace(txtOutDir.Text)
@@ -453,13 +453,13 @@ public partial class ExportPanel : UserControl
         try
         {
             int drawn = ContactSheet.RenderPdf(paths, outPath, opt, documentTitle: "ZeroVision - Photo Catalog");
-            MessageBox.Show(drawn > 0 ? $"Đã tạo PDF Catalog qua ZeroReports ({drawn} ảnh):\n{outPath}" : "Không tạo được catalog.",
+            MessageBox.Show(drawn > 0 ? $"PDF Catalog created via ZeroReports ({drawn} photos):\n{outPath}" : "Failed to create PDF catalog.",
                 "PDF Catalog", MessageBoxButton.OK, drawn > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("ExportPanel.PdfCatalog", outPath, ex);
-            MessageBox.Show("Lỗi tạo PDF catalog (xem app.log).", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Error creating PDF catalog (see app.log).", "PDF Catalog", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -469,7 +469,7 @@ public partial class ExportPanel : UserControl
         var paths = _workspace.Selection.ToList();
         if (paths.Count < 1)
         {
-            MessageBox.Show("Chọn ít nhất 1 ảnh để tạo web gallery.", "Web Gallery", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Select at least 1 photo to create a web gallery.", "Web Gallery", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         string baseDir = string.IsNullOrWhiteSpace(txtOutDir.Text)
@@ -482,7 +482,7 @@ public partial class ExportPanel : UserControl
             int count = 0;
             string index = await System.Threading.Tasks.Task.Run(() =>
                 WebGallery.Render(paths, galleryDir, new WebGallery.Options { Title = "Gallery", Columns = 4 }, out count));
-            var open = MessageBox.Show($"Đã tạo gallery ({count} ảnh):\n{index}\n\nMở trong trình duyệt?",
+            var open = MessageBox.Show($"Web gallery created ({count} photos):\n{index}\n\nOpen in browser?",
                 "Web Gallery", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (open == MessageBoxResult.Yes)
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(index) { UseShellExecute = true });
@@ -490,7 +490,7 @@ public partial class ExportPanel : UserControl
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("ExportPanel.WebGallery", galleryDir, ex);
-            MessageBox.Show("Lỗi tạo web gallery (xem app.log).", "Web Gallery", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Error creating web gallery (see app.log).", "Web Gallery", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -502,7 +502,7 @@ public partial class ExportPanel : UserControl
             paths.Add(_workspace.ActiveImage);
         if (paths.Count == 0)
         {
-            MessageBox.Show("Chọn ít nhất 1 ảnh để in.", "In ấn", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Select at least 1 photo to print.", "Print Module", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -520,22 +520,22 @@ public partial class ExportPanel : UserControl
             if (pages.Count > 0)
             {
                 string msg = pages.Count == 1
-                    ? $"Đã tạo file in:\n{pages[0]}"
-                    : $"Đã tạo {pages.Count} trang in:\n{System.IO.Path.GetDirectoryName(pages[0])}";
-                var open = MessageBox.Show($"{msg}\n\nMở file đầu tiên?",
-                    "In ấn", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    ? $"Print file created:\n{pages[0]}"
+                    : $"{pages.Count} print page(s) created:\n{System.IO.Path.GetDirectoryName(pages[0])}";
+                var open = MessageBox.Show($"{msg}\n\nOpen first page?",
+                    "Print Module", MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (open == MessageBoxResult.Yes)
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(pages[0]) { UseShellExecute = true });
             }
             else
             {
-                MessageBox.Show("Không đặt được ảnh nào lên trang.", "In ấn", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Failed to layout photos on page.", "Print Module", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("ExportPanel.Print", outPath, ex);
-            MessageBox.Show("Lỗi tạo file in (xem app.log).", "In ấn", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Error creating print file (see app.log).", "Print Module", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

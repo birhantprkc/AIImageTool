@@ -4,13 +4,13 @@ using System.Windows.Input;
 
 namespace ZeroVision.Host.Workspace;
 
-// White Balance eyedropper (3.1): bật pick mode, click 1 điểm trên ảnh -> trả toạ độ chuẩn hoá.
+// White Balance eyedropper (3.1): toggle pick mode, click point on image -> return normalized coords.
 public partial class CenterPreview
 {
     private bool _wbPickMode;
     private bool _filmBasePickMode;
 
-    /// <summary>Liên kết DevelopPanel để nhận yêu cầu eyedropper + trả mẫu về.</summary>
+    /// <summary>Bind DevelopPanel to receive eyedropper request + return sampled point.</summary>
     public void BindWhiteBalancePick(DevelopPanel panel)
     {
         panel.WhiteBalancePickRequested += (_, _) =>
@@ -33,13 +33,13 @@ public partial class CenterPreview
             SetMode(LighttableMode.Single);
             paneSingle.Cursor = Cursors.Cross;
         };
-        // Khi click trong pane single ở pick mode -> lấy mẫu rồi tắt.
+        // On click in single pane during pick mode -> sample and exit mode.
         _wbPickPanel = panel;
     }
 
     private DevelopPanel? _wbPickPanel;
 
-    /// <summary>Gọi từ PaneSingle_MouseDown khi đang ở pick mode. Trả true nếu đã xử lý click.</summary>
+    /// <summary>Called from PaneSingle_MouseDown during pick mode. Returns true if handled.</summary>
     private bool TryHandleWbPick(MouseButtonEventArgs e)
     {
         if (!_wbPickMode && !_filmBasePickMode) return false;

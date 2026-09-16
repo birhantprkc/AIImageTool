@@ -24,25 +24,25 @@
                            Margin="0,0,16,0"/>
                 <!-- Window controls (right) -->
                 <Button x:Name="btnClose" DockPanel.Dock="Right" Content="✕" Width="36" Height="28"
-                        Padding="0" Click="BtnClose_Click" ToolTip="Đóng"
+                        Padding="0" Click="BtnClose_Click" ToolTip="Close"
                         Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}"
                         BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
                 <Button x:Name="btnMaximize" DockPanel.Dock="Right" Content="☐" Width="36" Height="28"
-                        Padding="0" Click="BtnMaximize_Click" ToolTip="Phóng to/Thu nhỏ"
+                        Padding="0" Click="BtnMaximize_Click" ToolTip="Maximize / Restore"
                         Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}"
                         BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
                 <Button x:Name="btnMinimize" DockPanel.Dock="Right" Content="─" Width="36" Height="28"
-                        Padding="0" Click="BtnMinimize_Click" ToolTip="Thu nhỏ"
+                        Padding="0" Click="BtnMinimize_Click" ToolTip="Minimize"
                         Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}"
                         BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"/>
                 <!-- Theme toggle -->
                 <Button x:Name="btnTheme" DockPanel.Dock="Right" Content="◐" Width="30" Height="28"
                         Padding="6,0" VerticalAlignment="Center" Margin="0,0,8,0" Click="BtnTheme_Click"
-                        ToolTip="Đổi giao diện Sáng/Tối"/>
+                        ToolTip="Toggle Light / Dark Theme"/>
                 <!-- Left: Open / Recent -->
                 <Button x:Name="btnOpenFolder" DockPanel.Dock="Left" Content="📁  Open" Padding="14,4"
                         VerticalAlignment="Center" Click="BtnOpenFolder_Click"
-                        ToolTip="Mở thư mục ảnh để duyệt"/>
+                        ToolTip="Open photo folder to browse"/>
                 <Button x:Name="btnRecent" DockPanel.Dock="Left" Content="▾" Width="28" Padding="6,6"
                         Margin="2,0,4,0" VerticalAlignment="Center" Click="BtnRecent_Click"
                         ToolTip="Recent folders"/>
@@ -51,18 +51,18 @@
                         ToolTip="Import photos into catalog"/>
                 <Button x:Name="btnMore" DockPanel.Dock="Left" Content="⋯  Tools" Padding="12,6"
                         VerticalAlignment="Center" Margin="0,0,12,0" Click="BtnMore_Click"
-                        ToolTip="Công cụ trên ảnh đang chọn: Merge HDR, Focus Stack, Batch Rename"/>
+                        ToolTip="Tools on selected photo: Merge HDR, Focus Stack, Batch Rename"/>
 
                 <!-- Right: Pop Out + Mode Switcher + Quick Filter -->
                 <Button x:Name="btnPopOutTools" DockPanel.Dock="Right" Content="⇱  Pop Out Tools"
                         Padding="10,6" VerticalAlignment="Center" Margin="6,0,0,0"
                         Click="BtnPopOutTools_Click"
-                        ToolTip="Tách panel Tools sang cửa sổ riêng (multi-monitor)"/>
+                        ToolTip="Pop out Tools panel to separate window (multi-monitor)"/>
 
                 <!-- Mode switcher (ZeroUI SegmentedControl) -->
                 <edit:SegmentedControl x:Name="modeSwitcher" DockPanel.Dock="Right" VerticalAlignment="Center"
                                        Margin="12,0,0,0" Width="260" Height="26" CornerRadius="4"
-                                       ToolTip="Chế độ hiển thị: Single (E), Grid (G), Cull (C), Full (F)"/>
+                                       ToolTip="View mode: Single (E), Grid (G), Cull (C), Full (F)"/>
 
                 <!-- Quick filter: rating + labels -->
                 <Border DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0"
@@ -74,26 +74,26 @@
                         <edit:RatingControl x:Name="quickRating" ItemSize="14" ItemSpacing="2" AllowHalf="False" MaxRating="5"
                                             VerticalAlignment="Center" Margin="0,0,4,0"
                                             ValueChanged="QuickRating_ValueChanged"
-                                            ToolTip="Lọc theo rating tối thiểu (click sao để lọc)"/>
+                                            ToolTip="Filter by minimum rating (Click stars to filter)"/>
                         <Button x:Name="btnClearRating" Content="—" Width="18" Height="18" Margin="0,0,2,0" Padding="0"
                                 Background="Transparent" Foreground="{DynamicResource TextDimBrush}" BorderThickness="0"
-                                Cursor="Hand" Click="BtnClearRating_Click" ToolTip="Bỏ lọc sao"/>
+                                Cursor="Hand" Click="BtnClearRating_Click" ToolTip="Clear rating filter"/>
                         <Border Width="1" Background="{DynamicResource BorderBrush_}" Margin="8,2"/>
                         <Button Tag="None"   Width="16" Height="16" Background="Transparent"
                                 BorderBrush="{DynamicResource BorderHoverBrush}" BorderThickness="1" Margin="2,0" Click="QuickLabel_Click"
-                                ToolTip="Tất cả label"/>
-                        <Button Tag="Red"    Width="16" Height="16" Background="Red"          BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Lọc nhãn Đỏ"/>
-                        <Button Tag="Yellow" Width="16" Height="16" Background="Gold"         BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Lọc nhãn Vàng"/>
-                        <Button Tag="Green"  Width="16" Height="16" Background="LimeGreen"    BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Lọc nhãn Lục"/>
-                        <Button Tag="Blue"   Width="16" Height="16" Background="DodgerBlue"   BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Lọc nhãn Lam"/>
-                        <Button Tag="Purple" Width="16" Height="16" Background="MediumPurple" BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Lọc nhãn Tím"/>
+                                ToolTip="All labels"/>
+                        <Button Tag="Red"    Width="16" Height="16" Background="Red"          BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Filter Red label"/>
+                        <Button Tag="Yellow" Width="16" Height="16" Background="Gold"         BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Filter Yellow label"/>
+                        <Button Tag="Green"  Width="16" Height="16" Background="LimeGreen"    BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Filter Green label"/>
+                        <Button Tag="Blue"   Width="16" Height="16" Background="DodgerBlue"   BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Filter Blue label"/>
+                        <Button Tag="Purple" Width="16" Height="16" Background="MediumPurple" BorderThickness="0" Margin="2,0" Click="QuickLabel_Click" ToolTip="Filter Purple label"/>
                         <Border Width="1" Background="{DynamicResource BorderBrush_}" Margin="8,2"/>
                         <Button x:Name="btnFilterPick" Content="✓" Width="22" Height="20" Margin="2,0" Padding="0"
-                                Click="FilterPick_Click" ToolTip="Chỉ hiện ảnh Pick (bấm lại để bỏ)"/>
+                                Click="FilterPick_Click" ToolTip="Show Picked photos only (Click again to toggle)"/>
                         <Button x:Name="btnFilterReject" Content="✗" Width="22" Height="20" Margin="2,0" Padding="0"
-                                Click="FilterReject_Click" ToolTip="Chỉ hiện ảnh Reject (bấm lại để bỏ)"/>
+                                Click="FilterReject_Click" ToolTip="Show Rejected photos only (Click again to toggle)"/>
                         <Button x:Name="btnHideReject" Content="⊘" Width="22" Height="20" Margin="2,0" Padding="0"
-                                Click="HideReject_Click" ToolTip="Ẩn ảnh đã Reject (luồng cull)"/>
+                                Click="HideReject_Click" ToolTip="Hide Rejected photos (Cull mode)"/>
                     </StackPanel>
                 </Border>
 
@@ -117,7 +117,7 @@
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
                     <Border x:Name="badgeAutoAdvance" Background="{DynamicResource AccentDimBrush}" BorderBrush="{DynamicResource AccentBrush}"
                             BorderThickness="1" CornerRadius="3" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center"
-                            Visibility="Collapsed" ToolTip="Tự động nhảy sang ảnh kế khi gán sao/cờ/nhãn (bật/tắt bằng Caps Lock)">
+                            Visibility="Collapsed" ToolTip="Auto-advance to next photo when rating, flagging, or labeling (Toggle with Caps Lock)">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
                             <TextBlock Text="AUTO-ADVANCE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
@@ -275,9 +275,9 @@
             <StackPanel HorizontalAlignment="Center">
                 <TextBlock Text="⬇" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,12"
                            Foreground="{DynamicResource AccentBrush}"/>
-                <TextBlock Text="Thả ảnh hoặc thư mục vào đây" FontSize="16" FontWeight="SemiBold"
+                <TextBlock Text="Drop photos or folders here" FontSize="16" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
-                <TextBlock Text="Hỗ trợ: JPG, PNG, TIFF, WebP, RAW, PSD..." FontSize="12"
+                <TextBlock Text="Supported: JPG, PNG, TIFF, WebP, RAW, PSD..." FontSize="12"
                            Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
@@ -292,7 +292,7 @@
                 <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="0" Opacity="0.7"/>
             </Border.Effect>
             <StackPanel>
-                <TextBlock Text="Phím tắt" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12"/>
+                <TextBlock Text="Keyboard Shortcuts" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -300,34 +300,34 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="ĐIỀU HƯỚNG &amp; XEM" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                        <TextBlock Text="← →   Ảnh trước / kế tiếp" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="NAVIGATION &amp; VIEW" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="← →   Previous / Next photo" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="E / G / C / F   Single / Grid / Cull / Full" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Z   Zoom 100% / fit     + / −   Zoom" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Space   Giữ để kéo (pan)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Y   So sánh   \   Giữ xem ảnh gốc" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="J   Cảnh báo clip   K   Focus peaking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="CẮT / HÌNH HỌC" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
-                        <TextBlock Text="R   Bật/tắt cắt   O   Đổi lưới guide" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="X   Đảo ngang/dọc   Enter   Áp cắt" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Esc   Huỷ cắt   [ / ]   Xoay 90°" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Z   Zoom 100% / Fit     + / −   Zoom In / Out" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Space   Hold to Pan" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Y   Before/After Compare   \   Hold for Original" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="J   Clipping Warning   K   Focus Peaking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="CROP &amp; GEOMETRY" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                        <TextBlock Text="R   Toggle Crop   O   Cycle Grid Overlay" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="X   Swap Orientation   Enter   Apply Crop" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Esc   Cancel Crop   [ / ]   Rotate 90° CCW / CW" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="ĐÁNH GIÁ / CỜ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                        <TextBlock Text="0–5   Rating sao   P / X / U   Cờ" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="6–9   Nhãn màu (Đỏ/Vàng/Lục/Lam)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Caps Lock   Auto-Advance (khi đánh giá)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="CHỈNH SỬA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                        <TextBlock Text="RATINGS &amp; FLAGS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="0–5   Star Rating   P / X / U   Flag Pick/Reject/Unflag" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="6–9   Color Label (Red/Yellow/Green/Blue)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Caps Lock   Auto-Advance (when rating/flagging)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="DEVELOP ADJUSTMENTS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <TextBlock Text="D   Develop   M   Masking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Ctrl+Z / Y   Undo / Redo" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Ctrl+Shift+C   Hộp thoại chọn copy" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Ctrl+C / V   Copy / Paste nhanh" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Ctrl+'   Tạo Virtual Copy (bản sao)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Tab / Shift+Tab   Ẩn panel / Full Canvas" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="L   Lights Out (tắt đèn nền)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+Shift+C   Copy Settings Dialog" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+C / V   Quick Copy / Paste" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+'   Create Virtual Copy" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Tab / Shift+Tab   Hide Panels / Full Canvas" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="L   Lights Out (Cycle Background Dim)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
                     </StackPanel>
                 </Grid>
-                <TextBlock Text="Nhấn F1, ? hoặc Esc để đóng" FontSize="10" Foreground="{DynamicResource TextDimBrush}"
+                <TextBlock Text="Press F1, ? or Esc to close" FontSize="10" Foreground="{DynamicResource TextDimBrush}"
                            HorizontalAlignment="Center" Margin="0,14,0,0"/>
             </StackPanel>
         </Border>

@@ -61,7 +61,7 @@ public partial class CenterPreview
 
         RgbToHsv(r, g, b, out float h, out float s, out float v);
 
-        // Tính trọng số 8 dải
+        // Calculate 8-band weights
         _tatWeights = new float[HslMixerOp.Bands];
         float wSum = 0f;
         for (int i = 0; i < HslMixerOp.Bands; i++)
@@ -70,14 +70,14 @@ public partial class CenterPreview
             _tatWeights[i] = w;
             wSum += w;
         }
-        // Chuẩn hóa trọng số
+        // Normalize weights
         if (wSum > 1e-6f)
         {
             float inv = 1f / wSum;
             for (int i = 0; i < HslMixerOp.Bands; i++) _tatWeights[i] *= inv;
         }
 
-        // Lấy HSL hiện tại
+        // Get current HSL values
         _tatPanel.GetHslValues(out var startHue, out var startSat, out var startLum);
         _tatStartHue = startHue;
         _tatStartSat = startSat;
@@ -96,8 +96,8 @@ public partial class CenterPreview
         if (!_isDraggingTat || _tatPanel == null || _tatWeights == null || _tatStartHue == null || _tatStartSat == null || _tatStartLum == null) return;
 
         var p = e.GetPosition(paneSingle);
-        double dy = _tatStartMouse.Y - p.Y; // Kéo lên = dương (tăng), kéo xuống = âm (giảm)
-        float delta = (float)(dy / 250.0); // Kéo 250 pixel để tăng/giảm tối đa 1.0
+        double dy = _tatStartMouse.Y - p.Y; // Drag up = positive (increase), drag down = negative (decrease)
+        float delta = (float)(dy / 250.0); // Drag 250 pixels for max +/-1.0 delta
 
         var newHue = _tatStartHue.ToArray();
         var newSat = _tatStartSat.ToArray();
@@ -160,7 +160,7 @@ public partial class CenterPreview
             }
         }
 
-        _tatPanel.UpdateHslValues(newHue, newSat, newLum, schedule: false); // Commit cuối cùng
+        _tatPanel.UpdateHslValues(newHue, newSat, newLum, schedule: false); // Final commit
         e.Handled = true;
     }
 

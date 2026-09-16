@@ -160,9 +160,9 @@ public partial class DevelopPanel : UserControl
         AddSlider(gWb, "temp", "Temp (fine)", -1, 1, 0);
         AddSlider(gWb, "tint", "Tint", -1, 1, 0);
         var wbBtnRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        var btnAutoWb = new Button { Content = "Auto WB", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Tự cân bằng trắng (gray-world)" };
+        var btnAutoWb = new Button { Content = "Auto WB", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Auto white balance (gray-world)" };
         btnAutoWb.Click += BtnAutoWb_Click;
-        var btnPickWb = new Button { Content = "⊙ Pick", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Eyedropper: bấm rồi click 1 điểm xám trung tính trên ảnh" };
+        var btnPickWb = new Button { Content = "⊙ Pick", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Eyedropper: click to sample neutral gray point on photo" };
         btnPickWb.Click += BtnPickWb_Click;
         wbBtnRow.Children.Add(btnAutoWb);
         wbBtnRow.Children.Add(btnPickWb);
@@ -175,7 +175,7 @@ public partial class DevelopPanel : UserControl
             cmbWbPreset.Items.Add(new ComboBoxItem { Content = n });
         cmbWbPreset.SelectedIndex = 0;
         cmbWbPreset.SelectionChanged += (_, _) => { if (!_loading) ApplyWbPreset(cmbWbPreset.SelectedIndex); };
-        cmbWbPreset.ToolTip = "Đặt nhiệt độ Kelvin theo nguồn sáng điển hình.";
+        cmbWbPreset.ToolTip = "Set Kelvin temperature by lighting preset.";
         wbPresetRow.Children.Add(cmbWbPreset);
         gWb.Children.Add(wbPresetRow);
 
@@ -220,7 +220,7 @@ public partial class DevelopPanel : UserControl
         // Tone Curve (point editor) — 2.2
         var gCurve = AddGroup("Tone Curve", false);
         var chRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
-        chRow.Children.Add(new TextBlock { Text = "Kênh", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        chRow.Children.Add(new TextBlock { Text = "Channel", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         _curveChannel = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
         foreach (var n in new[] { "RGB", "Red", "Green", "Blue" })
             _curveChannel.Items.Add(new ComboBoxItem { Content = n });
@@ -239,17 +239,17 @@ public partial class DevelopPanel : UserControl
             cmbCurvePreset.Items.Add(new ComboBoxItem { Content = n });
         cmbCurvePreset.SelectedIndex = 0;
         cmbCurvePreset.SelectionChanged += (_, _) => { if (!_loading) ApplyCurvePreset(cmbCurvePreset.SelectedIndex); };
-        cmbCurvePreset.ToolTip = "Áp đường cong tương phản dựng sẵn lên kênh RGB master.";
+        cmbCurvePreset.ToolTip = "Apply contrast curve preset to RGB master channel.";
         presetRow.Children.Add(cmbCurvePreset);
         gCurve.Children.Add(presetRow);
         var curveHint = new TextBlock
         {
-            Text = "Kéo điểm • double-click thêm/xoá • phải-chuột xoá",
+            Text = "Drag points • double-click add/delete • right-click delete",
             Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap
         };
         gCurve.Children.Add(curveHint);
 
-        var (rowCurveHue, swCurveHue) = CreateToggleRow("Preserve hue (master theo luminance)", "Đường master áp lên độ sáng và scale RGB giữ hue — tránh dịch màu ở vùng rực.");
+        var (rowCurveHue, swCurveHue) = CreateToggleRow("Preserve hue (master via luminance)", "Apply curve to luminance and scale RGB to preserve hue and avoid oversaturation shifts.");
         _chkCurvePreserveHue = swCurveHue;
         _chkCurvePreserveHue.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
         gCurve.Children.Add(rowCurveHue);
@@ -270,7 +270,7 @@ public partial class DevelopPanel : UserControl
         var btnAutoLevels = new Button { Content = "Auto Levels", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
         btnAutoLevels.Click += BtnAutoLevels_Click;
         gLevels.Children.Add(btnAutoLevels);
-        var btnAutoColor = new Button { Content = "Auto Color (khử ám màu)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Căng dải động riêng từng kênh R/G/B để triệt ám màu (per-channel levels)." };
+        var btnAutoColor = new Button { Content = "Auto Color", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Stretch dynamic range per RGB channel to remove color casts (per-channel levels)." };
         btnAutoColor.Click += BtnAutoColor_Click;
         gLevels.Children.Add(btnAutoColor);
         // Per-channel (D2.5): black/white/gamma riêng cho R/G/B (color grading kiểu film).
@@ -320,7 +320,7 @@ public partial class DevelopPanel : UserControl
         { 
             Content = "🎯 Targeted Adjustment (TAT)", 
             Padding = new Thickness(8, 3, 8, 3),
-            ToolTip = "Công cụ điều chỉnh trực tiếp trên ảnh: Bật nút này rồi click và kéo lên/xuống trên ảnh."
+            ToolTip = "Targeted Adjustment Tool: Click and drag up/down on photo to adjust tonal bands."
         };
         btnTat.Checked += (s, e) => TatStateChanged?.Invoke(this, (true, GetTatMode()));
         btnTat.Unchecked += (s, e) => TatStateChanged?.Invoke(this, (false, GetTatMode()));
@@ -338,7 +338,7 @@ public partial class DevelopPanel : UserControl
         gHsl.Children.Add(tatRow);
 
         var bandRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
-        bandRow.Children.Add(new TextBlock { Text = "Dải màu", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        bandRow.Children.Add(new TextBlock { Text = "Color Band", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         _bandCombo = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
         foreach (var n in new[] { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta" })
             _bandCombo.Items.Add(new ComboBoxItem { Content = n });
@@ -395,9 +395,9 @@ public partial class DevelopPanel : UserControl
         // Color Match (#8): mượn tông màu từ ảnh tham chiếu (Reinhard Lab transfer).
         var gMatch = AddGroup("Color Match", false);
         var matchRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        _colorMatchInfo = new TextBlock { Text = "(chưa chọn ảnh tham chiếu)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        var btnMatch = new Button { Content = "Chọn ảnh...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
-        var btnMatchClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Bỏ color match" };
+        _colorMatchInfo = new TextBlock { Text = "(no reference photo selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        var btnMatch = new Button { Content = "Choose Photo...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+        var btnMatchClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Clear color match" };
         DockPanel.SetDock(btnMatch, Dock.Right);
         DockPanel.SetDock(btnMatchClear, Dock.Right);
         btnMatch.Click += BtnColorMatch_Click;
@@ -407,18 +407,18 @@ public partial class DevelopPanel : UserControl
         matchRow.Children.Add(_colorMatchInfo);
         gMatch.Children.Add(matchRow);
         AddSlider(gMatch, "match_strength", "Match Strength", 0, 1, 0.8, "0.00");
-        gMatch.Children.Add(new TextBlock { Text = "Mượn tông màu từ 1 ảnh khác (grading đồng bộ).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        gMatch.Children.Add(new TextBlock { Text = "Match color grading from a reference photo.", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
 
         // 3D LUT (.cube)
         var gLut = AddGroup("3D LUT (.cube)", false);
         var lutRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
-        _lutLabel = new TextBlock { Text = "(chưa chọn LUT)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        var btnLut = new Button { Content = "Chọn...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+        _lutLabel = new TextBlock { Text = "(no LUT selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        var btnLut = new Button { Content = "Choose...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
         var btnLutClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0) };
         DockPanel.SetDock(btnLut, Dock.Right);
         DockPanel.SetDock(btnLutClear, Dock.Right);
         btnLut.Click += BtnLutPick_Click;
-        btnLutClear.Click += (_, _) => { _lutPath = ""; if (_lutLabel != null) _lutLabel.Text = "(chưa chọn LUT)"; Commit(); };
+        btnLutClear.Click += (_, _) => { _lutPath = ""; if (_lutLabel != null) _lutLabel.Text = "(no LUT selected)"; Commit(); };
         lutRow.Children.Add(btnLutClear);
         lutRow.Children.Add(btnLut);
         lutRow.Children.Add(_lutLabel);
@@ -443,11 +443,11 @@ public partial class DevelopPanel : UserControl
         AddSlider(gDetail, "hotpixThr", "Hot Pixel Thr", 0, 1, 0.5);
         AddSlider(gDetail, "caRed", "CA Red/Cyan", -1, 1, 0);
         AddSlider(gDetail, "caBlue", "CA Blue/Yellow", -1, 1, 0);
-        var btnAutoCa = new Button { Content = "Auto CA", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Tự khử quang sai màu trục (ước lượng dịch R/B theo cạnh ở mép)." };
+        var btnAutoCa = new Button { Content = "Auto CA", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto chromatic aberration correction (estimates lateral R/B fringe displacement)." };
         btnAutoCa.Click += BtnAutoCa_Click;
         gDetail.Children.Add(btnAutoCa);
         AddSlider(gDetail, "aiDenoise", "AI Denoise", 0, 1, 0);
-        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (khi export)", "Phóng to 4x bằng AI lúc export (cần model Upscaler)");
+        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (on export)", "Enlarge 4x using AI during export (requires Upscaler model)");
         _chkAiUpscale = swAiUp;
         _chkAiUpscale.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
         gDetail.Children.Add(rowAiUp);
@@ -476,7 +476,7 @@ public partial class DevelopPanel : UserControl
         foreach (var preset in GradientMapPresets.All)
             _cmbGradientMap.Items.Add(new ComboBoxItem { Content = preset.Name });
         _cmbGradientMap.SelectedIndex = 0;
-        _cmbGradientMap.ToolTip = "Ánh xạ độ sáng sang dải màu (grading/duotone/cinematic). None = tắt.";
+        _cmbGradientMap.ToolTip = "Map luminance to color gradient (grading/duotone/cinematic). None = disabled.";
         gradRow.Children.Add(_cmbGradientMap);
         gFx.Children.Add(gradRow);
         AddSlider(gFx, "gradmap_opacity", "Gradient Amount", 0, 1, 0, "0.00");
@@ -488,9 +488,9 @@ public partial class DevelopPanel : UserControl
         gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
         gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        _gmShadow = GradientHexBox("000000", "Màu vùng tối (hex RRGGBB)");
-        _gmMid = GradientHexBox("808080", "Màu trung gian (hex RRGGBB)");
-        _gmHigh = GradientHexBox("FFFFFF", "Màu vùng sáng (hex RRGGBB)");
+        _gmShadow = GradientHexBox("000000", "Shadow color (hex RRGGBB)");
+        _gmMid = GradientHexBox("808080", "Midtone color (hex RRGGBB)");
+        _gmHigh = GradientHexBox("FFFFFF", "Highlight color (hex RRGGBB)");
         Grid.SetColumn(_gmShadow, 0); Grid.SetColumn(_gmMid, 2); Grid.SetColumn(_gmHigh, 4);
         gmColorRow.Children.Add(_gmShadow);
         gmColorRow.Children.Add(_gmMid);
@@ -513,7 +513,7 @@ public partial class DevelopPanel : UserControl
 
         // Film Negative (negadoctor) — chuyển scan phim âm bản thành dương bản.
         var gFilm = AddGroup("Film Negative", false);
-        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Bật Film Negative (scan phim âm bản)");
+        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Enable Film Negative (invert scanned negative)");
         _chkFilmNeg = swFilmNeg;
         _chkFilmNeg.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
         gFilm.Children.Add(rowFilmNeg);
@@ -522,14 +522,14 @@ public partial class DevelopPanel : UserControl
         AddSlider(gFilm, "film_bbase", "Base B", 0.02, 1, 0.18, "0.00");
         AddSlider(gFilm, "film_gamma", "Contrast (gamma)", 0.3, 3, 1, "0.00");
         AddSlider(gFilm, "film_exposure", "Exposure", 0.1, 4, 1, "0.00");
-        var btnPickBase = new Button { Content = "Pick film base (click mép phim)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
+        var btnPickBase = new Button { Content = "Pick film base (click border)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
         btnPickBase.Click += BtnPickFilmBase_Click;
         gFilm.Children.Add(btnPickBase);
-        gFilm.Children.Add(new TextBlock { Text = "Mẹo: chọn Base bằng vùng mép phim trống (sáng nhất).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        gFilm.Children.Add(new TextBlock { Text = "Tip: Sample film base from an unexposed edge (orange mask).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
 
         // Black & White
         var gBw = AddGroup("Black & White", false);
-        var (rowBw, swBw) = CreateToggleRow("Chuyển đen trắng");
+        var (rowBw, swBw) = CreateToggleRow("Convert to Black & White");
         _chkBw = swBw;
         _chkBw.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
         gBw.Children.Add(rowBw);
@@ -544,7 +544,7 @@ public partial class DevelopPanel : UserControl
             cmbBwFilter.Items.Add(new ComboBoxItem { Content = n });
         cmbBwFilter.SelectedIndex = 0;
         cmbBwFilter.SelectionChanged += (_, _) => { if (!_loading) ApplyBwFilter(cmbBwFilter.SelectedIndex); };
-        cmbBwFilter.ToolTip = "Mô phỏng kính lọc màu: Red làm trời tối/da sáng, Green làm tán lá sáng...";
+        cmbBwFilter.ToolTip = "Simulate optical color filters: Red darkens sky/lightens skin, Green brightens foliage...";
         bwFilterRow.Children.Add(cmbBwFilter);
         gBw.Children.Add(bwFilterRow);
         AddSlider(gBw, "bw_toneHue", "Tone Hue", 0, 360, 0, "0");
@@ -567,10 +567,10 @@ public partial class DevelopPanel : UserControl
         rotRow.Children.Add(btnFlipV);
         gGeo.Children.Add(rotRow);
         AddSlider(gGeo, "straighten", "Straighten", -45, 45, 0, "0.0");
-        var btnAutoStraighten = new Button { Content = "Auto Straighten", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Tự cân bằng đường chân trời (phát hiện góc nghiêng cạnh dominant)." };
+        var btnAutoStraighten = new Button { Content = "Auto Straighten", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto level horizon (estimates dominant edge tilt)." };
         btnAutoStraighten.Click += BtnAutoStraighten_Click;
         gGeo.Children.Add(btnAutoStraighten);
-        var btnAutoUpright = new Button { Content = "Auto Upright", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Tự hiệu chỉnh phối cảnh (keystone) theo cạnh dọc/ngang hội tụ." };
+        var btnAutoUpright = new Button { Content = "Auto Upright", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto correct perspective keystone (converging vertical/horizontal lines)." };
         btnAutoUpright.Click += BtnAutoUpright_Click;
         gGeo.Children.Add(btnAutoUpright);
         AddSlider(gGeo, "persp_v", "Perspective V", -1, 1, 0);
@@ -579,7 +579,7 @@ public partial class DevelopPanel : UserControl
         AddSlider(gGeo, "lens_k1", "Lens Distortion", -0.5, 0.5, 0, "0.00");
         AddSlider(gGeo, "lens_k2", "Lens Distortion 2", -0.5, 0.5, 0, "0.00");
         AddSlider(gGeo, "lens_vig", "Lens Vignette Fix", 0, 1, 0);
-        var btnAutoLens = new Button { Content = "Auto Lens (lensfun)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Hiệu chỉnh méo/tối góc tự động theo ống kính (EXIF) + tiêu cự, dùng database lensfun." };
+        var btnAutoLens = new Button { Content = "Auto Lens (lensfun)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto lens distortion & vignette correction from EXIF focal length using lensfun." };
         btnAutoLens.Click += BtnAutoLens_Click;
         gGeo.Children.Add(btnAutoLens);
         _lensAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
@@ -595,7 +595,7 @@ public partial class DevelopPanel : UserControl
             _cmbInputProfile.Items.Add(new ComboBoxItem { Content = n });
         _cmbInputProfile.SelectedIndex = 0;
         _cmbInputProfile.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbInputProfile.ToolTip = "Diễn giải ảnh theo gamut này rồi quy về working sRGB (D65). sRGB = không đổi. Embedded ICC = dùng ma trận colorant ICC nhúng thật của ảnh.";
+        _cmbInputProfile.ToolTip = "Interpret image in this color space then map to working sRGB. sRGB = unchanged. Embedded ICC = use embedded profile matrix.";
         cmRow.Children.Add(_cmbInputProfile);
         gCm.Children.Add(cmRow);
         _iccAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
@@ -610,7 +610,7 @@ public partial class DevelopPanel : UserControl
             _cmbSoftProof.Items.Add(new ComboBoxItem { Content = n });
         _cmbSoftProof.SelectedIndex = 0;
         _cmbSoftProof.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbSoftProof.ToolTip = "Mô phỏng màu trên gamut thiết bị đích (màu ngoài gamut bị nén/kẹp). Off = không proof.";
+        _cmbSoftProof.ToolTip = "Simulate output device gamut (out-of-gamut colors compressed/clipped). Off = disabled.";
         spRow.Children.Add(_cmbSoftProof);
         gCm.Children.Add(spRow);
 
@@ -621,7 +621,7 @@ public partial class DevelopPanel : UserControl
             _cmbSoftProofMode.Items.Add(new ComboBoxItem { Content = n });
         _cmbSoftProofMode.SelectedIndex = 0;
         _cmbSoftProofMode.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _cmbSoftProofMode.ToolTip = "Clip = kẹp màu ngoài gamut; Desaturate = kéo về luminance giữ độ sáng.";
+        _cmbSoftProofMode.ToolTip = "Clip = clamp out-of-gamut colors; Desaturate = desaturate toward luminance.";
         spModeRow.Children.Add(_cmbSoftProofMode);
         gCm.Children.Add(spModeRow);
 
@@ -647,7 +647,7 @@ public partial class DevelopPanel : UserControl
         var scriptRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
         scriptRow.Children.Add(new TextBlock { Text = "Script", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
 
-        var btnRefreshLua = new Button { Content = "↻", Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Quét lại thư mục Scripts/" };
+        var btnRefreshLua = new Button { Content = "↻", Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Rescan Scripts/ directory" };
         btnRefreshLua.Click += (s, e) => RefreshLuaScripts();
         DockPanel.SetDock(btnRefreshLua, Dock.Right);
         scriptRow.Children.Add(btnRefreshLua);
@@ -757,28 +757,28 @@ public partial class DevelopPanel : UserControl
     /// <summary>Tooltip mô tả ngắn cho từng slider Develop (theo key). Giúp khám phá tác dụng.</summary>
     private static readonly Dictionary<string, string> SliderTips = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["exposure"] = "Độ sáng tổng thể (EV). Kéo phải = sáng hơn.",
-        ["contrast"] = "Tương phản: tăng làm vùng sáng sáng hơn, tối tối hơn.",
-        ["highlights"] = "Khôi phục/kéo vùng SÁNG (mây, bầu trời cháy).",
-        ["shadows"] = "Mở/đè vùng TỐI (chi tiết trong bóng).",
-        ["whites"] = "Điểm trắng: ngưỡng vùng sáng nhất.",
-        ["blacks"] = "Điểm đen: ngưỡng vùng tối nhất.",
-        ["temp"] = "Cân bằng trắng: ấm (vàng) ↔ lạnh (xanh).",
-        ["tint"] = "Cân bằng trắng: lục ↔ tím.",
-        ["vibrance"] = "Tăng độ rực màu thông minh, bảo vệ tông da.",
-        ["saturation"] = "Độ bão hoà toàn ảnh (mọi màu như nhau).",
-        ["clarity"] = "Tương phản cục bộ tầm trung (độ 'nét' khối).",
-        ["texture"] = "Chi tiết bề mặt tần số nhỏ (da, vải, lá).",
-        ["dehaze"] = "Khử mờ/sương, tăng tương phản khí quyển.",
-        ["sharpen"] = "Làm sắc nét (unsharp mask).",
-        ["sharpenRadius"] = "Bán kính làm sắc nét.",
-        ["sharpenMasking"] = "Chỉ làm sắc cạnh mạnh, bảo vệ vùng phẳng khỏi nhiễu.",
-        ["grain"] = "Thêm hạt phim.",
-        ["vignette"] = "Tối/sáng 4 góc ảnh.",
-        ["straighten"] = "Xoay thẳng đường chân trời (độ).",
-        ["fsep_smooth"] = "Làm mịn màu/đốm da (frequency separation), giữ kết cấu.",
-        ["fsep_radius"] = "Bán kính tách tần số (lớn = vùng mịn rộng hơn).",
-        ["fsep_detail"] = "Giữ/khuếch chi tiết tần cao (lỗ chân lông, kết cấu).",
+        ["exposure"] = "Overall brightness (EV). Drag right = brighter.",
+        ["contrast"] = "Contrast: increases highlights, deepens shadows.",
+        ["highlights"] = "Recover or boost bright highlight areas (skies, clouds).",
+        ["shadows"] = "Open up or deepen shadow areas.",
+        ["whites"] = "White point: clips top highlight threshold.",
+        ["blacks"] = "Black point: clips deep shadow threshold.",
+        ["temp"] = "Color temperature: warm (yellow) ↔ cool (blue).",
+        ["tint"] = "Color tint: green ↔ magenta.",
+        ["vibrance"] = "Smart saturation boost, protecting skin tones.",
+        ["saturation"] = "Global color saturation.",
+        ["clarity"] = "Midtone local contrast (punch/depth).",
+        ["texture"] = "Fine surface detail (skin, fabric, foliage).",
+        ["dehaze"] = "Remove atmospheric haze and fog.",
+        ["sharpen"] = "Sharpening amount (unsharp mask).",
+        ["sharpenRadius"] = "Sharpening edge radius.",
+        ["sharpenMasking"] = "Masking: restrict sharpening to high-contrast edges.",
+        ["grain"] = "Film grain intensity.",
+        ["vignette"] = "Corner vignetting (darken or brighten).",
+        ["straighten"] = "Straighten horizon angle (degrees).",
+        ["fsep_smooth"] = "Smooth skin blemishes (frequency separation) while preserving texture.",
+        ["fsep_radius"] = "Frequency separation blur radius.",
+        ["fsep_detail"] = "High-frequency detail retention (pores, texture).",
     };
 
     private static (DockPanel Row, ToggleSwitch Switch) CreateToggleRow(string label, string? tip = null)
@@ -1151,7 +1151,7 @@ public partial class DevelopPanel : UserControl
         var lensProfP = FindOp(path!, LensProfileOp.Type);
         _autoLensOp = lensProfP != null ? LensProfileOp.FromParams(lensProfP) : null;
         if (_lensAutoInfo != null)
-            _lensAutoInfo.Text = _autoLensOp != null ? "Đã áp profile lensfun (lưu trong history)." : "";
+            _lensAutoInfo.Text = _autoLensOp != null ? "Applied lensfun profile (saved in history)." : "";
 
         // Color Unify
         SetVal("uni_hue", Param(path!, ColorUnifyOp.Type, "hue"));
@@ -1166,13 +1166,13 @@ public partial class DevelopPanel : UserControl
             var cm = ZeroVision.Imaging.ColorMatchOp.FromParams(cmP);
             _colorMatchStats = new ZeroVision.Imaging.ColorMatch.Stats(cm.ML, cm.Ma, cm.Mb, cm.SL, cm.Sa, cm.Sb);
             SetVal("match_strength", cm.Strength);
-            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(đã lưu trong ảnh)";
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(saved in photo)";
         }
         else
         {
             _colorMatchStats = null;
             SetVal("match_strength", 0.8);
-            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(chưa chọn ảnh tham chiếu)";
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
         }
 
         // WB Kelvin
@@ -1190,7 +1190,7 @@ public partial class DevelopPanel : UserControl
         var lutP = FindOp(path!, LutCubeOp.Type);
         _lutPath = lutP != null && lutP.TryGetValue("path", out var lp) ? lp : "";
         if (_lutLabel != null)
-            _lutLabel.Text = string.IsNullOrEmpty(_lutPath) ? "(chưa chọn LUT)" : System.IO.Path.GetFileName(_lutPath);
+            _lutLabel.Text = string.IsNullOrEmpty(_lutPath) ? "(no LUT selected)" : System.IO.Path.GetFileName(_lutPath);
         var lutInt = Param(path!, LutCubeOp.Type, "intensity");
         SetVal("lut_intensity", lutP != null ? lutInt : 1);
 
@@ -1329,9 +1329,9 @@ public partial class DevelopPanel : UserControl
                     _iccAutoInfo.Text = "";
                 else
                 {
-                    string g = space.HasValue ? ColorSpaces.Name(space.Value) : "không xác định";
+                    string g = space.HasValue ? ColorSpaces.Name(space.Value) : "unknown";
                     _iccAutoInfo.Text = string.IsNullOrWhiteSpace(desc)
-                        ? $"ICC nhúng → gamut {g}"
+                        ? $"Embedded ICC → gamut {g}"
                         : $"ICC: {desc} → {g}";
                 }
             }
@@ -1900,7 +1900,7 @@ public partial class DevelopPanel : UserControl
         if (_cmbSoftProofMode != null) _cmbSoftProofMode.SelectedIndex = 0;
         if (_cmbGradientMap != null) _cmbGradientMap.SelectedIndex = 0;
         _colorMatchStats = null;
-        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(chưa chọn ảnh tham chiếu)";
+        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
         _wbGainR = 1f; _wbGainG = 1f; _wbGainB = 1f;
         ClearMasks();
         ClearHealing();
@@ -2000,7 +2000,7 @@ public partial class DevelopPanel : UserControl
         if (_currentPath == null) return;
         if (_lensfun == null || !_lensfun.HasDatabase)
         {
-            if (_lensAutoInfo != null) _lensAutoInfo.Text = "Chưa có database lensfun (thả XML vào lensfun/).";
+            if (_lensAutoInfo != null) _lensAutoInfo.Text = "Lensfun database not found (place XML in lensfun/).";
             return;
         }
         try
@@ -2012,15 +2012,15 @@ public partial class DevelopPanel : UserControl
             {
                 if (_lensAutoInfo != null)
                     _lensAutoInfo.Text = string.IsNullOrWhiteSpace(meta.LensModel)
-                        ? "Ảnh không có thông tin ống kính (EXIF)."
-                        : $"Không tìm thấy profile cho: {meta.LensModel}";
+                        ? "Photo has no lens metadata (EXIF)."
+                        : $"No profile found for: {meta.LensModel}";
                 return;
             }
             _autoLensOp = op;
             if (_lensAutoInfo != null)
             {
                 string name = _lensfun.MatchLensName(meta.LensModel) ?? meta.LensModel ?? "?";
-                _lensAutoInfo.Text = $"Đã áp profile: {name} @ {focal:0}mm";
+                _lensAutoInfo.Text = $"Applied profile: {name} @ {focal:0}mm";
             }
             Commit();
         }
@@ -2113,7 +2113,7 @@ public partial class DevelopPanel : UserControl
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Chọn 3D LUT (.cube)",
+            Title = "Select 3D LUT (.cube)",
             Filter = "Cube LUT (*.cube)|*.cube|All files (*.*)|*.*"
         };
         if (dlg.ShowDialog() != true) return;
@@ -2128,15 +2128,15 @@ public partial class DevelopPanel : UserControl
         if (_renderer == null) return;
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Chọn ảnh tham chiếu (mượn tông màu)",
-            Filter = "Ảnh (*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp)|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp|All files (*.*)|*.*"
+            Title = "Select Reference Photo (Color Match)",
+            Filter = "Image files (*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp)|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp|All files (*.*)|*.*"
         };
         if (dlg.ShowDialog() != true) return;
         try
         {
             if (!_renderer.Decoders.CanDecode(dlg.FileName))
             {
-                MessageBox.Show("Không đọc được ảnh tham chiếu.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Failed to read reference photo.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             var decoded = _renderer.Decoders.Decode(dlg.FileName);
@@ -2147,14 +2147,14 @@ public partial class DevelopPanel : UserControl
         catch (Exception ex)
         {
             ZeroVision.Shared.AppLog.Warn("DevelopPanel.ColorMatch", $"{dlg.FileName}: {ex.Message}");
-            MessageBox.Show("Lỗi đo màu ảnh tham chiếu.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Error analyzing reference photo colors.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void BtnColorMatchClear_Click(object sender, RoutedEventArgs e)
     {
         _colorMatchStats = null;
-        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(chưa chọn ảnh tham chiếu)";
+        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
         Commit();
     }
 
@@ -2187,7 +2187,7 @@ public partial class DevelopPanel : UserControl
             
         if (targets.Count == 0)
         {
-            MessageBox.Show("Hãy chọn từ 2 ảnh trở lên để đồng bộ.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select 2 or more photos to synchronize settings.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -2222,7 +2222,7 @@ public partial class DevelopPanel : UserControl
                 _history.UpsertGroup(target, "Develop", mergedOps);
             }
 
-            MessageBox.Show($"Đã đồng bộ thông số thành công sang {targets.Count} ảnh.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Successfully synchronized settings to {targets.Count} photos.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
@@ -2282,7 +2282,7 @@ public partial class DevelopPanel : UserControl
         if (cmbPreset == null) return;
         _loading = true;
         cmbPreset.Items.Clear();
-        cmbPreset.Items.Add(new ComboBoxItem { Content = "(chọn preset)", Tag = null });
+        cmbPreset.Items.Add(new ComboBoxItem { Content = "(Select Preset)", Tag = null });
         cmbPreset.SelectedIndex = 0;
         if (_styles != null)
         {

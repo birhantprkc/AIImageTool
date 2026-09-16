@@ -2,7 +2,7 @@
 
 namespace ZeroVision.Host.Workspace;
 
-// Nút xoay/lật nhanh ở mode bar trung tâm — uỷ quyền cho DevelopPanel (history-aware, non-destructive).
+// Quick rotate/flip buttons on center mode bar — delegates to DevelopPanel (history-aware, non-destructive).
 public partial class CenterPreview
 {
     private void BtnRotateLeft_Click(object sender, RoutedEventArgs e) => _developPanel?.RotateActive(-1);

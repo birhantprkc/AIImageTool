@@ -57,7 +57,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Text="Hàng đợi trống.&#x0a;Export hoặc chạy plugin để thêm tác vụ."
+                <TextBlock Text="Queue is empty.&#x0a;Export photos or run plugins to add tasks."
                            FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="12,24,12,0" TextWrapping="Wrap"
                            Visibility="{Binding HasItems, ElementName=icJobs, Converter={StaticResource InverseBoolToVis}}"/>

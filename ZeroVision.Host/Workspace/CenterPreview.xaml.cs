@@ -19,12 +19,12 @@ public partial class CenterPreview : UserControl, IImageToolHost
     private IHistoryService? _history;
     private DevelopClipboard? _clipboard;
     private IReadOnlyList<EditOperation>? _tempPreviewOps;
-    private Color _maskOverlayColor = Color.FromArgb(0x80, 0xFF, 0x00, 0x00); // Đỏ mặc định
+    private Color _maskOverlayColor = Color.FromArgb(0x80, 0xFF, 0x00, 0x00); // Default Red
     private readonly DevelopRenderer _renderer = new();
     private LighttableMode _mode = LighttableMode.Single;
     private bool _isDraggingSplit;
     private double _splitPercent = 0.5;
-    private bool _externalAfterActive; // true khi plugin (Upscaler...) đẩy ảnh "after"
+    private bool _externalAfterActive; // true when plugin (Upscaler...) pushes "after" image
 
     // Reference view state
     private string? _referenceImagePath;
@@ -69,14 +69,14 @@ public partial class CenterPreview : UserControl, IImageToolHost
         metadataFilterBar.Bind(_workspace);
     }
 
-    /// <summary>Cấp DevelopClipboard cho context menu trên grid (gọi sau Bind).</summary>
+    /// <summary>Provide DevelopClipboard for grid context menu (call after Bind).</summary>
     public void BindContext(DevelopClipboard clipboard) => _clipboard = clipboard;
 
     private void OnHistoryChanged(object? sender, HistoryChangedEventArgs e)
     {
-        // Chỉ re-render nếu ảnh đang xem khớp ảnh có history vừa đổi.
+        // Only re-render if currently viewed image matches image with changed history.
         var active = _workspace?.ActiveImage;
-        // Cập nhật badge "đã chỉnh sửa" cho thumbnail tương ứng (mọi ảnh, không chỉ ảnh active).
+        // Update "has adjustments" badge on thumbnail.
         bool edited = (_history?.GetPointer(e.ImagePath) ?? 0) > 0;
         foreach (var t in GridItems)
             if (string.Equals(t.ImagePath, e.ImagePath, StringComparison.OrdinalIgnoreCase))
@@ -84,7 +84,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
         if (string.IsNullOrEmpty(active)) return;
         if (!string.Equals(active, e.ImagePath, StringComparison.OrdinalIgnoreCase)) return;
-        if (_externalAfterActive) return; // đang so sánh kết quả plugin, đừng đè
+        if (_externalAfterActive) return; // comparing plugin result, do not overwrite
         _ = RenderDevelopAsync(active);
     }
 
@@ -145,8 +145,8 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 t.IsActive = string.Equals(t.ImagePath, e.CurrentPath, StringComparison.OrdinalIgnoreCase);
 
             _tempPreviewOps = null; // Reset temp preview ops
-            ClearResult(); // ảnh đổi → xoá after
-            ResetZoom();   // ảnh đổi → về fit
+            ClearResult(); // image changed -> clear after result
+            ResetZoom();   // image changed -> reset to fit
             UpdatePreview(e.CurrentPath);
             ActiveImageChanged?.Invoke(this, e.CurrentPath);
         });
@@ -170,12 +170,12 @@ public partial class CenterPreview : UserControl, IImageToolHost
             imgPreview.Source = null;
             imgFull.Source = null;
             txtPlaceholder.Visibility = Visibility.Visible;
-            txtFile.Text = "(chưa chọn ảnh)";
+            txtFile.Text = "(No photo selected)";
             txtMeta.Text = "";
             return;
         }
 
-        // Nếu ảnh có history chỉnh sửa và decoder hỗ trợ, render qua pipeline non-destructive.
+        // If image has edit history and decoder supports it, render via non-destructive pipeline.
         int pointer = _history?.GetPointer(path) ?? 0;
         if (pointer > 0 && _renderer.CanDecode(path))
         {
@@ -183,14 +183,14 @@ public partial class CenterPreview : UserControl, IImageToolHost
             return;
         }
 
-        // RAW: WPF BitmapImage không đọc được -> render qua pipeline (trích JPEG preview nhúng).
+        // RAW: WPF BitmapImage cannot decode directly -> render via pipeline (extract embedded JPEG preview).
         if (ZeroVision.Imaging.RawPreviewExtractor.IsRawExtension(path) && _renderer.CanDecode(path))
         {
             _ = RenderDevelopAsync(path);
             return;
         }
 
-        // Mặc định: hiển thị nhanh bằng BitmapImage (proxy decode width để tiết kiệm RAM).
+        // Default: fast display via BitmapImage (proxy decode width to conserve RAM).
         try
         {
             var bmp = new BitmapImage();
@@ -216,7 +216,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         }
     }
 
-    /// <summary>Render ảnh qua pipeline Develop (proxy linear-light) và đẩy lên preview.</summary>
+    /// <summary>Render photo via Develop pipeline (proxy linear-light) and push to preview.</summary>
     private async Task RenderDevelopAsync(string path)
     {
         var history = _history;
@@ -233,20 +233,20 @@ public partial class CenterPreview : UserControl, IImageToolHost
             pointer = history?.GetPointer(path) ?? 0;
         }
 
-        // Trong crop mode: hiển thị ảnh CHƯA cắt (bỏ rectangle, giữ straighten) để overlay khớp toạ độ.
+        // In crop mode: display UNCROPPED image (reset rectangle, retain straighten) so overlay matches coordinates.
         if (_cropMode) ops = StripCropRect(ops, pointer);
 
         try
         {
             var bmp = await _renderer.RenderPreviewAsync(path, ops, pointer);
-            if (bmp == null) return; // bị hủy bởi job mới hơn
-            // Chỉ áp nếu ảnh đang xem vẫn là ảnh này.
+            if (bmp == null) return; // cancelled by newer job
+            // Only apply if currently viewed image matches.
             if (!string.Equals(_workspace?.ActiveImage, path, StringComparison.OrdinalIgnoreCase)) return;
             imgPreview.Source = bmp;
             imgFull.Source = bmp;
             txtPlaceholder.Visibility = Visibility.Collapsed;
             txtFile.Text = Path.GetFileName(path);
-            txtMeta.Text = $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  edit · {pointer} bước";
+            txtMeta.Text = $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  edit · {pointer} step(s)";
             if (_cropMode) DrawCropOverlay();
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
@@ -260,7 +260,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
     public void SwitchMode(LighttableMode m)
     {
         _mode = m;
-        // Rời compare mode khi chọn mode khác (compare là lớp phủ riêng).
+        // Leave compare mode when switching mode.
         if (_compareMode)
         {
             _compareMode = false;
@@ -358,10 +358,10 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.K: TogglePeakOverlay(); e.Handled = true; break; // focus peaking
             case Key.OemOpenBrackets: _developPanel?.RotateActive(-1); e.Handled = true; break; // [
             case Key.OemCloseBrackets: _developPanel?.RotateActive(1); e.Handled = true; break;  // ]
-            case Key.Y: // Y: bật/tắt so sánh before/after cạnh nhau (không khi giữ Ctrl = redo)
+            case Key.Y: // Y: toggle before/after comparison side-by-side (unless Ctrl = redo)
                 if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) { ToggleCompareMode(); e.Handled = true; }
                 break;
-            case Key.Oem5: // phím "\" : Grid -> toggle Filter Bar; Single -> xem ảnh gốc (before)
+            case Key.Oem5: // key "\": Grid -> toggle Filter Bar; Single -> view original (before)
                 if (_mode == LighttableMode.Grid)
                 {
                     metadataFilterBar.Visibility = metadataFilterBar.Visibility == Visibility.Visible
@@ -373,7 +373,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 }
                 e.Handled = true;
                 break;
-            case Key.Z: // toggle 100% / fit (như Lightroom)
+            case Key.Z: // toggle 100% / fit (Lightroom style)
                 ToggleZoom();
                 e.Handled = true;
                 break;
@@ -384,15 +384,15 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.Subtract:
                 StepZoom(1 / 1.25); e.Handled = true; break;
             case Key.Escape:
-                if (_cropMode) { ToggleCropMode(); e.Handled = true; }       // thoát crop trước tiên
+                if (_cropMode) { ToggleCropMode(); e.Handled = true; }       // exit crop first
                 else if (_zoom > 1.0) { ResetZoom(); e.Handled = true; }
                 else if (_compareMode) { ToggleCompareMode(); e.Handled = true; }
                 else if (_mode == LighttableMode.Full) { SetMode(LighttableMode.Single); e.Handled = true; }
                 break;
-            case Key.Enter: // Enter áp crop (thoát chế độ crop, giữ khung) khi đang crop
+            case Key.Enter: // Enter applies crop when in crop mode
                 if (_cropMode) { ToggleCropMode(); e.Handled = true; }
                 break;
-            case Key.Space: // giữ Space để pan (kéo chuột trái), kiểu Photoshop
+            case Key.Space: // hold Space to pan (Photoshop style)
                 if (!_spaceHeld)
                 {
                     _spaceHeld = true;
@@ -418,7 +418,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private bool _showingBefore;
 
-    /// <summary>Tạm hiện ảnh GỐC (before) khi giữ phím "\"; nhả ra hiện lại bản đã chỉnh.</summary>
+    /// <summary>Temporarily show original image when holding "\"; release to restore edited view.</summary>
     private void ShowBefore(bool before)
     {
         _showingBefore = before;
@@ -426,7 +426,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         if (string.IsNullOrEmpty(path) || _externalAfterActive) { _showingBefore = false; return; }
         if (before)
         {
-            // render pointer=0 (ảnh gốc).
+            // render pointer=0 (original image).
             _ = RenderAtPointerAsync(path, 0);
             txtFile.Text = System.IO.Path.GetFileName(path) + "  [BEFORE]";
         }
@@ -497,7 +497,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         if (TryHandleHealClick(e)) { e.Handled = true; return; }
         if (TryHandleWbPick(e)) { e.Handled = true; return; }
         if (TryHandleTatMouseDown(e)) { e.Handled = true; return; }
-        // Space + kéo trái = pan (khi đang zoom).
+        // Space + left drag = pan (when zoomed).
         if (_spaceHeld && _zoom > 1.0 && imgPreview.Source != null)
         {
             _isPanning = true;
@@ -535,7 +535,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
     private void PaneSingle_MouseUp(object sender, MouseButtonEventArgs e)
     {
         if (_isDraggingTat) { TryHandleTatMouseUp(e); return; }
-        // kết thúc Space-pan (left button).
+        // finish Space-pan (left button).
         if (_isPanning)
         {
             _isPanning = false;
@@ -558,7 +558,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         _zoom = Math.Clamp(_zoom * factor, MinZoom, MaxZoom);
         if (Math.Abs(_zoom - old) < 1e-6) return;
 
-        // Zoom quanh vị trí con trỏ: giữ điểm dưới chuột cố định.
+        // Zoom around cursor: keep point under mouse stationary.
         var p = e.GetPosition(imgPreview);
         double scaleRatio = _zoom / old;
         zoomPan.X = (zoomPan.X - p.X) * scaleRatio + p.X;
@@ -600,12 +600,12 @@ public partial class CenterPreview : UserControl, IImageToolHost
         UpdateZoomBadge();
     }
 
-    /// <summary>Toggle giữa fit (1.0) và 100% pixel-thực (zoom = full/fit ratio), zoom quanh tâm.</summary>
+    /// <summary>Toggle between fit (1.0) and 100% actual pixels, centered.</summary>
     private void ToggleZoom()
     {
         if (imgPreview.Source == null) return;
         if (_zoom > 1.001) { ResetZoom(); return; }
-        // ước lượng zoom để đạt 100% pixel thực.
+        // estimate zoom to achieve 100% actual pixels.
         double target = 2.0;
         if (imgPreview.Source is System.Windows.Media.Imaging.BitmapSource bs && imgPreview.ActualWidth > 0)
         {
@@ -637,7 +637,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private void ClampPan()
     {
-        // Giới hạn pan để ảnh không trôi hoàn toàn khỏi khung.
+        // Clamp pan to prevent image from drifting offscreen.
         double w = imgPreview.ActualWidth, h = imgPreview.ActualHeight;
         if (w <= 0 || h <= 0) return;
         double maxX = w * (_zoom - 1);
@@ -648,7 +648,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private void SyncAfterTransform()
     {
-        // Đồng bộ transform cho ảnh "after" để splitter so sánh đúng vùng.
+        // Synchronize transform for "after" image so split comparison matches.
         zoomScaleAfter.ScaleX = zoomScale.ScaleX;
         zoomScaleAfter.ScaleY = zoomScale.ScaleY;
         zoomPanAfter.X = zoomPan.X;
@@ -759,7 +759,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         navigatorOverlay.Visibility = Visibility.Visible;
         navigatorThumb.Source = imgPreview.Source;
 
-        // Tính viewport rectangle
+        // Calculate viewport rectangle
         double paneW = paneSingle.ActualWidth;
         double paneH = paneSingle.ActualHeight;
         if (paneW <= 0 || paneH <= 0) return;
@@ -772,7 +772,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         double navW = 160;
         double navH = 100;
 
-        // Tỷ lệ ảnh trong navigator
+        // Image ratio in navigator
         double imgAspect = imgW / imgH;
         double navAspect = navW / navH;
         double scale, offsetX = 0, offsetY = 0;
@@ -787,7 +787,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
             offsetX = (navW - imgW * scale) / 2;
         }
 
-        // Viewport rectangle trong toạ độ navigator
+        // Viewport rectangle in navigator coordinates
         double vpW = (paneW / _zoom) * scale;
         double vpH = (paneH / _zoom) * scale;
         double vpX = offsetX + (-zoomPan.X / _zoom) * scale;
@@ -859,11 +859,11 @@ public partial class CenterPreview : UserControl, IImageToolHost
             offsetX = (navW - imgW * scale) / 2;
         }
 
-        // Chuyển click point trên navigator về toạ độ ảnh gốc
+        // Convert navigator click point to image coordinates
         double imgX = (navPoint.X - offsetX) / scale;
         double imgY = (navPoint.Y - offsetY) / scale;
 
-        // Tính pan để đưa điểm click vào tâm viewport
+        // Calculate pan to center clicked point in viewport
         double paneW = paneSingle.ActualWidth;
         double paneH = paneSingle.ActualHeight;
         zoomPan.X = -(imgX * _zoom - paneW / 2);
@@ -888,17 +888,17 @@ public partial class CenterPreview : UserControl, IImageToolHost
         double h = paneSingle.ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        double clipXScreen = w * _splitPercent; // vị trí đường split trong toạ độ paneSingle
+        double clipXScreen = w * _splitPercent; // split line position in paneSingle coordinates
 
-        // imgAfter có Margin + RenderTransform (scale/pan). Clip áp trong toạ độ LOCAL của imgAfter
-        // (trước transform), nên phải inverse-transform vị trí màn hình về local:
+        // imgAfter has Margin + RenderTransform. Clip applied in LOCAL coordinates of imgAfter
+        // (pre-transform), so inverse-transform screen coordinates to local:
         //   screen = marginLeft + (local * scale + panX)  =>  local = (screen - marginLeft - panX) / scale
         double marginLeft = imgAfter.Margin.Left;
         double s = zoomScaleAfter.ScaleX > 1e-6 ? zoomScaleAfter.ScaleX : 1.0;
         double tx = zoomPanAfter.X;
         double localX = (clipXScreen - marginLeft - tx) / s;
 
-        // Clip phủ toàn bộ vùng bên phải localX (dùng dải lớn để bao mọi mức zoom/letterbox).
+        // Clip covers right side of localX.
         imgAfter.Clip = new System.Windows.Media.RectangleGeometry(
             new Rect(localX, -100000, 200000, 200000));
         borderSplitLine.Margin = new Thickness(clipXScreen, 0, 0, 0);
@@ -911,7 +911,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Chọn ảnh tham chiếu",
+            Title = "Select Reference Photo",
             Filter = "Image Files|*.jpg;*.jpeg;*.png;*.tiff;*.tif;*.bmp;*.webp|All Files|*.*"
         };
         if (dlg.ShowDialog() == true)
@@ -1016,14 +1016,14 @@ public partial class CenterPreview : UserControl, IImageToolHost
     {
         Dispatcher.BeginInvoke(() =>
         {
-            // Phát ra event để MainWindow hiển thị ở status bar; vẫn cập nhật txtMeta cục bộ.
+            // Raise event for MainWindow status bar; update txtMeta locally.
             ProgressReported?.Invoke(this, (percent, status));
             if (percent < 0) { txtMeta.Text = ""; return; }
             if (status != null) txtMeta.Text = $"{status} {percent}%";
         });
     }
 
-    /// <summary>Phát tiến trình (percent, status) cho host hiển thị ở status bar. percent&lt;0 = ẩn.</summary>
+    /// <summary>Emit progress (percent, status) for host status bar. percent &lt; 0 = hide.</summary>
     public event EventHandler<(int Percent, string? Status)>? ProgressReported;
 
     public void SetTemporaryOperations(IReadOnlyList<EditOperation>? ops, string? styleName = null)
@@ -1048,31 +1048,31 @@ public partial class CenterPreview : UserControl, IImageToolHost
 
     private void CycleMaskOverlayColor()
     {
-        if (_maskOverlayColor.R == 255 && _maskOverlayColor.G == 0 && _maskOverlayColor.B == 0) // Đỏ -> Xanh lá
+        if (_maskOverlayColor.R == 255 && _maskOverlayColor.G == 0 && _maskOverlayColor.B == 0) // Red -> Green
             _maskOverlayColor = Color.FromArgb(0x80, 0x00, 0xFF, 0x00);
-        else if (_maskOverlayColor.G == 255 && _maskOverlayColor.R == 0) // Xanh lá -> Xanh dương
+        else if (_maskOverlayColor.G == 255 && _maskOverlayColor.R == 0) // Green -> Blue
             _maskOverlayColor = Color.FromArgb(0x80, 0x00, 0x00, 0xFF);
-        else if (_maskOverlayColor.B == 255 && _maskOverlayColor.R == 0) // Xanh dương -> Trắng
+        else if (_maskOverlayColor.B == 255 && _maskOverlayColor.R == 0) // Blue -> White
             _maskOverlayColor = Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF);
-        else if (_maskOverlayColor.R == 255 && _maskOverlayColor.G == 255) // Trắng -> Đen
+        else if (_maskOverlayColor.R == 255 && _maskOverlayColor.G == 255) // White -> Black
             _maskOverlayColor = Color.FromArgb(0x80, 0x00, 0x00, 0x00);
-        else // Đen -> Đỏ
+        else // Black -> Red
             _maskOverlayColor = Color.FromArgb(0x80, 0xFF, 0x00, 0x00);
 
-        RedrawBrushOverlay(); // Gọi vẽ lại các chấm nét cọ vẽ bằng màu mới
+        RedrawBrushOverlay(); // Redraw brush strokes with new color
         
         if (Application.Current.MainWindow is MainWindow mw)
         {
-            mw.ShowToast($"Màu mặt nạ: {GetMaskColorName(_maskOverlayColor)}");
+            mw.ShowToast($"Mask overlay color: {GetMaskColorName(_maskOverlayColor)}");
         }
     }
 
     private string GetMaskColorName(Color c)
     {
-        if (c.R == 255 && c.G == 0 && c.B == 0) return "Đỏ";
-        if (c.G == 255 && c.R == 0 && c.B == 0) return "Xanh lá";
-        if (c.B == 255 && c.R == 0 && c.G == 0) return "Xanh dương";
-        if (c.R == 255 && c.G == 255 && c.B == 255) return "Trắng";
-        return "Đen";
+        if (c.R == 255 && c.G == 0 && c.B == 0) return "Red";
+        if (c.G == 255 && c.R == 0 && c.B == 0) return "Green";
+        if (c.B == 255 && c.R == 0 && c.G == 0) return "Blue";
+        if (c.R == 255 && c.G == 255 && c.B == 255) return "White";
+        return "Black";
     }
 }

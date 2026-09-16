@@ -34,7 +34,7 @@ public partial class Filmstrip : UserControl
         _meta.MetaChanged += OnMetaChanged;
     }
 
-    /// <summary>Cấp service cho context menu (gọi sau Bind).</summary>
+    /// <summary>Provide service for context menu (call after Bind).</summary>
     public void BindContext(IHistoryService history, DevelopClipboard clipboard)
     {
         _history = history;
@@ -139,7 +139,7 @@ public partial class Filmstrip : UserControl
         if (sender is FrameworkElement fe && fe.DataContext is ThumbItem item &&
             _workspace != null && _meta != null && _history != null && _clipboard != null)
         {
-            // Nếu ảnh chưa nằm trong selection -> chọn riêng nó (UX chuẩn).
+            // If photo is not in selection -> select it exclusively (standard UX).
             if (!_workspace.Selection.Contains(item.ImagePath))
             {
                 _workspace.SetSelection(new[] { item.ImagePath });

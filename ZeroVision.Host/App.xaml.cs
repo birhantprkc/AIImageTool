@@ -16,7 +16,7 @@ public partial class App : Application
         {
             LogException("UI Crash (Dispatcher)", e.Exception);
             MessageBox.Show(
-                $"Lỗi giao diện nghiêm trọng:\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\nLog: {CrashLogPath}",
+                $"Fatal UI Error:\n{e.Exception.GetType().Name}: {e.Exception.Message}\n\nLog: {CrashLogPath}",
                 "ZeroVision", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         };
@@ -108,7 +108,7 @@ public partial class App : Application
         services.AddSingleton<IImageToolHost>(sp =>
             sp.GetRequiredService<ImageToolHostProvider>().Host
             ?? throw new InvalidOperationException(
-                "IImageToolHost chưa sẵn sàng (MainWindow chưa khởi tạo CenterPreview)."));
+                "IImageToolHost is not ready (CenterPreview not yet initialized)."));
     }
 
     private void OnStartup(object sender, StartupEventArgs e)
@@ -156,7 +156,7 @@ public partial class App : Application
         {
             LogException("Startup Failed", ex);
             MessageBox.Show(
-                $"Không khởi động được app:\n{ex.GetType().Name}: {ex.Message}\n\nLog: {CrashLogPath}",
+                $"Failed to launch application:\n{ex.GetType().Name}: {ex.Message}\n\nLog: {CrashLogPath}",
                 "ZeroVision - Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }

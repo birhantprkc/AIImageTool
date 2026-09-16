@@ -160,7 +160,7 @@ public partial class CenterPreview
         Canvas.SetTop(mainEllipse, center.Y - radiusY);
         maskGizmoOverlay.Children.Add(mainEllipse);
 
-        // 4 Chốt kéo co giãn
+        // 4 Scale/Resize Handles
         Point ptTop = new Point(center.X, center.Y - radiusY);
         Point ptBottom = new Point(center.X, center.Y + radiusY);
         Point ptLeft = new Point(center.X - radiusX, center.Y);
@@ -222,7 +222,7 @@ public partial class CenterPreview
 
     private MaskHandleKind HitTestGizmoHandle(Point p)
     {
-        // Ưu tiên tìm handle đã đánh dấu tag
+        // Prioritize tagged handle lookup
         foreach (UIElement child in maskGizmoOverlay.Children)
         {
             if (child is Ellipse el && el.Tag is MaskHandleKind kind)

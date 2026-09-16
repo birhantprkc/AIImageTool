@@ -16,7 +16,7 @@ public sealed class SyncSettingsDialog : Window
 
     public SyncSettingsDialog()
     {
-        Title = "Đồng bộ chỉnh ảnh (Sync Settings)";
+        Title = "Synchronize Settings (Sync)";
         Width = 380;
         Height = 280;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -28,7 +28,7 @@ public sealed class SyncSettingsDialog : Window
         // Tiêu đề phía trên
         var title = new TextBlock
         {
-            Text = "Chọn các thông số muốn đồng bộ:",
+            Text = "Select settings to synchronize:",
             Foreground = ThemeManager.GetBrush("TextPrimaryBrush"),
             FontWeight = FontWeights.SemiBold,
             FontSize = 12,
@@ -39,8 +39,8 @@ public sealed class SyncSettingsDialog : Window
 
         // Hàng nút chọn nhanh (chọn tất cả / bỏ chọn)
         var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
-        var btnAll = new Button { Content = "Chọn tất cả", Width = 90, Height = 22, Margin = new Thickness(0, 0, 8, 0), FontSize = 11 };
-        var btnNone = new Button { Content = "Bỏ chọn tất cả", Width = 90, Height = 22, FontSize = 11 };
+        var btnAll = new Button { Content = "Check All", Width = 90, Height = 22, Margin = new Thickness(0, 0, 8, 0), FontSize = 11 };
+        var btnNone = new Button { Content = "Check None", Width = 90, Height = 22, FontSize = 11 };
         btnAll.Click += (s, e) => ToggleAll(true);
         btnNone.Click += (s, e) => ToggleAll(false);
         actionRow.Children.Add(btnAll);
@@ -48,8 +48,8 @@ public sealed class SyncSettingsDialog : Window
         
         // Hàng nút xác nhận ở dưới đáy
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
-        var ok = new Button { Content = "Đồng bộ (Sync)", Width = 100, Height = 28, IsDefault = true, FontSize = 11 };
-        var cancel = new Button { Content = "Hủy", Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true, FontSize = 11 };
+        var ok = new Button { Content = "Synchronize", Width = 100, Height = 28, IsDefault = true, FontSize = 11 };
+        var cancel = new Button { Content = "Cancel", Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true, FontSize = 11 };
         ok.Click += OnSync;
         cancel.Click += (_, _) => Close();
         btnRow.Children.Add(ok);
@@ -68,7 +68,7 @@ public sealed class SyncSettingsDialog : Window
         AddCheck(listPanel, "HSL", "HSL / Color Mixer");
         AddCheck(listPanel, "Detail", "Detail & Effects (Sharpen, Denoise, Glow, Vignette)");
         AddCheck(listPanel, "LUT", "3D LUT (Lookup Table)");
-        AddCheck(listPanel, "Lua", "Lua Scripting (Các slider script động)");
+        AddCheck(listPanel, "Lua", "Lua Scripting (Dynamic script sliders)");
 
         root.Children.Add(listPanel);
         Content = root;

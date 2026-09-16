@@ -10,7 +10,7 @@ using ZeroVision.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Histogram trực quan + cảnh báo clip trong DevelopPanel (11.3).
+// Visual histogram + clipping warnings in DevelopPanel (11.3).
 public partial class DevelopPanel
 {
     private Border? _histHost;
@@ -18,26 +18,26 @@ public partial class DevelopPanel
     private TextBlock? _histClipLabel;
     private Rectangle? _histHoverRect;
     private string? _histHoverKey;
-    private string _normalClipText = "Không clip";
+    private string _normalClipText = "No clipping";
     private Brush? _normalClipBrush;
-    // Chế độ hiển thị kênh: 0 = RGB chồng, 1 = Luma.
+    // Channel display mode: 0 = RGB overlay, 1 = Luma.
     private int _histChannelMode;
-    // Chế độ scope: 0 = histogram, 1 = waveform/parade.
+    // Scope display mode: 0 = histogram, 1 = waveform/parade.
     private int _scopeMode;
     private ToggleButton? _histBtnRgb;
     private ToggleButton? _histBtnLuma;
     private ToggleButton? _histBtnWave;
 
-    /// <summary>Dựng widget histogram (gọi đầu BuildUI, ghim trên cùng panel slider).</summary>
+    /// <summary>Build histogram widget (called first in BuildUI, pinned at top).</summary>
     private FrameworkElement BuildHistogram()
     {
         var outer = new StackPanel { Margin = new Thickness(2, 2, 2, 6) };
 
-        // Hàng nút chọn kênh RGB / Luma (13.8) + scope Wave.
+        // RGB / Luma channel buttons + Waveform scope.
         var toggleRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 0, 2) };
         _histBtnRgb = new ToggleButton { Content = "RGB", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), IsChecked = true, Margin = new Thickness(0, 0, 4, 0) };
         _histBtnLuma = new ToggleButton { Content = "Luma", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 8, 0) };
-        _histBtnWave = new ToggleButton { Content = "Wave", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), ToolTip = "Bật waveform / RGB-parade (phân bố theo cột ảnh)" };
+        _histBtnWave = new ToggleButton { Content = "Wave", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), ToolTip = "Toggle Waveform / RGB Parade (column-wise distribution)" };
         _histBtnRgb.Click += (_, _) => SetHistChannelMode(0);
         _histBtnLuma.Click += (_, _) => SetHistChannelMode(1);
         _histBtnWave.Click += (_, _) => SetScopeMode(_histBtnWave.IsChecked == true ? 1 : 0);
@@ -52,7 +52,7 @@ public partial class DevelopPanel
             Background = ThemeManager.GetBrush("BgBaseBrush"),
             ClipToBounds = true,
             Cursor = System.Windows.Input.Cursors.SizeWE,
-            ToolTip = "Kéo ngang trên histogram để chỉnh tone: trái→phải = Blacks · Shadows · Exposure · Highlights · Whites"
+            ToolTip = "Drag horizontally on histogram to adjust tone: left→right = Blacks · Shadows · Exposure · Highlights · Whites"
         };
         _histHoverRect = new Rectangle
         {
@@ -92,13 +92,13 @@ public partial class DevelopPanel
     {
         _scopeMode = mode;
         if (_histBtnWave != null) _histBtnWave.IsChecked = mode == 1;
-        RefreshHistogram(); // tải lại dữ liệu phù hợp (waveform/histogram)
+        RefreshHistogram(); // reload scope data (waveform/histogram)
     }
 
     private HistogramData? _lastHist;
     private WaveformData? _lastWave;
 
-    /// <summary>Tính lại scope cho ảnh + ops hiện tại rồi vẽ. Gọi off-UI để khỏi giật.</summary>
+    /// <summary>Recalculate scope for image + current ops off-UI, then render.</summary>
     private void RefreshHistogram()
     {
         if (_renderer == null || _history == null || string.IsNullOrEmpty(_currentPath) || _histCanvas == null) return;
@@ -175,9 +175,9 @@ public partial class DevelopPanel
         if (_histClipLabel != null)
         {
             var parts = new List<string>();
-            if (hist.ShadowClipWarning) parts.Add($"▼ tối {hist.ShadowClipPercent:0.0}%");
-            if (hist.HighlightClipWarning) parts.Add($"▲ sáng {hist.HighlightClipPercent:0.0}%");
-            _normalClipText = parts.Count > 0 ? string.Join("   ", parts) : "Không clip";
+            if (hist.ShadowClipWarning) parts.Add($"▼ Shadow {hist.ShadowClipPercent:0.0}%");
+            if (hist.HighlightClipWarning) parts.Add($"▲ Highlight {hist.HighlightClipPercent:0.0}%");
+            _normalClipText = parts.Count > 0 ? string.Join("   ", parts) : "No clipping";
             _normalClipBrush = parts.Count > 0 ? Brushes.Orange : ThemeManager.GetBrush("TextDimBrush");
             if (string.IsNullOrEmpty(_histHoverKey))
             {

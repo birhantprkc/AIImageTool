@@ -4,13 +4,13 @@ using System.Windows.Input;
 
 namespace ZeroVision.Host.Workspace;
 
-// Healing brush click capture (#6). Bật từ DevelopPanel; click trên ảnh -> AddHealSpot.
+// Healing brush click capture (#6). Enabled from DevelopPanel; click on image -> AddHealSpot.
 public partial class CenterPreview
 {
     private bool _healMode;
     private DevelopPanel? _healPanel;
 
-    /// <summary>Liên kết DevelopPanel để nhận tín hiệu bật/tắt heal + trả điểm click.</summary>
+    /// <summary>Bind DevelopPanel to receive heal toggle signals and return clicked points.</summary>
     public void BindHealingPanel(DevelopPanel panel)
     {
         _healPanel = panel;
@@ -19,7 +19,7 @@ public partial class CenterPreview
             _healMode = on;
             if (on)
             {
-                // tắt các overlay khác để tránh tranh chấp click.
+                // Disable other overlays to prevent click conflicts.
                 if (_cropMode) ToggleCropMode();
                 SetMode(LighttableMode.Single);
                 ResetZoom();
@@ -32,7 +32,7 @@ public partial class CenterPreview
         };
     }
 
-    /// <summary>Gọi từ PaneSingle_MouseDown khi đang heal mode. Trả true nếu đã xử lý.</summary>
+    /// <summary>Called from PaneSingle_MouseDown during heal mode. Returns true if handled.</summary>
     private bool TryHandleHealClick(MouseButtonEventArgs e)
     {
         if (!_healMode || _healPanel == null) return false;

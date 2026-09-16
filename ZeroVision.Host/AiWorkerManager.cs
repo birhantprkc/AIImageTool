@@ -35,7 +35,7 @@ public class AiWorkerManager : IDisposable
 
             if (!File.Exists(scriptPath))
             {
-                File.AppendAllText("worker.log", $"[{DateTime.Now}] AI Worker Bị Tắt (Thiếu main.py) tại: {scriptPath}\n");
+                File.AppendAllText("worker.log", $"[{DateTime.Now}] AI Worker Disabled (Missing main.py) at: {scriptPath}\n");
                 return;
             }
 
@@ -64,7 +64,7 @@ public class AiWorkerManager : IDisposable
         }
         catch (Exception ex)
         {
-            File.AppendAllText("worker.log", $"[{DateTime.Now}] Lỗi kích hoạt máy chủ ngầm:\n{ex}\n");
+            File.AppendAllText("worker.log", $"[{DateTime.Now}] Error activating background server:\n{ex}\n");
         }
     }
 

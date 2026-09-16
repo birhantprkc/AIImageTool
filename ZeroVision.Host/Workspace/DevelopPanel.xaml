@@ -16,11 +16,11 @@
                     <Button x:Name="btnPaste" Content="Paste" Padding="8,3" Margin="0,0,4,0"
                             Click="BtnPaste_Click" ToolTip="Paste settings (Ctrl+Shift+V)"/>
                     <Button x:Name="btnSync" Content="Sync" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnSync_Click" ToolTip="Đồng bộ chỉnh ảnh (Ctrl+Shift+S)"/>
+                            Click="BtnSync_Click" ToolTip="Sync settings (Ctrl+Shift+S)"/>
                     <Button x:Name="btnAuto" Content="Auto" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnAuto_Click" ToolTip="Tự động cân chỉnh tông"/>
+                            Click="BtnAuto_Click" ToolTip="Auto tone adjustments"/>
                     <Button x:Name="btnReset" Content="Reset" Padding="8,3"
-                            Click="BtnReset_Click" ToolTip="Đưa tất cả về 0"/>
+                            Click="BtnReset_Click" ToolTip="Reset all adjustments"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -30,10 +30,10 @@
                 BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
             <DockPanel>
                 <TextBlock Text="Preset" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Button x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋ Lưu" Padding="6,2"
-                        Click="BtnSavePreset_Click" ToolTip="Lưu settings hiện tại thành preset"/>
+                <Button x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋ Save" Padding="6,2"
+                        Click="BtnSavePreset_Click" ToolTip="Save current settings as preset"/>
                 <ComboBox x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged"
-                          ToolTip="Áp preset đã lưu"/>
+                          ToolTip="Apply saved preset"/>
             </DockPanel>
         </Border>
 
@@ -45,7 +45,7 @@
                        Visibility="Collapsed"/>
         </StackPanel>
 
-        <TextBlock x:Name="txtNoImage" DockPanel.Dock="Top" Text="Chọn 1 ảnh để bắt đầu chỉnh"
+        <TextBlock x:Name="txtNoImage" DockPanel.Dock="Top" Text="Select a photo to start editing"
                    Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic" FontSize="11" Margin="12,8" Visibility="Collapsed"/>
 
         <!-- Tab Filter Bar & Solo Mode Toggle -->
@@ -65,7 +65,7 @@
                     <TextBlock Text="Solo" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <edit:ToggleSwitch x:Name="chkSoloMode" Width="30" Height="16" IsChecked="True"
                                        VerticalAlignment="Center"
-                                       ToolTip="Solo Mode: Chỉ mở một bảng điều khiển tại một thời điểm"/>
+                                       ToolTip="Solo Mode: Keep only one panel open at a time"/>
                 </StackPanel>
             </Grid>
         </Border>

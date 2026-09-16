@@ -26,9 +26,9 @@ public sealed class SmartCollectionDialog : Window
     private readonly TextBox _focalMin = NewBox();
     private readonly TextBox _focalMax = NewBox();
     private readonly TextBox _keyword = NewBox();
-    private readonly ComboBox _ratingMin = NewCombo("Bất kỳ", "≥ 1 ★", "≥ 2 ★", "≥ 3 ★", "≥ 4 ★", "= 5 ★");
-    private readonly ComboBox _label = NewCombo("Bất kỳ", "Đỏ", "Vàng", "Xanh lá", "Xanh dương", "Tím");
-    private readonly ComboBox _pick = NewCombo("Bất kỳ", "Pick", "Reject");
+    private readonly ComboBox _ratingMin = NewCombo("Any", "≥ 1 ★", "≥ 2 ★", "≥ 3 ★", "≥ 4 ★", "= 5 ★");
+    private readonly ComboBox _label = NewCombo("Any", "Red", "Yellow", "Green", "Blue", "Purple");
+    private readonly ComboBox _pick = NewCombo("Any", "Pick", "Reject");
 
     public string? CollectionName { get; private set; }
     public CatalogQuery Query { get; private set; } = new();
@@ -61,9 +61,9 @@ public sealed class SmartCollectionDialog : Window
         _pick.SelectedIndex = query.Pick switch { PickFlag.Pick => 1, PickFlag.Reject => 2, _ => 0 };
 
         var sp = new StackPanel { Margin = new Thickness(16) };
-        sp.Children.Add(Label("Tên Smart Collection"));
+        sp.Children.Add(Label("Smart Collection Name"));
         sp.Children.Add(_name);
-        sp.Children.Add(Label("Từ khoá (tên file / thư mục)"));
+        sp.Children.Add(Label("Keywords (File / Folder name)"));
         sp.Children.Add(_text);
         sp.Children.Add(Label("Camera Make"));
         sp.Children.Add(_make);
@@ -71,16 +71,16 @@ public sealed class SmartCollectionDialog : Window
         sp.Children.Add(_model);
         sp.Children.Add(Label("Lens"));
         sp.Children.Add(_lens);
-        sp.Children.Add(Row("ISO từ … đến", _isoMin, _isoMax));
-        sp.Children.Add(Row("Khẩu độ f/ từ … đến", _apMin, _apMax));
-        sp.Children.Add(Row("Tiêu cự (mm) từ … đến", _focalMin, _focalMax));
-        sp.Children.Add(Label("Rating tối thiểu"));
+        sp.Children.Add(Row("ISO from … to", _isoMin, _isoMax));
+        sp.Children.Add(Row("Aperture f/ from … to", _apMin, _apMax));
+        sp.Children.Add(Row("Focal length (mm) from … to", _focalMin, _focalMax));
+        sp.Children.Add(Label("Minimum Rating"));
         sp.Children.Add(_ratingMin);
         sp.Children.Add(Label("Color Label"));
         sp.Children.Add(_label);
         sp.Children.Add(Label("Pick / Reject"));
         sp.Children.Add(_pick);
-        sp.Children.Add(Label("Keyword (chứa)"));
+        sp.Children.Add(Label("Keyword (contains)"));
         sp.Children.Add(_keyword);
 
         var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };

@@ -40,7 +40,7 @@ public sealed class AiMaskService : IDisposable
                 EnsureDenoiser();
                 _denoiser?.Apply(img, strength, scale);
             }
-            catch (Exception ex) { ZeroVision.Shared.AppLog.Error("AiMaskService.Denoise", "inference lỗi", ex); }
+            catch (Exception ex) { ZeroVision.Shared.AppLog.Error("AiMaskService.Denoise", "inference error", ex); }
         };
     }
 

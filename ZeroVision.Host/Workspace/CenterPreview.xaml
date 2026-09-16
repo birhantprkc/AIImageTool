@@ -17,45 +17,45 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                     <Button x:Name="btnModeSingle" Content="◰  Single (E)" Padding="10,4" Margin="0,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeSingle_Click" ToolTip="Xem 1 ảnh lớn (phím E)"/>
+                            Click="BtnModeSingle_Click" ToolTip="Loupe view / Single photo (E)"/>
                     <Button x:Name="btnModeGrid" Content="▦  Grid (G)" Padding="10,4" Margin="0,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeGrid_Click" ToolTip="Lưới thu nhỏ nhiều ảnh (phím G)"/>
+                            Click="BtnModeGrid_Click" ToolTip="Grid view / Thumbnails (G)"/>
                     <Button x:Name="btnModeCull" Content="❐  Cull (C)" Padding="10,4" Margin="0,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeCull_Click" ToolTip="So sánh 2x2 để chọn lọc ảnh (phím C)"/>
+                            Click="BtnModeCull_Click" ToolTip="Cull view / 2x2 comparison (C)"/>
                     <Button x:Name="btnModeFull" Content="⛶  Full (F)" Padding="10,4" Margin="0,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeFull_Click" ToolTip="Toàn màn hình (phím F, Esc để thoát)"/>
+                            Click="BtnModeFull_Click" ToolTip="Full screen view (F, Esc to exit)"/>
                     <Button x:Name="btnToggleFilter" Content="🔍  Filters (\)" Padding="10,4" Margin="8,0,4,0" Visibility="Collapsed"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnToggleFilter_Click" ToolTip="Bật/tắt thanh lọc thư viện Metadata (phím \)"/>
+                            Click="BtnToggleFilter_Click" ToolTip="Toggle Library Filter Bar (\)"/>
                     <Button x:Name="btnCrop" Content="◳  Crop (R)" Padding="10,4" Margin="12,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnCrop_Click" ToolTip="Bật/tắt cắt ảnh (kéo khung)"/>
+                            Click="BtnCrop_Click" ToolTip="Toggle Crop Overlay (R)"/>
                     <Button x:Name="btnRotateLeft" Content="⟲" Padding="9,4" Margin="4,0,0,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnRotateLeft_Click" ToolTip="Xoay trái 90° ([)"/>
+                            Click="BtnRotateLeft_Click" ToolTip="Rotate Left 90° ([)"/>
                     <Button x:Name="btnRotateRight" Content="⟳" Padding="9,4" Margin="2,0,0,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnRotateRight_Click" ToolTip="Xoay phải 90° (])"/>
+                            Click="BtnRotateRight_Click" ToolTip="Rotate Right 90° (])"/>
                     <Button x:Name="btnFlipH" Content="⇋" Padding="9,4" Margin="2,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnFlipH_Click" ToolTip="Lật ngang"/>
+                            Click="BtnFlipH_Click" ToolTip="Flip Horizontal"/>
                     <Button x:Name="btnCompare" Content="◫  Before/After (Y)" Padding="10,4" Margin="4,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnCompare_Click" ToolTip="So sánh ảnh gốc và ảnh đã chỉnh cạnh nhau"/>
+                            Click="BtnCompare_Click" ToolTip="Before / After side-by-side comparison (Y)"/>
                     <Button x:Name="btnStack" Content="⧉  Stack" Padding="10,4" Margin="4,0,4,0"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnStack_Click" ToolTip="Gom ảnh chụp liên tiếp (burst/bracket) thành nhóm trong Grid"/>
+                            Click="BtnStack_Click" ToolTip="Group burst/bracket photos into stacks in Grid"/>
                     <ComboBox x:Name="cmbCropRatio" Width="110" Margin="4,0,0,0" Visibility="Collapsed"
                               VerticalAlignment="Center" SelectionChanged="CmbCropRatio_SelectionChanged"
-                              ToolTip="Tỉ lệ khung cắt"/>
+                              ToolTip="Crop Aspect Ratio"/>
                     <Button x:Name="btnSmartCrop" Content="✨ Smart" Padding="8,4" Margin="4,0,0,0" Visibility="Collapsed"
                             Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnSmartCrop_Click" ToolTip="Tự đặt khung cắt theo nội dung nổi bật (content-aware) cho tỉ lệ đang chọn"/>
+                            Click="BtnSmartCrop_Click" ToolTip="Auto content-aware crop for selected aspect ratio"/>
                 </StackPanel>
-                <TextBlock x:Name="txtFile" DockPanel.Dock="Left" Text="(chưa chọn ảnh)" Foreground="{DynamicResource TextSecondaryBrush}"
+                <TextBlock x:Name="txtFile" DockPanel.Dock="Left" Text="(No photo selected)" Foreground="{DynamicResource TextSecondaryBrush}"
                            FontSize="12" VerticalAlignment="Center" Margin="20,0,0,0"/>
                 <TextBlock x:Name="txtMeta" DockPanel.Dock="Right" HorizontalAlignment="Right"
                            Foreground="{DynamicResource TextDimBrush}" FontSize="11" VerticalAlignment="Center"/>
@@ -74,7 +74,7 @@
                   MouseRightButtonDown="PaneSingle_PanStart"
                   MouseRightButtonUp="PaneSingle_PanEnd">
                 <TextBlock x:Name="txtPlaceholder"
-                           Text="Chọn ảnh ở Browser hoặc bấm 📁  Open Folder"
+                           Text="Select a photo in Browser or click 📁  Open Folder"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" FontSize="16"/>
                 <Image x:Name="imgPreview" Stretch="Uniform" Margin="20" RenderTransformOrigin="0,0">
@@ -124,7 +124,7 @@
                         Margin="0,30,30,0" Background="{DynamicResource EditedBadgeBrush}" CornerRadius="2" Padding="6,2"
                         Visibility="Collapsed">
                     <DockPanel>
-                        <TextBlock Text="AFTER · kéo để so sánh" Foreground="#000" FontSize="10" FontWeight="SemiBold"/>
+                        <TextBlock Text="AFTER · Drag to compare" Foreground="#000" FontSize="10" FontWeight="SemiBold"/>
                         <Button x:Name="btnClearAfter" Content="✕" Margin="6,0,0,0" Padding="2,0"
                                 Background="Transparent" Foreground="#000" BorderThickness="0"
                                 Click="BtnClearAfter_Click"/>
@@ -142,11 +142,11 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="👁 PREVIEW: " FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
                         <TextBlock x:Name="txtPresetPreviewName" Text="Vintage Film" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="11"/>
-                        <TextBlock Text=" · Nhấp để áp dụng (Y: So sánh)" Foreground="#AAAAAA" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Text=" · Click to apply (Y: Compare)" Foreground="#AAAAAA" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
 
-                <!-- Crop overlay: vẽ khung cắt + 8 tay nắm. Ẩn cho tới khi bật crop mode. -->
+                <!-- Crop overlay: renders crop rectangle + 8 handles. Hidden until crop mode enabled. -->
                 <Canvas x:Name="cropOverlay" Background="#01000000" Visibility="Collapsed"
                         MouseLeftButtonDown="CropOverlay_MouseDown"
                         MouseMove="CropOverlay_MouseMove"
@@ -158,19 +158,19 @@
                         MouseMove="MaskGizmo_MouseMove"
                         MouseLeftButtonUp="MaskGizmo_MouseUp"/>
 
-                <!-- Brush overlay: bắt nét vẽ cho local brush mask. Ẩn cho tới khi chọn brush mask. -->
+                <!-- Brush overlay: captures stroke for local brush mask. Hidden until brush mask selected. -->
                 <Canvas x:Name="brushOverlay" Background="#01000000" Visibility="Collapsed" Cursor="Cross"
                         MouseLeftButtonDown="BrushOverlay_MouseDown"
                         MouseMove="BrushOverlay_MouseMove"
                         MouseLeftButtonUp="BrushOverlay_MouseUp"/>
 
-                <!-- Liquify overlay: kéo handle đẩy/kéo (warp). Ẩn cho tới khi bật Liquify. -->
+                <!-- Liquify overlay: drag handle for warp. Hidden until Liquify enabled. -->
                 <Canvas x:Name="liquifyOverlay" Background="#01000000" Visibility="Collapsed" Cursor="SizeAll"
                         MouseLeftButtonDown="LiquifyOverlay_MouseDown"
                         MouseMove="LiquifyOverlay_MouseMove"
                         MouseLeftButtonUp="LiquifyOverlay_MouseUp"/>
 
-                <!-- Navigator mini-map: hiện khi zoom > 100% -->
+                <!-- Navigator mini-map: visible when zoom > 100% -->
                 <Border x:Name="navigatorOverlay" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                         Margin="0,0,16,16" Visibility="Collapsed" IsHitTestVisible="True" Cursor="Hand"
                         Background="#CC111111" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1"
@@ -225,19 +225,19 @@
                                     <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6"
                                             Background="{DynamicResource EditedBadgeBrush}" CornerRadius="2" Padding="3,1"
                                             Visibility="{Binding IsEdited, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Đã chỉnh sửa">
+                                            ToolTip="Has Develop Adjustments">
                                         <TextBlock Text="✎" Foreground="#000" FontSize="10" FontWeight="Bold"/>
                                     </Border>
                                     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6,6,6,26"
                                             Background="#CC222222" CornerRadius="3" Padding="5,1"
                                             Visibility="{Binding IsStackCover, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Nhóm ảnh chụp liên tiếp">
+                                            ToolTip="Stacked burst photos">
                                         <TextBlock Text="{Binding StackBadge}" Foreground="{DynamicResource RatingBrush}" FontSize="11" FontWeight="Bold"/>
                                     </Border>
                                     <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6,0,0,26"
                                             Background="#007ACC" CornerRadius="2" Padding="4,1"
                                             Visibility="{Binding IsVirtualCopy, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Virtual Copy (Bản sao ảo)">
+                                            ToolTip="Virtual Copy">
                                         <TextBlock Text="{Binding VirtualCopyBadge}" Foreground="#FFF" FontSize="10" FontWeight="Bold"/>
                                     </Border>
                                     <Border VerticalAlignment="Bottom" Background="#AA000000" Padding="4,2">
@@ -329,7 +329,7 @@
                 <Border Width="1" Background="{DynamicResource BorderBrush_}" HorizontalAlignment="Center"/>
                 <Button x:Name="btnSetReference" Content="📷 Set Reference" HorizontalAlignment="Center"
                         VerticalAlignment="Bottom" Margin="0,0,0,16" Padding="12,6"
-                        Click="BtnSetReference_Click" ToolTip="Chọn ảnh tham chiếu để so sánh"/>
+                        Click="BtnSetReference_Click" ToolTip="Select reference photo for comparison"/>
             </Grid>
         </Grid>
 

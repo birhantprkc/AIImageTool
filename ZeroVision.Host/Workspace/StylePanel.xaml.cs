@@ -51,10 +51,10 @@ public partial class StylePanel : UserControl
     {
         if (_styles == null || _workspace?.ActiveImage == null)
         {
-            MessageBox.Show("Hãy chọn 1 ảnh có history trước khi lưu Style.", "Style", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select an edited photo before saving Style.", "Style", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var dlg = new InputDialog("Lưu Style", "Tên style:", $"Style {_styles.Styles.Count + 1}");
+        var dlg = new InputDialog("Save Style", "Style name:", $"Style {_styles.Styles.Count + 1}");
         if (dlg.ShowDialog() == true)
         {
             _styles.SaveFromHistory(dlg.Result, _workspace.ActiveImage);
@@ -78,19 +78,19 @@ public partial class StylePanel : UserControl
             var ops = LightroomXmpImporter.Parse(content);
             if (ops.Count == 0)
             {
-                MessageBox.Show("Không tìm thấy thiết lập Develop nào trong file XMP này.", "Import XMP",
+                MessageBox.Show("No Develop settings found in this XMP file.", "Import XMP",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var name = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
             _styles.SaveFromOperations(name, ops, $"Imported from Lightroom · {ops.Count} ops");
-            MessageBox.Show($"Đã nhập preset '{name}' ({ops.Count} op).", "Import XMP",
+            MessageBox.Show($"Imported preset '{name}' ({ops.Count} operations).", "Import XMP",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (System.Exception ex)
         {
             ZeroVision.Shared.AppLog.Error("StylePanel.ImportXmp", dlg.FileName, ex);
-            MessageBox.Show($"Lỗi khi nhập XMP: {ex.Message}", "Import XMP", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error importing XMP: {ex.Message}", "Import XMP", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -105,7 +105,7 @@ public partial class StylePanel : UserControl
         if (sel.Count == 0 && _workspace.ActiveImage != null) sel.Add(_workspace.ActiveImage);
         if (sel.Count == 0)
         {
-            MessageBox.Show("Hãy chọn ảnh đích trước khi apply Style.", "Style", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select a target photo before applying Style.", "Style", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -130,7 +130,7 @@ public partial class StylePanel : UserControl
         {
             var style = _styles.Styles.FirstOrDefault(s => s.Id == id);
             if (style == null) return;
-            if (MessageBox.Show($"Xóa style '{style.Name}'?", "Style", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
+            if (MessageBox.Show($"Delete style '{style.Name}'?", "Style", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK)
                 _styles.Delete(id);
         }
     }

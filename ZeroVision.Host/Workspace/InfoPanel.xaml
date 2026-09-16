@@ -13,7 +13,7 @@
             <StackPanel>
                 <!-- CURATION & RATING -->
                 <Border Background="{DynamicResource BgPanelAltBrush}" Padding="10,4" Margin="0,0,0,2">
-                    <TextBlock Text="ĐÁNH GIÁ &amp; LỌC" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="RATINGS &amp; FLAGS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </Border>
                 <Border Margin="6,2,6,4" Background="{DynamicResource BgPanelBrush}" Padding="8,6" CornerRadius="4">
                     <StackPanel>
@@ -21,11 +21,11 @@
                         <DockPanel Margin="0,0,0,6">
                             <Button x:Name="btnResetRating" DockPanel.Dock="Right" Content="∅" Width="20" Height="20"
                                     Background="Transparent" Foreground="{DynamicResource TextDimBrush}" BorderThickness="0"
-                                    Cursor="Hand" ToolTip="Xoá sao (0★)" Click="BtnResetRating_Click" VerticalAlignment="Center"/>
+                                    Cursor="Hand" ToolTip="Clear rating (0★)" Click="BtnResetRating_Click" VerticalAlignment="Center"/>
                             <TextBlock Text="Rating:" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <edit:RatingControl x:Name="ratingControl" MaxRating="5" AllowHalf="False" ItemSize="18"
                                                 VerticalAlignment="Center" ValueChanged="RatingControl_ValueChanged"
-                                                ToolTip="Đánh giá 1–5 sao"/>
+                                                ToolTip="Rate 1–5 stars"/>
                         </DockPanel>
                         <!-- Pick / Reject / Unflag Buttons -->
                         <DockPanel Margin="0,2,0,4">
@@ -33,25 +33,25 @@
                             <StackPanel Orientation="Horizontal">
                                 <Button x:Name="btnPick" Content="⚑ Pick (P)" Padding="8,2" Margin="0,0,4,0" FontSize="10"
                                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
-                                        BorderThickness="0" Cursor="Hand" Click="BtnPick_Click" ToolTip="Gắn cờ Chọn (phím P)"/>
+                                        BorderThickness="0" Cursor="Hand" Click="BtnPick_Click" ToolTip="Flag as Pick (P)"/>
                                 <Button x:Name="btnReject" Content="✕ Reject (X)" Padding="8,2" Margin="0,0,4,0" FontSize="10"
                                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextSecondaryBrush}"
-                                        BorderThickness="0" Cursor="Hand" Click="BtnReject_Click" ToolTip="Gắn cờ Loại (phím X)"/>
+                                        BorderThickness="0" Cursor="Hand" Click="BtnReject_Click" ToolTip="Flag as Reject (X)"/>
                                 <Button x:Name="btnUnflag" Content="Unflag (U)" Padding="8,2" FontSize="10"
                                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextDimBrush}"
-                                        BorderThickness="0" Cursor="Hand" Click="BtnUnflag_Click" ToolTip="Bỏ cờ (phím U)"/>
+                                        BorderThickness="0" Cursor="Hand" Click="BtnUnflag_Click" ToolTip="Unflag (U)"/>
                             </StackPanel>
                         </DockPanel>
                         <!-- Color Label selector -->
                         <DockPanel Margin="0,2,0,0">
                             <TextBlock Text="Label:" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="●" FontSize="14" Foreground="#FF4D4D" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Red" ToolTip="Đỏ (phím 6)"/>
-                                <Button Content="●" FontSize="14" Foreground="#FFD166" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Yellow" ToolTip="Vàng (phím 7)"/>
-                                <Button Content="●" FontSize="14" Foreground="#06D6A0" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Green" ToolTip="Xanh lá (phím 8)"/>
-                                <Button Content="●" FontSize="14" Foreground="#118AB2" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Blue" ToolTip="Xanh dương (phím 9)"/>
-                                <Button Content="●" FontSize="14" Foreground="#9D4EDD" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Purple" ToolTip="Tím"/>
-                                <Button Content="∅" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="4,0" Click="BtnLabel_Click" Tag="None" ToolTip="Bỏ màu"/>
+                                <Button Content="●" FontSize="14" Foreground="#FF4D4D" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Red" ToolTip="Red (6)"/>
+                                <Button Content="●" FontSize="14" Foreground="#FFD166" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Yellow" ToolTip="Yellow (7)"/>
+                                <Button Content="●" FontSize="14" Foreground="#06D6A0" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Green" ToolTip="Green (8)"/>
+                                <Button Content="●" FontSize="14" Foreground="#118AB2" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Blue" ToolTip="Blue (9)"/>
+                                <Button Content="●" FontSize="14" Foreground="#9D4EDD" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="3,0" Click="BtnLabel_Click" Tag="Purple" ToolTip="Purple"/>
+                                <Button Content="∅" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="4,0" Click="BtnLabel_Click" Tag="None" ToolTip="Clear Label"/>
                             </StackPanel>
                         </DockPanel>
                     </StackPanel>
@@ -66,13 +66,13 @@
                     </Grid>
                 </Border>
 
-                <!-- Dòng tóm tắt thông số chụp -->
+                <!-- Exposure metadata summary -->
                 <TextBlock x:Name="txtCaptureSummary" Margin="10,0,10,4" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                            TextWrapping="Wrap" Visibility="Collapsed"/>
 
-                <!-- Bảng màu chủ đạo (K-Means) -->
+                <!-- Dominant color palette (K-Means) -->
                 <Border Background="{DynamicResource BgPanelAltBrush}" Padding="10,4" Margin="0,2,0,0">
-                    <TextBlock Text="MÀU CHỦ ĐẠO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="DOMINANT PALETTE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </Border>
                 <ItemsControl x:Name="icColors" Margin="6,4,6,4">
                     <ItemsControl.ItemsPanel>
@@ -80,7 +80,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="2" CornerRadius="3" Cursor="Hand" ToolTip="Click để copy mã màu"
+                            <Border Margin="2" CornerRadius="3" Cursor="Hand" ToolTip="Click to copy hex color code"
                                     MouseLeftButtonUp="ColorSwatch_Click" Tag="{Binding Hex}">
                                 <StackPanel>
                                     <Border Width="42" Height="30" CornerRadius="3" Background="{Binding Brush}"/>
@@ -92,7 +92,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Gợi ý màu (color theory) -->
+                <!-- Color harmony suggestions (color theory) -->
                 <TextBlock x:Name="txtContrastAdvice" Margin="10,0,10,2" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
                            TextWrapping="Wrap" Visibility="Collapsed"/>
                 <ItemsControl x:Name="icSuggest" Margin="6,0,6,4">
@@ -101,7 +101,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="2" CornerRadius="3" Cursor="Hand" ToolTip="Màu gợi ý — click để copy"
+                            <Border Margin="2" CornerRadius="3" Cursor="Hand" ToolTip="Suggested color — click to copy hex code"
                                     MouseLeftButtonUp="ColorSwatch_Click" Tag="{Binding Hex}">
                                 <StackPanel>
                                     <Border Width="36" Height="22" CornerRadius="3" Background="{Binding Brush}"/>
@@ -115,10 +115,10 @@
                 <!-- EXIF header + map -->
                 <Border Background="{DynamicResource BgPanelAltBrush}" Padding="10,4">
                     <DockPanel>
-                        <Button x:Name="btnMap" DockPanel.Dock="Right" Content="🗺 Bản đồ" Visibility="Collapsed"
+                        <Button x:Name="btnMap" DockPanel.Dock="Right" Content="🗺 Open Map" Visibility="Collapsed"
                                 Padding="6,1" FontSize="10" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentBrush}"
                                 BorderThickness="0" Cursor="Hand" Click="BtnMap_Click"
-                                ToolTip="Mở vị trí GPS trên Google Maps"/>
+                                ToolTip="Open GPS coordinates on Google Maps"/>
                         <TextBlock Text="EXIF" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                     </DockPanel>
                 </Border>
@@ -141,28 +141,28 @@
                                         <Button Content="✕" Tag="{Binding Full}" Click="RemoveKeyword_Click"
                                                 Margin="4,0,0,0" Padding="0" Width="14" Height="14" FontSize="9"
                                                 Background="Transparent" Foreground="#9AB" BorderThickness="0"
-                                                Cursor="Hand" ToolTip="Gỡ keyword"/>
+                                                Cursor="Hand" ToolTip="Remove keyword"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock x:Name="txtNoKeywords" Text="(chưa có keyword)" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="2,2,0,0"/>
+                    <TextBlock x:Name="txtNoKeywords" Text="(no keywords)" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="2,2,0,0"/>
 
                     <DockPanel Margin="0,6,0,0">
-                        <Button x:Name="btnAddKeyword" DockPanel.Dock="Right" Content="+ Thêm" Padding="6,2"
+                        <Button x:Name="btnAddKeyword" DockPanel.Dock="Right" Content="+ Add" Padding="6,2"
                                 Margin="4,0,0,0" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
                                 Cursor="Hand" Click="AddKeyword_Click"/>
                         <TextBox x:Name="txtKeywordInput" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
                                  Padding="4,3" KeyDown="KeywordInput_KeyDown"
-                                 ToolTip="Nhập keyword (phân cấp bằng /, vd Animal/Dog). Enter để thêm."/>
+                                 ToolTip="Enter keyword (hierarchical with /, e.g., Animal/Dog). Enter to add."/>
                     </DockPanel>
-                    <Button x:Name="btnAutoTag" Content="✨ Auto-tag từ EXIF" Padding="6,2" Margin="0,4,0,0"
+                    <Button x:Name="btnAutoTag" Content="✨ Auto-tag from EXIF" Padding="6,2" Margin="0,4,0,0"
                             HorizontalAlignment="Left" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
                             BorderThickness="0" Cursor="Hand" Click="AutoTagExif_Click"
-                            ToolTip="Tự thêm keyword từ metadata: máy ảnh, ống kính, dải ISO, tiêu cự, năm/tháng chụp."/>
+                            ToolTip="Auto-add keywords from metadata: camera, lens, ISO range, focal length, capture date."/>
 
-                    <TextBlock Text="Gợi ý" FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="2,6,0,2"/>
+                    <TextBlock Text="Suggestions" FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="2,6,0,2"/>
                     <ItemsControl x:Name="icKeywordSuggest">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -193,8 +193,8 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Sửa metadata (gộp từ MetaEditor) -->
-                <Expander x:Name="expEdit" Header="Sửa Metadata" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"
+                <!-- Metadata editor -->
+                <Expander x:Name="expEdit" Header="Edit Metadata" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"
                           Margin="6,4,6,8" IsExpanded="False">
                     <StackPanel Margin="2,6,2,2">
                         <TextBlock Text="Description" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,2"/>
@@ -219,10 +219,10 @@
                                 <TextBox x:Name="txtModel" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2"/>
                             </StackPanel>
                         </Grid>
-                        <Button x:Name="btnSaveMeta" Content="Lưu Metadata vào ảnh" Height="30" Margin="0,8,0,0"
+                        <Button x:Name="btnSaveMeta" Content="Save Metadata to Photo" Height="30" Margin="0,8,0,0"
                                 Background="{DynamicResource SuccessBrush}" Foreground="White" BorderThickness="0" Cursor="Hand"
                                 Click="BtnSaveMeta_Click" IsEnabled="False"/>
-                        <TextBlock Text="Ghi đè trực tiếp file gốc." FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="0,4,0,0"/>
+                        <TextBlock Text="Writes metadata directly into original file." FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Expander>
             </StackPanel>

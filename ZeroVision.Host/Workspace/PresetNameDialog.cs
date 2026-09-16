@@ -11,7 +11,7 @@ public class PresetNameDialog : Window
 
     public PresetNameDialog()
     {
-        Title = "Lưu Preset";
+        Title = "Save Preset";
         Width = 320;
         Height = 140;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -19,13 +19,13 @@ public class PresetNameDialog : Window
         Background = ThemeManager.GetBrush("BgPanelBrush");
 
         var root = new StackPanel { Margin = new Thickness(16) };
-        root.Children.Add(new TextBlock { Text = "Tên preset:", Foreground = ThemeManager.GetBrush("TextPrimaryBrush"), Margin = new Thickness(0, 0, 0, 6) });
+        root.Children.Add(new TextBlock { Text = "Preset name:", Foreground = ThemeManager.GetBrush("TextPrimaryBrush"), Margin = new Thickness(0, 0, 0, 6) });
         _input = new TextBox { Height = 26, FontSize = 13 };
         root.Children.Add(_input);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
-        var ok = new Button { Content = "Lưu", Width = 70, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "Hủy", Width = 70, IsCancel = true };
+        var ok = new Button { Content = "Save", Width = 70, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var cancel = new Button { Content = "Cancel", Width = 70, IsCancel = true };
         ok.Click += (_, _) => { PresetName = _input.Text; DialogResult = true; };
         buttons.Children.Add(ok);
         buttons.Children.Add(cancel);

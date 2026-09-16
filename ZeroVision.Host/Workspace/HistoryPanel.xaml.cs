@@ -81,24 +81,24 @@ public partial class HistoryPanel : UserControl
                     TimeShort = s.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm"),
                 });
 
-            // Thumbnail từng bước (11.11): render nền, gán dần khi xong (không chặn UI).
+            // Step thumbnail (11.11): render in background, bind when finished.
             RenderThumbnails(path, stack);
         });
     }
 
-    /// <summary>Render thumbnail nhỏ cho từng mốc history (off-UI) rồi gán vào row tương ứng.</summary>
+    /// <summary>Render small thumbnail for each history step off-UI then bind to row.</summary>
     private async void RenderThumbnails(string path, IReadOnlyList<EditOperation> stack)
     {
         if (_renderer == null || !_renderer.CanDecode(path)) return;
         var ops = new List<EditOperation>(stack);
-        // Chụp lại danh sách row hiện tại để khớp index (Refresh có thể chạy lại).
+        // Snapshot current row list to match index.
         var rowsSnapshot = Rows.ToList();
         for (int i = 0; i < rowsSnapshot.Count; i++)
         {
             var row = rowsSnapshot[i];
             int pointer = row.Index;
             var bmp = await _renderer.RenderThumbnailAsync(path, ops, pointer, 44);
-            // Nếu user đã đổi ảnh trong lúc render -> bỏ (row không còn trong Rows).
+            // If user changed photo during render -> discard.
             if (bmp != null && Rows.Contains(row)) row.Thumb = bmp;
         }
     }
@@ -128,11 +128,11 @@ public partial class HistoryPanel : UserControl
     {
         if (_history == null || _workspace?.ActiveImage == null)
         {
-            MessageBox.Show("Hãy chọn 1 ảnh trước khi lưu snapshot.", "Snapshot", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select a photo before saving snapshot.", "Snapshot", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         int n = _history.GetSnapshots(_workspace.ActiveImage).Count + 1;
-        var dlg = new InputDialog("Lưu Snapshot", "Tên snapshot:", $"Snapshot {n}");
+        var dlg = new InputDialog("Save Snapshot", "Snapshot name:", $"Snapshot {n}");
         if (dlg.ShowDialog() == true && !string.IsNullOrWhiteSpace(dlg.Result))
             _history.SaveSnapshot(_workspace.ActiveImage, dlg.Result.Trim());
     }
@@ -149,7 +149,7 @@ public partial class HistoryPanel : UserControl
         if (_history == null || _workspace?.ActiveImage == null) return;
         if (sender is FrameworkElement fe && fe.Tag is string name)
             _history.DeleteSnapshot(_workspace.ActiveImage, name);
-        e.Handled = true; // không lan ra Snapshot_Click (áp snapshot)
+        e.Handled = true; // do not propagate to Snapshot_Click
     }
 }
 

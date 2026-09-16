@@ -203,7 +203,7 @@ public partial class InfoPanel : UserControl
 
                         var swList = swatches.Select(s => (s.R, s.G, s.B)).ToList();
                         var (score, advice) = ZeroVision.Shared.ColorSuggestion.AssessContrast(swList);
-                        txtContrastAdvice.Text = $"Tương phản màu: {score * 100:0}% — {advice}";
+                        txtContrastAdvice.Text = $"Color contrast: {score * 100:0}% — {advice}";
                         txtContrastAdvice.Visibility = Visibility.Visible;
                     }
 
@@ -294,7 +294,7 @@ public partial class InfoPanel : UserControl
             ["Model"] = txtModel.Text,
         };
         bool ok = ZeroVision.Shared.ExifWriter.Write(_currentPath, values);
-        MessageBox.Show(ok ? "Đã lưu metadata vào ảnh." : "Không lưu được metadata (xem app.log).",
+        MessageBox.Show(ok ? "Metadata saved to photo successfully." : "Failed to save metadata (see app.log).",
             "Metadata", MessageBoxButton.OK, ok ? MessageBoxImage.Information : MessageBoxImage.Error);
         if (ok) Refresh(_currentPath);
     }
@@ -360,7 +360,7 @@ public partial class InfoPanel : UserControl
             var tags = ZeroVision.Shared.ExifAutoTagger.Generate(meta);
             if (tags.Count == 0)
             {
-                MessageBox.Show("Ảnh không có metadata EXIF để tạo keyword.", "Auto-tag",
+                MessageBox.Show("Photo contains no EXIF metadata for keywords.", "Auto-tag",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }

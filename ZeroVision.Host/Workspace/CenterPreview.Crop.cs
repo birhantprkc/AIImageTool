@@ -22,10 +22,10 @@ public partial class CenterPreview
 
     public bool IsCropMode => _cropMode;
 
-    /// <summary>Bật/tắt chế độ crop.</summary>
+    /// <summary>Toggle crop mode.</summary>
     public void ToggleCrop() => ToggleCropMode();
 
-    /// <summary>Đảo chiều khung cắt ngang ↔ dọc quanh tâm (phím X kiểu Lightroom).</summary>
+    /// <summary>Swap crop aspect orientation between landscape and portrait (X key Lightroom style).</summary>
     public void SwapCropOrientation()
     {
         if (!_cropMode) return;
@@ -45,14 +45,14 @@ public partial class CenterPreview
         _developPanel?.SetCropRect(_cropX, _cropY, _cropW, _cropH);
     }
 
-    /// <summary>Đổi kiểu lưới guide crop (phím O kiểu Lightroom). Chỉ tác dụng khi đang crop.</summary>
+    /// <summary>Cycle crop guide overlay style (O key Lightroom style). Only effective when cropping.</summary>
     public void CycleCropGuide()
     {
         _cropGuide = (_cropGuide + 1) % 5;
         if (_cropMode) DrawCropOverlay();
     }
 
-    /// <summary>Liên kết DevelopPanel để đồng bộ crop rectangle 2 chiều.</summary>
+    /// <summary>Bind DevelopPanel for two-way crop rectangle synchronization.</summary>
     public void BindCropPanel(DevelopPanel panel)
     {
         _developPanel = panel;
@@ -61,7 +61,7 @@ public partial class CenterPreview
             _cropX = c.X; _cropY = c.Y; _cropW = c.W; _cropH = c.H;
             if (_cropMode) DrawCropOverlay();
         };
-        // Nạp preset tỉ lệ vào combobox 1 lần.
+        // Populate aspect ratio presets into combobox once.
         if (cmbCropRatio.Items.Count == 0)
         {
             foreach (var p in ZeroVision.Imaging.CropAspect.Presets)
@@ -112,7 +112,7 @@ public partial class CenterPreview
             btnCrop.Background = ThemeManager.GetBrush("AccentBrush");
             cmbCropRatio.Visibility = Visibility.Visible;
             btnSmartCrop.Visibility = Visibility.Visible;
-            // render ảnh chưa cắt rồi vẽ overlay (DrawCropOverlay được gọi cuối RenderDevelopAsync).
+            // Render uncropped image then draw overlay (DrawCropOverlay called at end of RenderDevelopAsync).
             _ = RenderDevelopAsync(path);
         }
         else
@@ -122,14 +122,14 @@ public partial class CenterPreview
             cmbCropRatio.Visibility = Visibility.Collapsed;
             btnSmartCrop.Visibility = Visibility.Collapsed;
             btnCrop.Background = ThemeManager.GetBrush("BgHoverBrush");
-            // render lại có áp crop.
+            // Re-render with crop applied.
             _ = RenderDevelopAsync(path);
         }
     }
 
     /// <summary>
-    /// Smart Crop (content-aware): phân tích ảnh proxy, tìm khung cắt tốt nhất cho tỉ lệ đang chọn
-    /// (vùng nổi bật theo saliency + skin + bias trung tâm), rồi gán vào crop rectangle.
+    /// Smart Crop (content-aware): analyzes proxy image to find best crop window for aspect ratio
+    /// (saliency + skin + center bias), then assigns to crop rectangle.
     /// </summary>
     private void BtnSmartCrop_Click(object sender, RoutedEventArgs e)
     {
@@ -137,7 +137,7 @@ public partial class CenterPreview
         var path = _workspace?.ActiveImage;
         if (string.IsNullOrEmpty(path) || !_renderer.CanDecode(path)) return;
 
-        // Tỉ lệ mục tiêu từ combo (Original/Free -> 0,0 = giữ tỉ lệ ảnh).
+        // Target aspect ratio from combo (Original/Free -> 0,0 = preserve image aspect).
         double rw = 0, rh = 0;
         if (cmbCropRatio.SelectedItem is System.Windows.Controls.ComboBoxItem item &&
             item.Tag is ValueTuple<string, double, double> preset)
@@ -160,8 +160,8 @@ public partial class CenterPreview
     }
 
     /// <summary>
-    /// Bản sao chuỗi op nhưng đặt lại Crop rectangle về full khung (giữ Angle straighten),
-    /// để preview hiển thị ảnh CHƯA cắt khi đang chỉnh crop (overlay khớp toạ độ ảnh đầy đủ).
+    /// Clone operation chain but reset crop rectangle to full frame (keep straighten angle),
+    /// so preview displays uncropped image during crop adjustment (overlay matches image coordinates).
     /// </summary>
     private static System.Collections.Generic.IReadOnlyList<ZeroVision.Core.EditOperation> StripCropRect(
         System.Collections.Generic.IReadOnlyList<ZeroVision.Core.EditOperation> ops, int pointer)
@@ -184,7 +184,7 @@ public partial class CenterPreview
         return result;
     }
 
-    /// <summary>Hình chữ nhật của ảnh hiển thị (Uniform stretch + margin) trong toạ độ paneSingle.</summary>
+    /// <summary>Display rectangle of image (Uniform stretch + margin) in paneSingle coordinates.</summary>
     private Rect GetDisplayedImageRect()
     {
         if (imgPreview.Source is not BitmapSource bs) return Rect.Empty;
@@ -213,12 +213,12 @@ public partial class CenterPreview
         double cw = _cropW * img.Width;
         double ch = _cropH * img.Height;
 
-        // Lớp tối 4 vùng ngoài crop.
+        // Dark shade for 4 regions outside crop.
         var shade = new SolidColorBrush(Color.FromArgb(0xA0, 0, 0, 0));
-        AddShade(img.Left, img.Top, img.Width, ct - img.Top, shade);                 // trên
-        AddShade(img.Left, ct + ch, img.Width, img.Bottom - (ct + ch), shade);       // dưới
-        AddShade(img.Left, ct, cl - img.Left, ch, shade);                            // trái
-        AddShade(cl + cw, ct, img.Right - (cl + cw), ch, shade);                     // phải
+        AddShade(img.Left, img.Top, img.Width, ct - img.Top, shade);                 // top
+        AddShade(img.Left, ct + ch, img.Width, img.Bottom - (ct + ch), shade);       // bottom
+        AddShade(img.Left, ct, cl - img.Left, ch, shade);                            // left
+        AddShade(cl + cw, ct, img.Right - (cl + cw), ch, shade);                     // right
 
         // Khung crop.
         var border = new Rectangle
@@ -230,11 +230,11 @@ public partial class CenterPreview
         Canvas.SetTop(border, ct);
         cropOverlay.Children.Add(border);
 
-        // Đường guide bố cục theo _cropGuide.
+        // Composition guide lines according to _cropGuide.
         var thin = new SolidColorBrush(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF));
         DrawCropGuides(cl, ct, cw, ch, thin);
 
-        // 8 tay nắm.
+        // 8 crop handles.
         AddHandle(cl, ct, "nw"); AddHandle(cl + cw / 2, ct, "n"); AddHandle(cl + cw, ct, "ne");
         AddHandle(cl, ct + ch / 2, "w"); AddHandle(cl + cw, ct + ch / 2, "e");
         AddHandle(cl, ct + ch, "sw"); AddHandle(cl + cw / 2, ct + ch, "s"); AddHandle(cl + cw, ct + ch, "se");
@@ -248,7 +248,7 @@ public partial class CenterPreview
         cropOverlay.Children.Add(r);
     }
 
-    /// <summary>Vẽ lưới guide bố cục theo _cropGuide (0=Thirds,1=Golden,2=Diagonals,3=Grid,4=None).</summary>
+    /// <summary>Draw composition guide lines based on _cropGuide (0=Thirds,1=Golden,2=Diagonals,3=Grid,4=None).</summary>
     private void DrawCropGuides(double cl, double ct, double cw, double ch, Brush stroke)
     {
         void V(double fx) => cropOverlay.Children.Add(new Line { X1 = cl + cw * fx, Y1 = ct, X2 = cl + cw * fx, Y2 = ct + ch, Stroke = stroke, StrokeThickness = 0.5, IsHitTestVisible = false });
@@ -265,13 +265,13 @@ public partial class CenterPreview
                 const double phi = 0.61803398875;
                 V(1 - phi); V(phi); H(1 - phi); H(phi);
                 break;
-            case 2: // Diagonals (2 đường chéo)
+            case 2: // Diagonals (2 diagonal lines)
                 Diag(0, 0, 1, 1); Diag(1, 0, 0, 1);
                 break;
             case 3: // Grid 4x4
                 for (int i = 1; i < 4; i++) { V(i / 4.0); H(i / 4.0); }
                 break;
-            // 4 = None: không vẽ
+            // 4 = None: do not draw
         }
     }
 
@@ -303,7 +303,7 @@ public partial class CenterPreview
         foreach (var (tag, hx, hy) in handles)
             if (Math.Abs(p.X - hx) <= HandleSize && Math.Abs(p.Y - hy) <= HandleSize)
                 return tag;
-        // bên trong khung -> di chuyển.
+        // inside crop box -> move/pan.
         if (p.X >= cl && p.X <= cl + cw && p.Y >= ct && p.Y <= ct + ch) return "move";
         return "";
     }

@@ -20,17 +20,17 @@
             </DockPanel>
         </Border>
 
-        <!-- Snapshots (mốc edit có tên) -->
+        <!-- Snapshots (named edit states) -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource BgBaseBrush}" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,1,0,0">
             <DockPanel MaxHeight="200">
                 <Border DockPanel.Dock="Top" Background="{DynamicResource BgPanelAltBrush}" Padding="10,6">
                     <DockPanel>
                         <TextBlock Text="SNAPSHOTS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
                                    VerticalAlignment="Center"/>
-                        <Button x:Name="btnAddSnapshot" DockPanel.Dock="Right" Content="+ Lưu" Height="22"
+                        <Button x:Name="btnAddSnapshot" DockPanel.Dock="Right" Content="+ Save" Height="22"
                                 Padding="8,2" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
                                 Cursor="Hand" Click="BtnAddSnapshot_Click" HorizontalAlignment="Right"
-                                ToolTip="Lưu trạng thái edit hiện tại thành snapshot có tên"/>
+                                ToolTip="Save current edit state as named snapshot"/>
                     </DockPanel>
                 </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -43,12 +43,12 @@
                                         <Button DockPanel.Dock="Right" Content="✕" Width="18" Height="18"
                                                 Background="Transparent" Foreground="{DynamicResource TextDimBrush}" BorderThickness="0"
                                                 Cursor="Hand" Tag="{Binding Name}" Click="DeleteSnapshot_Click"
-                                                ToolTip="Xoá snapshot"/>
+                                                ToolTip="Delete snapshot"/>
                                         <TextBlock DockPanel.Dock="Right" Text="{Binding TimeShort}" FontSize="9"
                                                    Foreground="{DynamicResource TextDimBrush}" Margin="4,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"
                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                                   ToolTip="Click để áp snapshot này"/>
+                                                   ToolTip="Click to apply this snapshot"/>
                                     </DockPanel>
                                 </Border>
                             </DataTemplate>
@@ -94,7 +94,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Text="Chưa có chỉnh sửa nào.&#x0a;Chọn ảnh và kéo slider để bắt đầu."
+                <TextBlock Text="No history entries yet.&#x0a;Select a photo and adjust sliders to start."
                            FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" TextWrapping="Wrap"
                            Visibility="{Binding HasItems, ElementName=icHistory, Converter={StaticResource InverseBoolToVis}}"/>
