@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -8,7 +8,7 @@ namespace ZeroVision.Imaging;
 /// <summary>
 /// Perspective / Upright (keystone): hiệu chỉnh phối cảnh bằng phép biến đổi đồng nhất
 /// (homography 3x3). Hai tham số trực quan Vertical / Horizontal mô phỏng nghiêng máy
-/// (giống Upright của Lightroom): Vertical &gt; 0 kéo đỉnh ra (sửa nhà bị "ngả sau"),
+/// (chuẩn Perspective Correction): Vertical &gt; 0 kéo đỉnh ra (sửa nhà bị "ngả sau"),
 /// Horizontal xoay quanh trục dọc. Rotate xoay phẳng, Scale phóng để bù viền đen.
 ///
 /// Là IResizingOp (giữ nguyên W×H nhưng remap pixel). Toạ độ chuẩn hoá nên khớp proxy/full-res.

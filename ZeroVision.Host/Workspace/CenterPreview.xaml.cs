@@ -425,7 +425,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 }
                 e.Handled = true;
                 break;
-            case Key.Z: // toggle 100% / fit (Lightroom style)
+            case Key.Z: // toggle 100% / fit zoom
                 ToggleZoom();
                 e.Handled = true;
                 break;
@@ -444,7 +444,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.Enter: // Enter applies crop when in crop mode
                 if (_cropMode) { ToggleCropMode(); e.Handled = true; }
                 break;
-            case Key.Space: // hold Space to pan (Photoshop style)
+            case Key.Space: // hold Space to pan (Canvas pan style)
                 if (!_spaceHeld)
                 {
                     _spaceHeld = true;

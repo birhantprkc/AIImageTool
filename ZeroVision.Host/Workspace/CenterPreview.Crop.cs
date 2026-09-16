@@ -20,7 +20,7 @@ public partial class CenterPreview
     /// <summary>Toggle crop mode.</summary>
     public void ToggleCrop() => ToggleCropMode();
 
-    /// <summary>Swap crop aspect orientation between landscape and portrait (X key Lightroom style).</summary>
+    /// <summary>Swap crop aspect orientation between landscape and portrait (X key orientation toggle).</summary>
     public void SwapCropOrientation()
     {
         if (!_cropMode) return;
@@ -40,7 +40,7 @@ public partial class CenterPreview
         _developPanel?.SetCropRect(_cropX, _cropY, _cropW, _cropH);
     }
 
-    /// <summary>Cycle crop guide overlay style (O key Lightroom style). Only effective when cropping.</summary>
+    /// <summary>Cycle crop guide overlay style (O key overlay toggle). Only effective when cropping.</summary>
     public void CycleCropGuide()
     {
         _cropGuide = (_cropGuide + 1) % 5;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ZeroVision.Core;
@@ -8,7 +8,7 @@ namespace ZeroVision.Shared;
 
 /// <summary>
 /// Định nghĩa các "module" Develop (gom nhóm OpType theo panel) + thứ tự xử lý chuẩn của pipeline,
-/// phục vụ Selective Paste (D6.1 Darktable): copy/paste TỪNG module giữa các ảnh thay vì cả cụm.
+/// phục vụ Selective Paste: copy/paste TỪNG module giữa các ảnh thay vì cả cụm.
 ///
 /// Thuần dữ liệu + hàm tra cứu/merge -> unit test được, không phụ thuộc UI.
 /// </summary>

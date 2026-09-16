@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -8,8 +8,8 @@ namespace ZeroVision.Shared;
 
 /// <summary>
 /// Xuất sidecar XMP (.xmp) mô tả các op Develop của 1 ảnh. Mục đích: tương thích/tham chiếu
-/// chéo và lưu trữ phi phá hủy theo chuẩn quen thuộc. Đây KHÔNG phải XMP đầy đủ của Lightroom
-/// (mapping crs:* phức tạp) mà là namespace riêng "imgtool:" chứa op + params — đủ để app này
+/// chéo và lưu trữ phi phá hủy theo chuẩn quen thuộc. Đây là định dạng lưu trữ
+/// tinh gọn chứa op + params — đủ để app này đọc lại và các công cụ khác xem được metadata.
 /// đọc lại và các công cụ khác xem được metadata.
 /// </summary>
 public static class XmpSidecar

@@ -327,7 +327,7 @@ public partial class MainWindow : Window
         bool typing = System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox
             || System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase;
 
-        // Lightroom-style module switcher keys (when not typing and no modifier pressed).
+        // Fast module switcher hotkeys (when not typing and no modifier pressed).
         if (!typing && !ctrl && !shift)
         {
             switch (e.Key)

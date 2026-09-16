@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -8,7 +8,7 @@ namespace ZeroVision.Imaging;
 /// White balance theo nhiệt độ Kelvin thật + tint. Chuyển Kelvin -> điểm trắng (xấp xỉ
 /// Planckian/Tanner Helland), tính gain kênh tương đối so với điểm trắng tham chiếu (mặc định
 /// 6500K = D65). Tint dịch trục lục-tím. Khác WB gain đơn giản trong DevelopBasic ở chỗ thang
-/// đo là Kelvin trực quan (2000..12000) như Lightroom.
+/// đo là Kelvin trực quan (2000..12000) chuẩn Blackbody Radiation.
 /// </summary>
 public sealed class WhiteBalanceKelvinOp : IEditOp
 {

@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
 /// Auto-Upright (#6) — ước lượng tham số keystone Vertical/Horizontal cho <see cref="PerspectiveOp"/>
-/// bằng cách phân tích độ "hội tụ" của các cạnh gần-dọc và gần-ngang (giống Upright của Lightroom).
+/// bằng cách phân tích độ "hội tụ" của các cạnh gần-dọc và gần-ngang (chuẩn Geometric Perspective Detection).
 ///
 /// Ý tưởng: nếu các đường thẳng đứng thật bị nghiêng hội tụ (nhà chụp ngước lên), góc nghiêng của
 /// chúng tương quan tuyến tính với vị trí ngang -> ước lượng hệ số "lean" dọc. Tương tự cho ngang.

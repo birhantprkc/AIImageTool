@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -71,7 +71,7 @@ public sealed class DehazeOp : IEditOp
 }
 
 /// <summary>
-/// Filmic tone mapping (kiểu Darktable filmic / ACES xấp xỉ): nén dải động lớn về [0..1]
+/// Filmic tone mapping (chuẩn Filmic / ACES curve): nén dải động lớn về [0..1]
 /// bằng đường cong S filmic, giữ highlight không cháy. amount điều khiển mức nén.
 /// </summary>
 public sealed class FilmicOp : IEditOp
@@ -110,7 +110,7 @@ public sealed class FilmicOp : IEditOp
 }
 
 /// <summary>
-/// Parametric Curve kiểu Lightroom: 4 vùng Highlights/Lights/Darks/Shadows điều chỉnh bằng
+/// Parametric Curve chuẩn 4 vùng (Highlights/Lights/Darks/Shadows) điều chỉnh bằng
 /// trọng số mượt theo vị trí tông. Nội bộ dựng curve rồi áp như tone curve nhưng tham số hoá
 /// theo 4 thanh trượt thay vì điểm.
 /// </summary>

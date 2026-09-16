@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
 /// Chế độ blend (D4.5) — quyết định cách kết hợp pixel "edited" (kết quả op) với "base" (ảnh gốc)
-/// trước khi nhân theo mask×opacity. Tương đương "blending" của Darktable / blend mode của Photoshop.
+/// trước khi nhân theo mask×opacity. Tương đương chuẩn Blending Operators / Display Blend Modes.
 /// </summary>
 public enum BlendMode
 {
@@ -24,7 +24,7 @@ public enum BlendMode
 
 /// <summary>
 /// Toán blend thuần (per-channel). Hoạt động trên giá trị sRGB [0..1] để khớp kỳ vọng người dùng
-/// (giống Photoshop/Darktable định nghĩa blend trong display space). MaskedOp encode linear-&gt;sRGB,
+/// (chuẩn định nghĩa blend trong display space). MaskedOp encode linear-&gt;sRGB,
 /// blend, rồi decode về linear. Thuần hàm số -&gt; unit test trực tiếp.
 /// </summary>
 public static class BlendModes

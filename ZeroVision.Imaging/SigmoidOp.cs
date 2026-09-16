@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Sigmoid tone mapping (D1.1, kiểu Darktable "sigmoid"): nén dải động scene-linear về display bằng
+/// Sigmoid tone mapping: nén dải động scene-linear về display bằng
 /// đường cong sigmoid trơn, ít vỡ màu ở vùng rực hơn ACES/filmic đơn giản. Áp trên LUMINANCE rồi
 /// scale RGB theo cùng tỉ lệ (per-channel mode tuỳ chọn) để giữ sắc.
 ///

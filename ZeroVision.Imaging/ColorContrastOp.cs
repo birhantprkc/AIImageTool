@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Color Contrast (D2.4, kiểu Darktable "color contrast") — tăng/giảm tương phản trên 2 trục đối màu
+/// Opponent Color Contrast — tăng/giảm tương phản trên 2 trục đối màu
 /// trong Lab: a* (green↔magenta) và b* (blue↔yellow). Đẩy a*/b* ra xa 0 -> màu "căng" hơn;
 /// kéo về 0 -> nhạt hơn. Giữ L* (độ sáng) nguyên.
 /// </summary>

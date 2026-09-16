@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Diffuse or Sharpen (D3.1, kiểu Darktable "diffuse or sharpen"): bộ lọc khuếch tán dẫn hướng
+/// Guided Diffusion or Sharpen (Anisotropic Diffusion Filter): bộ lọc khuếch tán dẫn hướng
 /// (anisotropic diffusion, Perona–Malik) trên độ sáng, dùng cho cả SHARPEN bám cạnh (không khuếch
 /// đại nhiễu) lẫn DENOISE/làm mịn giữ cạnh, tuỳ dấu Amount.
 ///

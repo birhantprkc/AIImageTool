@@ -7,7 +7,7 @@
 [![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-> **ZeroVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic **Adobe Lightroom Classic** keyboard and workflow paradigms.
+> **ZeroVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard and workflow paradigms.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## 🌟 Key Capabilities
 
-### 1. Professional Lightroom Workflows & ZeroUI Controls
+### 1. Professional Workstation Workflows & ZeroUI Controls
 - **Left Dock Navigator Panel**: Fixed top widget with ZeroUI `SegmentedControl` (`FIT` | `FILL` | `1:1` | `2:1`), live viewport rectangle tracking, and bi-directional real-time canvas pan/zoom.
 - **Library Metadata Drill-Down**: 4-column filter bar (**Date (Year)** | **Camera** | **Lens** | **ISO**) with aggregate image counts and high-speed in-memory EXIF caching.
 - **Interactive Masking Gizmos**: Direct canvas drag manipulation for **Linear Gradient** (start/center/end bars + rotation axis) and **Radial Mask** (center handle + 4 perimeter dimension handles + feather ring).
@@ -32,7 +32,7 @@
 
 ### 2. Non-Destructive Develop Pipeline (32-bit Linear Light)
 - **Exposure & Tone**: Exposure, Contrast, Highlights, Shadows, Whites, Blacks, Tone Curve (RGB & individual channels), Parametric Curves, Filmic RGB, Sigmoid, Dehaze, Auto Levels.
-- **Color & Color Grading**: White Balance (Kelvin & Eyedropper), 8-Channel HSL Mixer + Targeted Adjustment Tool (TAT direct-canvas drag), 4-Way Color Balance, Split Toning, 3D LUT (.cube), Film Scan Negative Inverter (Negadoctor).
+- **Color & Color Grading**: White Balance (Kelvin & Eyedropper), 8-Channel HSL Mixer + Targeted Adjustment Tool (TAT direct-canvas drag), 4-Way Color Balance, Split Toning, 3D LUT (.cube), Film Scan Negative Inverter.
 - **Detail & Corrections**: Radius-based Sharpening with edge Masking, Multi-stage Denoise (Luminance, Color, Chroma), Lensfun auto-correction (distortion & vignetting), Perspective Upright, Liquify Warp.
 - **Local Adjustments**: Linear Gradient, Radial, Brush, Polygon, Path, Luminance Range, Color Range, Parametric, and AI Subject/Sky masks.
 

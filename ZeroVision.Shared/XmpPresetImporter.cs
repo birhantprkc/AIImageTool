@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -8,15 +8,15 @@ using ZeroVision.Core;
 namespace ZeroVision.Shared;
 
 /// <summary>
-/// Import preset Lightroom (.xmp) — map các thuộc tính Camera Raw Settings (namespace crs:) sang
-/// chuỗi <see cref="EditOperation"/> của pipeline này (9.3). Hỗ trợ các trường phổ biến nhất:
+/// Import preset chuẩn XMP — map các thuộc tính Camera Raw Settings (namespace crs:) sang
+/// chuỗi <see cref="EditOperation"/> của pipeline (9.3). Hỗ trợ các trường phổ biến:
 /// Exposure/Contrast/Highlights/Shadows/Whites/Blacks/Vibrance/Saturation/Temperature/Tint
 /// (cả biến thể "2012") + Clarity/Dehaze/Sharpness/Vignette + chuyển B&amp;W.
 ///
-/// LR dùng thang riêng (vd Exposure2012 theo EV; Contrast2012 -100..100). Helper quy về thang
+/// Chuẩn XMP crs dùng thang quy chuẩn (vd Exposure2012 theo EV; Contrast2012 -100..100). Helper quy về thang
 /// nội bộ [-1..1] / EV. Thuần parse XML + map -> unit test trực tiếp (không đụng file).
 /// </summary>
-public static class LightroomXmpImporter
+public static class XmpPresetImporter
 {
     private static readonly XNamespace Crs = "http://ns.adobe.com/camera-raw-settings/1.0/";
     private static readonly XNamespace Rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";

@@ -1,4 +1,4 @@
-﻿using ZeroVision.Core;
+using ZeroVision.Core;
 using ZeroVision.Imaging;
 using Xunit;
 
@@ -24,7 +24,7 @@ public class ColorPortOpsTests
     [Fact]
     public void WBKelvin_HigherKelvin_IsWarmer()
     {
-        // Theo quy ước Lightroom: Kelvin cao hơn ref -> ảnh ấm hơn (R tăng so với B).
+        // Theo quy ước Kelvin chuẩn: Kelvin cao hơn ref -> ảnh ấm hơn (R tăng so với B).
         var img = Solid(0.5f, 0.5f, 0.5f);
         new WhiteBalanceKelvinOp { Kelvin = 10000f, RefKelvin = 6500f }.Apply(img, 1f);
         Assert.True(img.Pixels[0] > img.Pixels[2]); // R > B (ấm hơn)

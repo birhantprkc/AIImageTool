@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -76,8 +76,8 @@ public sealed class SplitToningOp : IEditOp
 }
 
 /// <summary>
-/// Channel Mixer / Calibration đơn giản: chỉnh hue+sat của 3 primary (R/G/B) — xoay nhẹ
-/// sắc độ từng kênh quanh trục của nó. Gần với panel Calibration của Lightroom.
+/// Channel Mixer / Calibration: chỉnh hue+sat của 3 primary (R/G/B) — xoay nhẹ
+/// sắc độ từng kênh quanh trục của nó. Chuẩn Primary Color Calibration.
 /// </summary>
 public sealed class ChannelMixerOp : IEditOp
 {

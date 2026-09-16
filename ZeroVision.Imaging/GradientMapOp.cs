@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -7,7 +7,7 @@ namespace ZeroVision.Imaging;
 /// <summary>
 /// Gradient Map (#5): ánh xạ ĐỘ SÁNG (luminance) của mỗi pixel sang 1 dải màu gradient 3 chặng
 /// (Shadow -> Mid -> Highlight), rồi blend với ảnh gốc theo Opacity. Hiệu ứng grading/cinematic,
-/// kiểu Photoshop "Gradient Map" hoặc duotone/tritone.
+/// chuẩn hiệu ứng Gradient Map hoặc duotone/tritone.
 ///
 /// Màu chặng nhập ở sRGB (0..1 mỗi kênh, dạng hex qua param), nội suy ở sRGB rồi đưa về linear để
 /// blend. Mid point điều chỉnh được (vị trí 0..1 của chặng giữa). Thuần pixel-wise -> test trực tiếp.
@@ -34,7 +34,7 @@ public sealed class GradientMapOp : IEditOp
 
         image.ProcessPixels((ref float r, ref float g, ref float b, ref float a) =>
         {
-            // Luminance theo sRGB-encoded (cảm nhận) để map giống Photoshop.
+            // Luminance theo sRGB-encoded (cảm nhận) để map chuẩn duotone.
             float sr = ColorSpace.LinearToSrgb(r);
             float sg = ColorSpace.LinearToSrgb(g);
             float sb = ColorSpace.LinearToSrgb(b);

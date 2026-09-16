@@ -1,18 +1,18 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Filmic RGB đầy đủ (D1.2, kiểu Darktable "filmic rgb") — tone mapping scene-referred có kiểm soát:
+/// Filmic RGB đầy đủ — tone mapping scene-referred có kiểm soát:
 ///   - WhiteRelative / BlackRelative: điểm trắng/đen tính theo EV quanh midgray (định nghĩa dải động).
 ///   - Latitude: vùng tuyến tính giữa (giữ tương phản trung gian), 0..1 theo % dải.
 ///   - Contrast: độ dốc đoạn giữa.
 ///   - Saturation: bù bão hoà vùng cực sáng/tối (filmic hay làm bạc màu highlight).
 /// Map theo LUMINANCE (giữ hue), scale RGB theo gain. Amount blend với gốc.
 ///
-/// Khác `FilmicOp` (ACES 1 nút): đây là đường cong cấu hình được, sát Darktable hơn.
+/// Khác `FilmicOp` (ACES 1 nút): đây là đường cong tham số đa điểm cấu hình cao.
 /// </summary>
 public sealed class FilmicRgbOp : IEditOp
 {

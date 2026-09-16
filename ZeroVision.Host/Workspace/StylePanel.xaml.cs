@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using ZeroVision.Core;
@@ -61,21 +61,21 @@ public partial class StylePanel : UserControl
         }
     }
 
-    /// <summary>Import preset Lightroom (.xmp) -> Style (9.3).</summary>
+    /// <summary>Import preset XMP (.xmp) -> Style (9.3).</summary>
     private void BtnImportXmp_Click(object sender, RoutedEventArgs e)
     {
         if (_styles == null) return;
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Import Lightroom preset (.xmp)",
-            Filter = "Lightroom XMP (*.xmp)|*.xmp|All files (*.*)|*.*",
+            Title = "Import XMP preset (.xmp)",
+            Filter = "XMP Presets (*.xmp)|*.xmp|All files (*.*)|*.*",
             Multiselect = false
         };
         if (dlg.ShowDialog() != true) return;
         try
         {
             var content = System.IO.File.ReadAllText(dlg.FileName);
-            var ops = LightroomXmpImporter.Parse(content);
+            var ops = XmpPresetImporter.Parse(content);
             if (ops.Count == 0)
             {
                 MessageBox.Show("No Develop settings found in this XMP file.", "Import XMP",
@@ -83,7 +83,7 @@ public partial class StylePanel : UserControl
                 return;
             }
             var name = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
-            _styles.SaveFromOperations(name, ops, $"Imported from Lightroom · {ops.Count} ops");
+            _styles.SaveFromOperations(name, ops, $"Imported XMP preset · {ops.Count} ops");
             MessageBox.Show($"Imported preset '{name}' ({ops.Count} operations).", "Import XMP",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }

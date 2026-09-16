@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/kzxl/ZeroVision)](LICENSE)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows)
 
-> **ZeroVision** is a modern high-performance desktop workstation application (WPF, .NET 8) for RAW photo cataloging, non-destructive editing, color grading, and computer vision processing. It combines professional-grade **32-bit float Linear Light** develop pipelines (similar to Adobe Lightroom / Darktable) with autonomous **DirectML ONNX AI engines** and ergonomic Lightroom Classic keyboard workflows.
+> **ZeroVision** is a modern high-performance desktop workstation application (WPF, .NET 8) for RAW photo cataloging, non-destructive editing, color grading, and computer vision processing. It combines professional-grade **32-bit float Linear Light** develop pipelines with autonomous **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard workflows.
 
 ---
 
@@ -14,7 +14,7 @@
 
 ## Key Features
 
-### 1. Ergonomic Lightroom Classic Workflows
+### 1. Ergonomic Workstation Workflows
 - **Navigator Panel**: Fixed in the left panel dock. Features ZeroUI `SegmentedControl` (`FIT`, `FILL`, `1:1`, `2:1`), live viewport rectangle tracking, and bi-directional real-time canvas pan/zoom.
 - **Library Metadata Drill-Down Bar**: 4-column drill-down filter bar (**Date (Year)**, **Camera**, **Lens**, **ISO**) with item counts and in-memory EXIF caching.
 - **Interactive Masking Gizmos**: Direct on-canvas dragging for **Linear Gradient** (start/center/end bars + rotation axis) and **Radial Mask** (center handle + 4 perimeter dimension handles + feather ring).
@@ -44,7 +44,7 @@ All image adjustments are applied in **linear light float RGBA** color space thr
 - **Split Toning, Channel Mixer, Selective Color, Color Unify, Velvia, Color Contrast (Lab)**
 - **3D LUT (.cube)** support and input color profiles (**sRGB, AdobeRGB, Rec2020, Display P3**)
 - **Black & White**: Deep channel mixing with classic color filters and toning
-- **Film Negative (negadoctor)**: Professional film scan processing
+- **Film Negative**: Professional film scan processing and inversion
 
 #### Detail & Sharpness
 - **Sharpen** (radius + intelligent edge **Masking**)
@@ -67,7 +67,7 @@ All image adjustments are applied in **linear light float RGBA** color space thr
 #### Presets & Style Management
 - Save edits as **Styles** for batch application
 - **Hover Preset Preview**: Hover over styles in the left panel for instant preview with live indicator badge (`👁 PREVIEW: [Name]`) without dirtying edit history
-- **Import Lightroom presets (.xmp)**, auto-write XMP sidecar files
+- **Import standard XMP presets (.xmp)**, auto-write XMP sidecar files
 - **Named Snapshots**: Save multiple edit versions within the same image for quick comparison
 
 ---

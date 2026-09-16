@@ -1,4 +1,4 @@
-﻿namespace ZeroVision.Core;
+namespace ZeroVision.Core;
 
 public class Style
 {
@@ -16,7 +16,7 @@ public interface IStyleService
     /// <summary>Snapshot history hiện tại của ảnh thành 1 style mới.</summary>
     Style SaveFromHistory(string name, string imagePath, string? description = null);
 
-    /// <summary>Tạo style từ danh sách operations cho sẵn (vd import từ Lightroom XMP).</summary>
+    /// <summary>Tạo style từ danh sách operations cho sẵn (vd import từ XMP Preset).</summary>
     Style SaveFromOperations(string name, IEnumerable<EditOperation> operations, string? description = null);
 
     /// <summary>Apply style: copy operations vào history stack của ảnh đích.</summary>

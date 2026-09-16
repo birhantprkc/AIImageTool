@@ -50,7 +50,7 @@ sequenceDiagram
 
 ## 📍 3. Feature Implementations
 
-### Desktop UI/UX & Lightroom Ergonomics
+### Desktop UI/UX & Professional Workstation Ergonomics
 * [x] **Left Dock Navigator Panel**: Fixed top widget with ZeroUI `SegmentedControl` (`FIT`, `FILL`, `1:1`, `2:1`), live viewport rectangle tracking, and bi-directional real-time canvas pan/zoom.
 * [x] **Library Metadata Drill-Down Bar**: 4-column filter bar (**Date (Year)**, **Camera**, **Lens**, **ISO**) with aggregate counts and in-memory EXIF caching.
 * [x] **Interactive Masking Gizmos**: Direct on-canvas dragging for **Linear Gradient** (start/center/end bars + rotation axis) and **Radial Mask** (center handle + 4 perimeter dimension handles + feather ring).

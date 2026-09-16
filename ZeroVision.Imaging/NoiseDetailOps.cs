@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -184,7 +184,7 @@ public sealed class DefringeOp : IEditOp
 }
 
 /// <summary>
-/// Chroma denoise nâng (D3.2, kiểu Darktable denoise non-local/bilateral): khử nhiễu MÀU mạnh hơn
+/// Chroma denoise nâng cao (Cross-Bilateral Color Denoise): khử nhiễu MÀU mạnh hơn
 /// <see cref="ColorNoiseReductionOp"/> bằng lọc CROSS-BILATERAL — làm mượt chroma (Cr/Cb) nhưng GIỮ
 /// cạnh dựa trên độ sáng (luminance) làm "guide". Pixel khác luminance nhiều thì ít trộn chroma -> không
 /// lem màu qua biên. Bán kính theo scale để preview/full-res nhất quán.

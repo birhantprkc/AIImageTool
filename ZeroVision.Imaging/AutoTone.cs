@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Phân tích ảnh (linear) và đề xuất chỉnh Basic tự động — tương tự nút "Auto" của Lightroom.
+/// Phân tích ảnh (linear) và đề xuất chỉnh Basic tự động — thuật toán Auto Tone Balance.
 /// Chiến lược đơn giản, ổn định: tính histogram luminance (trên sRGB-perceptual), tìm điểm
 /// đen/trắng theo phân vị (percentile) để kéo dải động, ước lượng exposure để đưa trung vị về
 /// midtone mục tiêu, và đặt contrast nhẹ nếu ảnh phẳng.
@@ -126,8 +126,8 @@ public static class AutoTone
 
     /// <summary>
     /// Auto Color (per-channel levels): căng dải động ĐỘC LẬP từng kênh R/G/B theo phân vị. Vì mỗi kênh
-    /// được kéo điểm đen/trắng riêng, ám màu đồng đều (vd ảnh ngả vàng) bị triệt — kiểu "Auto Color" của
-    /// Photoshop. Mạnh tay hơn gray-world; dùng khi muốn khử cast rõ.
+    /// được kéo điểm đen/trắng riêng, ám màu đồng đều (vd ảnh ngả vàng) bị triệt — thuật toán Auto Per-Channel Level Correction.
+    /// Mạnh tay hơn gray-world; dùng khi muốn khử cast rõ.
     /// </summary>
     public static ColorLevelsSuggestion AnalyzeColorLevels(LinearImage img, float lowPct = 0.005f, float highPct = 0.995f)
     {

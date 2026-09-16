@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Tone Equalizer (D1.3, kiểu Darktable "tone equalizer") — chỉnh sáng theo VÙNG độ sáng (zone),
+/// Tone Equalizer — chỉnh sáng theo VÙNG độ sáng (Ansel Adams Zone System),
 /// dùng luminance đã làm mượt (guided) làm "địa chỉ" để tránh quầng (halo). 5 dải zone:
 /// Blacks / Shadows / Midtones / Highlights / Whites, mỗi dải 1 hệ số EV [-1..1] (map ±2 stop).
 ///

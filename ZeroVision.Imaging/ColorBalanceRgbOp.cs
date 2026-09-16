@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Color Balance RGB 4-way (D2.1, kiểu Darktable "color balance rgb" / lift-gamma-gain).
+/// Color Balance RGB 4-way (Lift / Gamma / Gain / Offset).
 /// 3 tầng tác động theo tông:
 ///   - Lift (shadows): cộng offset, mạnh ở vùng tối.
 ///   - Gamma (midtones): luỹ thừa, tác động trung gian.

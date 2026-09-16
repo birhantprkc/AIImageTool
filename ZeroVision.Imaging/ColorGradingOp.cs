@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Color Grading 3-way kiểu Lightroom: chỉnh tông màu riêng cho Shadows / Midtones /
+/// Color Grading 3-way (3-Way Color Wheels): chỉnh tông màu riêng cho Shadows / Midtones /
 /// Highlights + Global. Mỗi vùng có Hue (0..360), Sat (0..1), Lum (-1..1).
 /// Trọng số vùng theo luminance cảm nhận (sRGB). Áp thêm màu (additive trong linear,
 /// theo sắc độ chọn) có trọng số mượt giữa các vùng.

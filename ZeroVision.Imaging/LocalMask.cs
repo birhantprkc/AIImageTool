@@ -7,7 +7,7 @@ using ZeroVision.Imaging;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// 1 "local adjustment" kiểu Lightroom: 1 mask (gradient/radial/brush/range) + 1 BỘ ĐẦY ĐỦ
+/// 1 "local adjustment" cục bộ chuẩn: 1 mask (gradient/radial/brush/range) + 1 BỘ ĐẦY ĐỦ
 /// slider Light/Color áp cục bộ theo mask (6.7). Mỗi mask sinh ra 1..n <see cref="EditOperation"/>
 /// loại <see cref="MaskedOp"/> — mỗi inner op (DevelopBasic / Clarity / Sharpen) 1 MaskedOp,
 /// dùng chung tham số mask nên blend cùng vùng.

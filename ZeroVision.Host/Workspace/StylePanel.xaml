@@ -12,7 +12,7 @@
                         Click="BtnSave_Click" ToolTip="Save current edits of selected photo as Style"/>
                 <Button x:Name="btnImportXmp" DockPanel.Dock="Right" Content="Import XMP" Height="22" Padding="8,2" Margin="0,0,4,0"
                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                        Click="BtnImportXmp_Click" ToolTip="Import Lightroom Preset (.xmp) as Style"/>
+                        Click="BtnImportXmp_Click" ToolTip="Import XMP Preset (.xmp) as Style"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
                     <TextBlock Text="Append" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <edit:ToggleSwitch x:Name="chkAppend" Width="30" Height="16" IsChecked="True"

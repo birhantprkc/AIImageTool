@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Film Negative (kiểu Darktable "negadoctor") — chuyển ảnh scan PHIM ÂM BẢN thành dương bản đúng cách,
+/// Film Negative Inversion — chuyển ảnh scan PHIM ÂM BẢN thành dương bản đúng cách,
 /// khác hẳn InvertOp đơn giản (1 - x). Phim âm bản có:
 ///  1) "film base" màu cam (D-min) phủ toàn ảnh — phải chia/khử trước khi đảo, nếu không màu sẽ ám cam.
 ///  2) Quan hệ MẬT ĐỘ (log) chứ không tuyến tính — đảo trong không gian mật độ cho tương phản đúng.

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -6,8 +6,8 @@ namespace ZeroVision.Imaging;
 
 /// <summary>
 /// Chuyển đen trắng (B&W) có kiểm soát (13.1). Khác desaturate đơn thuần: cho phép chỉnh
-/// TRỌNG SỐ pha trộn từng kênh R/G/B khi quy về xám (như "B&W Mix" của Lightroom / channel mixer
-/// mono của Photoshop) — ví dụ tăng Red làm da sáng hơn, tăng Blue làm trời tối hơn.
+/// TRỌNG SỐ pha trộn từng kênh R/G/B khi quy về xám (chuẩn B&W Channel Mixer / Monochrome Balance)
+/// — ví dụ tăng Red làm da sáng hơn, tăng Blue làm trời tối hơn.
 /// Sau đó tuỳ chọn nhuộm (split-tone đơn giản) theo ToneHue/ToneStrength.
 ///
 /// Tính trên linear light: trọng số áp cho giá trị linear, chuẩn hoá để giữ độ sáng tổng thể.

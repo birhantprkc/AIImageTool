@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,8 +6,8 @@ namespace ZeroVision.Shared;
 
 /// <summary>
 /// Gom nhóm ảnh thành "stack" (8.7) — bracket/burst phát hiện theo khoảng cách thời gian chụp.
-/// Ảnh chụp liên tiếp trong vòng <c>thresholdSeconds</c> được gom 1 stack (giống auto-stack by
-/// capture time của Lightroom). Thuần logic trên (path, timestamp) -> unit test trực tiếp.
+/// Ảnh chụp liên tiếp trong vòng <c>thresholdSeconds</c> được gom 1 stack (tự động gom nhóm
+/// stack theo thời gian chụp liên tục). Thuần logic trên (path, timestamp) -> unit test trực tiếp.
 /// </summary>
 public static class ImageStacker
 {

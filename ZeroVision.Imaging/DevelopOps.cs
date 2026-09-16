@@ -1,17 +1,17 @@
-﻿using System;
+using System;
 using System.Numerics;
 using System.Threading.Tasks;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Op tổng hợp panel "Basic" kiểu Lightroom — GOM toàn bộ slider cơ bản vào 1 op duy nhất
-/// (settings-bag). Lý do: trong LR/Darktable các chỉnh Basic là 1 trạng thái, không phải
+/// Op tổng hợp panel "Basic" chuẩn RAW Developer — GOM toàn bộ slider cơ bản vào 1 op duy nhất
+/// (settings-bag). Lý do: trong các bộ xử lý ảnh RAW chuẩn, các chỉnh Basic là 1 trạng thái, không phải
 /// chuỗi thao tác cộng dồn. Gộp 1 op giúp:
 ///   - Kéo slider = cập nhật tham số op hiện có (Upsert) rồi render lại — không phình history.
 ///   - Replay 1 lần, thứ tự xử lý cố định, không tích lũy sai số.
 ///
-/// Toàn bộ tính trong LINEAR LIGHT. Thứ tự áp dụng (giống LR):
+/// Toàn bộ tính trong LINEAR LIGHT. Thứ tự áp dụng chuẩn:
 ///   White Balance -> Exposure -> Tone regions (Highlights/Shadows/Whites/Blacks)
 ///   -> Contrast -> Vibrance -> Saturation.
 /// </summary>

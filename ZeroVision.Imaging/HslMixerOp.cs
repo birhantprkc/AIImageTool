@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// HSL / Color Mixer kiểu Lightroom — 8 dải màu (Red, Orange, Yellow, Green, Aqua, Blue,
+/// HSL / Spectral Color Mixer — 8 dải màu chuẩn (Red, Orange, Yellow, Green, Aqua, Blue,
 /// Purple, Magenta), mỗi dải chỉnh Hue / Saturation / Luminance độc lập.
 ///
 /// Hoạt động: với mỗi pixel, tính hue (HSV) trong sRGB-perceptual, xác định trọng số thuộc
@@ -18,7 +18,7 @@ public sealed class HslMixerOp : IEditOp
     public string OpType => Type;
 
     public const int Bands = 8;
-    // Tâm hue (độ) của 8 dải, khớp Lightroom.
+    // Tâm hue (độ) của 8 dải màu quang phổ chuẩn công nghiệp.
     private static readonly float[] BandCenters = { 0f, 30f, 60f, 120f, 180f, 240f, 280f, 320f };
     public static readonly string[] BandNames = { "red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta" };
 

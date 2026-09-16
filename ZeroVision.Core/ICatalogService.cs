@@ -1,4 +1,4 @@
-﻿namespace ZeroVision.Core;
+namespace ZeroVision.Core;
 
 public enum ImportMode { AddInPlace = 0, CopyToLibrary = 1 }
 
@@ -129,7 +129,7 @@ public interface ICatalogService
                           IProgress<ImportProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Đồng bộ 1 thư mục (kiểu Lightroom "Synchronize Folder"): quét file ảnh trên đĩa, IMPORT các
+    /// Đồng bộ 1 thư mục (Synchronize Folder): quét file ảnh trên đĩa, IMPORT các
     /// file CHƯA có trong catalog, và (tuỳ chọn) gỡ các entry mà file không còn trên đĩa.
     /// Trả số file mới thêm + số file thiếu.
     /// </summary>

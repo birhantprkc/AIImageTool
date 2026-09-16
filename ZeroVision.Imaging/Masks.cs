@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -17,7 +17,7 @@ public interface IMaskGenerator
     Dictionary<string, string> ToParams();
 }
 
-/// <summary>Cách kết hợp 2 mask (D4.2, kiểu Darktable mask blending operators).</summary>
+/// <summary>Cách kết hợp 2 mask (Mask Blending Operators: Intersect, Union, Subtract, Difference, Exclusion).</summary>
 public enum MaskCombineMode
 {
     /// <summary>Chỉ dùng mask chính (bỏ qua mask phụ).</summary>
@@ -406,7 +406,7 @@ public sealed class BrushMask : IMaskGenerator
 }
 
 /// <summary>
-/// Polygon / Path mask (D4.3, kiểu Darktable "path" mask): vùng được định nghĩa bằng 1 đa giác nhiều
+/// Polygon / Path mask: vùng được định nghĩa bằng 1 đa giác nhiều
 /// node (toạ độ chuẩn hoá [0..1]). Bên trong đa giác = 1, ngoài = 0, mép mượt theo Feather (giảm dần
 /// theo khoảng cách tới biên đa giác). Cho phép tạo vùng tuỳ ý nhiều đỉnh (hơn radial/gradient).
 ///
@@ -513,7 +513,7 @@ public sealed class PolygonMask : IMaskGenerator
 }
 
 /// <summary>
-/// Path mask (D4.3 đầy đủ, kiểu Darktable "path" có per-node feather): vùng định nghĩa bằng đa giác
+/// Path mask (Bézier/Polystar Path có per-node feather): vùng định nghĩa bằng đa giác
 /// nhiều node (toạ độ chuẩn hoá [0..1]) NHƯNG mỗi node mang feather RIÊNG. Feather tại 1 điểm trên
 /// biên được nội suy theo node gần nhất, nên mép có thể mềm chỗ này, cứng chỗ kia (vd path quanh
 /// chủ thể: mềm ở tóc, cứng ở vai). Khác PolygonMask (1 feather chung).
@@ -665,7 +665,7 @@ public sealed class PathMask : IMaskGenerator
 }
 
 /// <summary>
-/// Parametric mask đa kênh (D4.1, kiểu Darktable "parametric masking"): chọn vùng theo NHIỀU kênh
+/// Parametric mask đa kênh: chọn vùng theo NHIỀU kênh
 /// cùng lúc — L (lightness), C (chroma), H (hue) trong Lab/HSV và R, G, B (sRGB). Mỗi kênh là 1
 /// band-pass [Min..Max] (giá trị chuẩn hoá [0..1], hue cũng [0..1] = độ/360) với mép mượt theo Feather.
 /// Kênh "không giới hạn" (Min≈0 và Max≈1) không ràng buộc gì. Mask cuối = TÍCH trọng số của các kênh
@@ -748,7 +748,7 @@ public sealed class ParametricMask : IMaskGenerator
     }
 
     /// <summary>Band-pass: full (1) trong [min,max], giảm mượt RA NGOÀI theo feather
-    /// (plateau = [min,max], falloff trên [min-f..min] và [max..max+f]). Khớp Darktable parametric.</summary>
+    /// (plateau = [min,max], falloff trên [min-f..min] và [max..max+f]). Chuẩn Parametric Band-pass Range.</summary>
     private static float Band(float xv, float min, float max, float feather)
     {
         float f = MathF.Max(1e-4f, feather);

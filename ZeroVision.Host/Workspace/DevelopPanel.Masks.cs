@@ -60,7 +60,7 @@ public partial class DevelopPanel
         Commit();
     }
 
-    /// <summary>Expand + scroll to Local Adjustments section (M key Lightroom Masking module style).</summary>
+    /// <summary>Expand + scroll to Local Adjustments section (M key Masking shortcut).</summary>
     public void FocusMasking()
     {
         if (_maskExpander == null) return;
@@ -280,7 +280,7 @@ public partial class DevelopPanel
                     sel.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
                     sel.Click += (_, _) => { SelectMask(mm); RefreshMaskList(); };
 
-                    // Context menu for Lightroom-style layer actions (Intersect, Invert, Duplicate, Delete)
+                    // Context menu for layer actions (Intersect, Invert, Duplicate, Delete)
                     var layerMenu = new ContextMenu();
                     var miIntersect = new MenuItem { Header = "Intersect with Luminance Range..." };
                     miIntersect.Click += (_, _) =>
@@ -484,7 +484,7 @@ public partial class DevelopPanel
         foreach (var cm in combineModes) cmbCombine.Items.Add(new ComboBoxItem { Content = cm });
         string curCombine = m.MaskParams.TryGetValue("combine", out var cc) ? cc : "none";
         cmbCombine.SelectedIndex = System.Math.Max(0, System.Array.IndexOf(combineModes, curCombine));
-        cmbCombine.ToolTip = "Refine mask using parametric range (Darktable drawn+parametric): intersect / union / subtract.";
+        cmbCombine.ToolTip = "Refine mask using parametric range: intersect / union / subtract.";
         cmbCombine.SelectionChanged += (_, _) =>
         {
             if (_loading) return;

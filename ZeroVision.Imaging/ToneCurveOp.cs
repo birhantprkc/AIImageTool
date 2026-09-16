@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Tone Curve kiểu Lightroom/Darktable. Một đường cong "master" (RGB) áp lên cả 3 kênh,
+/// Tone Curve chuẩn đồ họa nhiếp ảnh. Một đường cong "master" (RGB) áp lên cả 3 kênh,
 /// cộng 3 đường cong riêng cho R/G/B. Điểm điều khiển nằm trong không gian sRGB-perceptual
 /// [0..1] (đúng cách mắt nhìn curve), nội suy bằng spline đơn điệu (monotone cubic) để không
 /// bị overshoot. Biến đổi: linear -> sRGB -> áp curve -> linear.

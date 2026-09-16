@@ -7,8 +7,8 @@ using ZeroVision.Shared;
 namespace ZeroVision.Host;
 
 /// <summary>
-/// Bộ nhớ tạm "Develop settings" để copy/paste nhanh giữa các ảnh (giống Lightroom
-/// Copy/Paste Settings + Sync). Lưu snapshot các EditOperation thuộc plugin "Develop" của
+/// Bộ nhớ tạm "Develop settings" để copy/paste nhanh giữa các ảnh (chuẩn chuyên nghiệp
+/// Copy/Paste Settings + Batch Sync). Lưu snapshot các EditOperation thuộc plugin "Develop" của
 /// ảnh nguồn, rồi áp nguyên trạng sang 1 hay nhiều ảnh đích qua IHistoryService.UpsertGroup.
 /// </summary>
 public sealed class DevelopClipboard

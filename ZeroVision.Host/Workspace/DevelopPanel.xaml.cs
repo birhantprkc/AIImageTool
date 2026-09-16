@@ -18,7 +18,7 @@ using ZeroUI.Wpf.Editors;
 namespace ZeroVision.Host.Workspace;
 
 /// <summary>
-/// Panel Develop kiểu Lightroom. Các nhóm (Expander) thu gọn được: Basic/Tone/Presence/Color/
+/// Panel Develop xử lý ảnh phi phá hủy 32-bit float. Các nhóm (Expander) thu gọn được: Basic/Tone/Presence/Color/
 /// HSL/Detail/Effects/Geometry. Mỗi slider có ô nhập số trực tiếp + double-click reset.
 /// Kéo slider -> debounce -> UpsertGroup -> HistoryChanged -> CenterPreview render lại.
 /// </summary>

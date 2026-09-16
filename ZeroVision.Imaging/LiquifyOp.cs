@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Liquify / Warp (D3.5 Darktable "retouch"/liquify cơ bản): biến dạng cục bộ ảnh bằng tập "handle"
+/// Liquify / Warp (Mesh Retouch / Elastic Warp): biến dạng cục bộ ảnh bằng tập "handle"
 /// đẩy/kéo. Mỗi handle là 1 điểm tâm (Cx,Cy) cùng 1 vector dịch (Dx,Dy) trong bán kính Radius:
 /// nội dung quanh tâm bị đẩy theo vector, giảm dần ra mép theo hàm falloff mượt (1 - t²)². Nhiều
 /// handle cộng dồn trường dịch chuyển.

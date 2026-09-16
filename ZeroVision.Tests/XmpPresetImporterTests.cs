@@ -1,11 +1,11 @@
-﻿using System.Linq;
+using System.Linq;
 using ZeroVision.Core;
 using ZeroVision.Shared;
 using Xunit;
 
 namespace ZeroVision.Tests;
 
-public class LightroomXmpImporterTests
+public class XmpPresetImporterTests
 {
     private const string Sample = """
         <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
@@ -29,7 +29,7 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_ExtractsBasicOp()
     {
-        var ops = LightroomXmpImporter.Parse(Sample);
+        var ops = XmpPresetImporter.Parse(Sample);
         var basic = ops.FirstOrDefault(o => o.OpType == "DevelopBasic");
         Assert.NotNull(basic);
         Assert.Equal("0.75", basic!.Params["exposure"]);
@@ -42,7 +42,7 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_ExtractsClarityAndDehaze()
     {
-        var ops = LightroomXmpImporter.Parse(Sample);
+        var ops = XmpPresetImporter.Parse(Sample);
         Assert.Contains(ops, o => o.OpType == "Clarity");
         Assert.Contains(ops, o => o.OpType == "Dehaze");
     }
@@ -50,7 +50,7 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_BwFalse_NoBwOp()
     {
-        var ops = LightroomXmpImporter.Parse(Sample);
+        var ops = XmpPresetImporter.Parse(Sample);
         Assert.DoesNotContain(ops, o => o.OpType == "BlackWhite");
     }
 
@@ -58,7 +58,7 @@ public class LightroomXmpImporterTests
     public void Parse_BwTrue_AddsBwOp()
     {
         var xmp = Sample.Replace("crs:ConvertToGrayscale=\"False\"", "crs:ConvertToGrayscale=\"True\"");
-        var ops = LightroomXmpImporter.Parse(xmp);
+        var ops = XmpPresetImporter.Parse(xmp);
         Assert.Contains(ops, o => o.OpType == "BlackWhite");
     }
 
@@ -75,7 +75,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(xmp);
+        var ops = XmpPresetImporter.Parse(xmp);
         var basic = ops.First(o => o.OpType == "DevelopBasic");
         Assert.Equal("-1", basic.Params["exposure"]);
         Assert.Equal(0.5, double.Parse(basic.Params["contrast"], System.Globalization.CultureInfo.InvariantCulture), 3);
@@ -84,7 +84,7 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_AllOps_TaggedAsDevelop()
     {
-        var ops = LightroomXmpImporter.Parse(Sample);
+        var ops = XmpPresetImporter.Parse(Sample);
         Assert.NotEmpty(ops);
         Assert.All(ops, o => Assert.Equal("Develop", o.PluginId));
     }
@@ -92,14 +92,14 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_Empty_ReturnsEmpty()
     {
-        Assert.Empty(LightroomXmpImporter.Parse(""));
-        Assert.Empty(LightroomXmpImporter.Parse("<x>not xmp</x>"));
+        Assert.Empty(XmpPresetImporter.Parse(""));
+        Assert.Empty(XmpPresetImporter.Parse("<x>not xmp</x>"));
     }
 
     [Fact]
     public void Parse_InvalidXml_NoThrow()
     {
-        var ops = LightroomXmpImporter.Parse("<<<broken");
+        var ops = XmpPresetImporter.Parse("<<<broken");
         Assert.Empty(ops);
     }
 
@@ -108,7 +108,7 @@ public class LightroomXmpImporterTests
     {
         // op import được phải dựng lại qua registry (đúng OpType).
         var reg = ZeroVision.Imaging.EditOpRegistry.CreateDefault();
-        var ops = LightroomXmpImporter.Parse(Sample);
+        var ops = XmpPresetImporter.Parse(Sample);
         foreach (var op in ops)
             Assert.True(reg.Has(op.OpType), $"OpType {op.OpType} không đăng ký");
     }
@@ -133,7 +133,7 @@ public class LightroomXmpImporterTests
     [Fact]
     public void Parse_ToneCurve_ExtractsNormalizedPoints()
     {
-        var ops = LightroomXmpImporter.Parse(CurveSample);
+        var ops = XmpPresetImporter.Parse(CurveSample);
         var curve = ops.FirstOrDefault(o => o.OpType == "ToneCurve");
         Assert.NotNull(curve);
         var rgb = curve!.Params["rgb"];
@@ -158,7 +158,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(linear);
+        var ops = XmpPresetImporter.Parse(linear);
         Assert.DoesNotContain(ops, o => o.OpType == "ToneCurve"); // identity -> bỏ
     }
 
@@ -176,7 +176,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(perCh);
+        var ops = XmpPresetImporter.Parse(perCh);
         var curve = ops.FirstOrDefault(o => o.OpType == "ToneCurve");
         Assert.NotNull(curve);
         Assert.True(curve!.Params.ContainsKey("r"));
@@ -200,7 +200,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(st);
+        var ops = XmpPresetImporter.Parse(st);
         var sp = ops.FirstOrDefault(o => o.OpType == "SplitToning");
         Assert.NotNull(sp);
         Assert.Equal(220, double.Parse(sp!.Params["shHue"], System.Globalization.CultureInfo.InvariantCulture), 1);
@@ -222,7 +222,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(st);
+        var ops = XmpPresetImporter.Parse(st);
         Assert.DoesNotContain(ops, o => o.OpType == "SplitToning"); // sat=0 -> bỏ
     }
 
@@ -239,7 +239,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(h);
+        var ops = XmpPresetImporter.Parse(h);
         var hsl = ops.FirstOrDefault(o => o.OpType == "HslMixer");
         Assert.NotNull(hsl);
         Assert.Equal(-0.6, double.Parse(hsl!.Params["s_blue"], System.Globalization.CultureInfo.InvariantCulture), 3);
@@ -260,7 +260,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(h);
+        var ops = XmpPresetImporter.Parse(h);
         Assert.DoesNotContain(ops, o => o.OpType == "HslMixer");
     }
 
@@ -277,7 +277,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(cg);
+        var ops = XmpPresetImporter.Parse(cg);
         var g = ops.FirstOrDefault(o => o.OpType == "ColorGrading");
         Assert.NotNull(g);
         Assert.Equal(220, double.Parse(g!.Params["h_sh"], System.Globalization.CultureInfo.InvariantCulture), 1);
@@ -298,7 +298,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(t);
+        var ops = XmpPresetImporter.Parse(t);
         var tex = ops.FirstOrDefault(o => o.OpType == "Texture");
         Assert.NotNull(tex);
         Assert.Equal(0.45, double.Parse(tex!.Params["amount"], System.Globalization.CultureInfo.InvariantCulture), 3);
@@ -315,7 +315,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(g);
+        var ops = XmpPresetImporter.Parse(g);
         var grain = ops.FirstOrDefault(o => o.OpType == "Grain");
         Assert.NotNull(grain);
         Assert.Equal(0.5, double.Parse(grain!.Params["amount"], System.Globalization.CultureInfo.InvariantCulture), 3);
@@ -334,7 +334,7 @@ public class LightroomXmpImporterTests
               </rdf:RDF>
             </x:xmpmeta>
             """;
-        var ops = LightroomXmpImporter.Parse(g);
+        var ops = XmpPresetImporter.Parse(g);
         Assert.DoesNotContain(ops, o => o.OpType == "Grain");
     }
 }

@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Highlight Reconstruction (D5.3, kiểu Darktable "highlight reconstruction"): khi 1-2 kênh bị cháy
+/// Highlight Reconstruction: phục hồi vùng cháy khi 1-2 kênh bị bão hòa
 /// (clip gần/quá 1.0) nhưng kênh khác chưa, vùng sáng thường bị ám màu sai (vd hồng/lục ở mây, da).
 /// Op này phục hồi bằng cách KÉO các kênh đã clip về phía trung tính (theo kênh chưa clip) ở vùng
 /// rất sáng — giảm ám màu, trả lại highlight "trắng" tự nhiên.

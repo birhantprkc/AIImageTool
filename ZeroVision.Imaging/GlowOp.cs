@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Glow / Soften (kiểu Darktable "soften" / hiệu ứng Orton): tạo lớp mờ (Gaussian) rồi SCREEN-blend
+/// Glow / Soften (Hiệu ứng Orton / Diffusion Glow): tạo lớp mờ (Gaussian) rồi SCREEN-blend
 /// trở lại ảnh gốc để cho ánh sáng "loang" mềm mại, mơ màng — thường dùng cho chân dung/phong cảnh.
 ///
 /// Cơ chế (trên linear): blur RGB bán kính lớn -> lớp glow; kết quả = screen(orig, glow) nội suy theo

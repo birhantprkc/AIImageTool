@@ -79,7 +79,7 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
 
     private void MiImport_Click(object sender, RoutedEventArgs e) => OpenImportDialog(SelectedFolder?.Path);
 
-    /// <summary>Sync Folder (Lightroom style): scan folder, import new files into catalog in-place.</summary>
+    /// <summary>Sync Folder: scan folder, import new files into catalog in-place.</summary>
     private async void MiSync_Click(object sender, RoutedEventArgs e)
     {
         var fn = SelectedFolder;

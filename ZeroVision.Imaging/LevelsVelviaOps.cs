@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// RGB Levels (D2.5) — điểm đen / xám (gamma) / trắng như Levels của Photoshop/Darktable.
+/// RGB Levels (D2.5) — điểm đen / xám (gamma) / trắng chuẩn Histogram Re-mapping.
 /// Black/White [0..1] (sRGB) định nghĩa input range; Gamma điều chỉnh midtone. Áp trên sRGB rồi về linear.
 ///
 /// Hỗ trợ PER-CHANNEL: ngoài kênh tổng (master) còn có black/white/gamma riêng cho R/G/B (mặc định

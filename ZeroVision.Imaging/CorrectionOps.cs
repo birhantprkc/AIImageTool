@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Hot/dead pixel removal (D3.3, kiểu Darktable "hot pixels"): tìm pixel có độ sáng lệch quá
+/// Hot/dead pixel removal: tìm pixel có độ sáng lệch quá
 /// xa so với 4 lân cận (trên/dưới/trái/phải) theo ngưỡng Threshold, thay bằng trung vị lân cận.
 /// Chạy trên luminance để quyết định, thay cả 3 kênh bằng trung bình lân cận để giữ màu mượt.
 /// Threshold [0..1]: nhỏ = bắt nhiều pixel hơn. Strength [0..1]: mức thay thế (blend).
@@ -87,7 +87,7 @@ public sealed class HotPixelOp : IEditOp
 }
 
 /// <summary>
-/// Lateral chromatic aberration correction (D3.4, kiểu Darktable "chromatic aberrations"): quang
+/// Lateral chromatic aberration correction: quang
 /// sai màu trục làm kênh R và B phóng đại khác kênh G theo bán kính từ tâm ảnh. Sửa bằng cách
 /// co/giãn kênh R và B quanh tâm với hệ số tỉ lệ theo bán kính (radial scale), lấy mẫu song tuyến.
 /// Khác `DefringeOp` (chỉ khử viền màu cục bộ) — đây sửa lệch hình học theo bán kính.

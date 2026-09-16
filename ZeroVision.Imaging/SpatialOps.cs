@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -107,7 +107,7 @@ public sealed class TextureOp : IEditOp
 /// Sharpening kiểu unsharp mask: detail = lum - blur(bán kính nhỏ); lum += amount*detail.
 /// Có ngưỡng (threshold) bỏ qua nhiễu nhỏ. Bán kính nhân scale.
 ///
-/// Masking (kiểu Lightroom Detail/Masking): khi &gt;0, chỉ sharpen ở vùng có cạnh (gradient lớn),
+/// Masking (Edge-aware Detail Masking): khi &gt;0, chỉ sharpen ở vùng có cạnh (gradient lớn),
 /// bảo vệ vùng phẳng (bầu trời, da) khỏi bị khuếch đại nhiễu. Mask = smoothstep theo độ lớn
 /// gradient luminance; Masking càng cao thì ngưỡng cạnh càng cao (chỉ cạnh mạnh mới được sharpen).
 /// </summary>

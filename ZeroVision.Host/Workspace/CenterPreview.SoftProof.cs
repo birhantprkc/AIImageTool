@@ -76,7 +76,7 @@ public partial class CenterPreview
         float a6 = toDest[6], a7 = toDest[7], a8 = toDest[8];
 
         const float tol = 1e-4f;
-        // High visibility cyan/red warning color for soft-proofing gamut alerts (Lightroom standard)
+        // High visibility cyan/red warning color for soft-proofing gamut alerts (standard gamut warning)
         const byte warnB = 255, warnG = 60, warnR = 20, warnA = 210;
 
         for (int i = 0; i < pixels.Length; i += 4)
