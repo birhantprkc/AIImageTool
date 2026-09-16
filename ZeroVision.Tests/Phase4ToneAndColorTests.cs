@@ -204,4 +204,38 @@ public class Phase4ToneAndColorTests
             Assert.True(b > 0f);
         });
     }
+
+    [Fact]
+    public void PerspectiveOp_EstimateQuadRectification_MapsTrapezoidToRectangle()
+    {
+        // Define a trapezoid (keystone distorted quad)
+        var srcQuad = new System.Drawing.PointF[]
+        {
+            new(20, 10),   // Top-Left (pushed inward)
+            new(80, 10),   // Top-Right (pushed inward)
+            new(100, 90),  // Bottom-Right (wide)
+            new(0, 90),    // Bottom-Left (wide)
+        };
+
+        var H = PerspectiveOp.EstimateQuadRectification(srcQuad, 100, 100);
+        Assert.NotNull(H);
+
+        // Transform corners and verify they map to destination rectangle corners (0,0), (100,0), (100,100), (0,100)
+        var c0 = H.TransformPoint(srcQuad[0]);
+        var c1 = H.TransformPoint(srcQuad[1]);
+        var c2 = H.TransformPoint(srcQuad[2]);
+        var c3 = H.TransformPoint(srcQuad[3]);
+
+        Assert.InRange(c0.X, -0.01f, 0.01f);
+        Assert.InRange(c0.Y, -0.01f, 0.01f);
+
+        Assert.InRange(c1.X, 99.9f, 100.1f);
+        Assert.InRange(c1.Y, -0.01f, 0.01f);
+
+        Assert.InRange(c2.X, 99.9f, 100.1f);
+        Assert.InRange(c2.Y, 99.9f, 100.1f);
+
+        Assert.InRange(c3.X, -0.01f, 0.01f);
+        Assert.InRange(c3.Y, 99.9f, 100.1f);
+    }
 }

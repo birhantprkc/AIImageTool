@@ -2,14 +2,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ZeroVision.Core\ZeroVision.Core.csproj" />
+    <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Core\ZeroGraphics.Core.csproj" />
     <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Imaging\ZeroGraphics.Imaging.csproj" />
+    <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Vision\ZeroGraphics.Vision.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NLua" Version="1.7.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="ZeroGraphics.Core" Version="1.0.1" />
-    <PackageReference Include="ZeroGraphics.Vision" Version="1.0.1" />
   </ItemGroup>
 
   <PropertyGroup>
