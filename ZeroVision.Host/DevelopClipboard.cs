@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ZeroVision.Core;
@@ -25,17 +25,25 @@ public sealed class DevelopClipboard
     /// <summary>Số op đang giữ (để hiển thị trạng thái).</summary>
     public int Count => _copied?.Count ?? 0;
 
-    /// <summary>Copy các op Develop trong phạm vi active của ảnh nguồn.</summary>
-    public bool Copy(IHistoryService history, string sourcePath)
+    /// <summary>Copy các op Develop trong phạm vi active của ảnh nguồn (tùy chọn lọc theo moduleKeys).</summary>
+    public bool Copy(IHistoryService history, string sourcePath, ISet<string>? moduleKeys = null)
     {
         if (string.IsNullOrEmpty(sourcePath)) return false;
         var stack = history.GetStack(sourcePath);
         int pointer = history.GetPointer(sourcePath);
         var devOps = stack.Take(pointer)
-            .Where(o => string.Equals(o.PluginId, DevelopPluginId, StringComparison.OrdinalIgnoreCase))
-            .Select(Clone)
-            .ToList();
-        _copied = devOps; // có thể rỗng = "ảnh gốc không chỉnh" -> paste sẽ reset đích
+            .Where(o => string.Equals(o.PluginId, DevelopPluginId, StringComparison.OrdinalIgnoreCase));
+
+        if (moduleKeys != null)
+        {
+            devOps = devOps.Where(o =>
+            {
+                var mod = DevelopModules.ModuleOf(o.OpType);
+                return mod != null && moduleKeys.Contains(mod.Key);
+            });
+        }
+
+        _copied = devOps.Select(Clone).ToList();
         return true;
     }
 

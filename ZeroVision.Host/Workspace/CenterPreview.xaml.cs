@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -319,6 +319,13 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.C: SetMode(LighttableMode.Cull); e.Handled = true; break;
             case Key.F: SetMode(LighttableMode.Full); e.Handled = true; break;
             case Key.R: ToggleCropMode(); e.Handled = true; break;
+            case Key.X:
+                if (_cropMode)
+                {
+                    SwapCropOrientation();
+                    e.Handled = true;
+                }
+                break;
             case Key.O:
                 if (_cropMode)
                 {

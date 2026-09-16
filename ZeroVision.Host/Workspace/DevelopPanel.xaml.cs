@@ -107,6 +107,9 @@ public partial class DevelopPanel : UserControl
 
         BuildUI();
         chkSoloMode.CheckedChanged += ChkSoloMode_Changed;
+        segFilterTabs.Items = new[] { "All", "Basic", "Color", "Detail", "Advanced" };
+        segFilterTabs.SelectedIndex = 0;
+        segFilterTabs.SelectedIndexChanged += SegFilterTabs_SelectedIndexChanged;
         SetEnabled(false);
     }
 
@@ -2049,7 +2052,14 @@ public partial class DevelopPanel : UserControl
     private void BtnCopy_Click(object sender, RoutedEventArgs e)
     {
         if (_clipboard == null || _history == null || _currentPath == null) return;
-        _clipboard.Copy(_history, _currentPath);
+        var dlg = new CopySettingsDialog
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            _clipboard.Copy(_history, _currentPath, dlg.SelectedKeys);
+        }
     }
 
     /// <summary>Auto White Balance (13.2): phân tích gray-world rồi áp qua ChannelGainOp.</summary>
@@ -2529,11 +2539,18 @@ public partial class DevelopPanel : UserControl
         }
     }
 
-    private void FilterTab_Click(object sender, RoutedEventArgs e)
+    private void SegFilterTabs_SelectedIndexChanged(object? sender, int index)
     {
-        if (sender is not RadioButton rb || rb.Tag is not string tabName) return;
-        _currentTab = tabName;
+        var tabs = new[] { "All", "Basic", "Color", "Detail", "Advanced" };
+        if (index >= 0 && index < tabs.Length)
+        {
+            _currentTab = tabs[index];
+            ApplyTabFilter();
+        }
+    }
 
+    private void ApplyTabFilter()
+    {
         if (panelSliders?.Children == null) return;
         foreach (var child in panelSliders.Children)
         {
@@ -2544,6 +2561,13 @@ public partial class DevelopPanel : UserControl
                 exp.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
             }
         }
+    }
+
+    private void FilterTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tabName) return;
+        _currentTab = tabName;
+        ApplyTabFilter();
     }
 
     private bool IsExpanderInTab(string header, string tab)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace ZeroVision.Imaging;
 
@@ -48,6 +48,43 @@ public static class CropAspect
         return new Rect(
             Math.Clamp(x, 0f, 1f), Math.Clamp(y, 0f, 1f),
             Math.Clamp(w, 0f, 1f), Math.Clamp(h, 0f, 1f));
+    }
+
+    /// <summary>
+    /// Đảo hướng khung crop (ngang ↔ dọc) quanh tâm hiện tại.
+    /// Giữ nguyên tỉ lệ đảo (w_px ↔ h_px) và thu nhỏ vừa vặn trong ảnh nếu cần.
+    /// </summary>
+    public static Rect SwapOrientation(int imageW, int imageH, float cropX, float cropY, float cropW, float cropH)
+    {
+        if (imageW <= 0 || imageH <= 0)
+        {
+            float w = Math.Clamp(cropH, 0.05f, 1f);
+            float h = Math.Clamp(cropW, 0.05f, 1f);
+            return new Rect(Math.Clamp(cropX, 0f, 1f - w), Math.Clamp(cropY, 0f, 1f - h), w, h);
+        }
+
+        double curPixelW = cropW * imageW;
+        double curPixelH = cropH * imageH;
+        double centerPixelX = (cropX + cropW / 2f) * imageW;
+        double centerPixelY = (cropY + cropH / 2f) * imageH;
+
+        double targetPixelW = curPixelH;
+        double targetPixelH = curPixelW;
+
+        if (targetPixelW > imageW || targetPixelH > imageH)
+        {
+            double scale = Math.Min(imageW / targetPixelW, imageH / targetPixelH);
+            targetPixelW *= scale;
+            targetPixelH *= scale;
+        }
+
+        float newW = (float)(targetPixelW / imageW);
+        float newH = (float)(targetPixelH / imageH);
+
+        float newX = Math.Clamp((float)((centerPixelX - targetPixelW / 2.0) / imageW), 0f, 1f - newW);
+        float newY = Math.Clamp((float)((centerPixelY - targetPixelH / 2.0) / imageH), 0f, 1f - newH);
+
+        return new Rect(newX, newY, newW, newH);
     }
 
     /// <summary>Các preset tỉ lệ phổ biến (tên + W:H). Original/Free = (0,0) nghĩa là full.</summary>

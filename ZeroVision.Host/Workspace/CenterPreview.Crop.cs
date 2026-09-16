@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,6 +19,31 @@ public partial class CenterPreview
     private const double HandleSize = 12;
     // Guide overlay khi crop: 0=Thirds, 1=Golden ratio, 2=Diagonals, 3=Grid, 4=None.
     private int _cropGuide;
+
+    public bool IsCropMode => _cropMode;
+
+    /// <summary>Bật/tắt chế độ crop.</summary>
+    public void ToggleCrop() => ToggleCropMode();
+
+    /// <summary>Đảo chiều khung cắt ngang ↔ dọc quanh tâm (phím X kiểu Lightroom).</summary>
+    public void SwapCropOrientation()
+    {
+        if (!_cropMode) return;
+        int imgW = 0, imgH = 0;
+        if (imgPreview.Source is BitmapSource bs)
+        {
+            imgW = bs.PixelWidth;
+            imgH = bs.PixelHeight;
+        }
+        var r = ZeroVision.Imaging.CropAspect.SwapOrientation(imgW, imgH, _cropX, _cropY, _cropW, _cropH);
+        _cropX = r.X;
+        _cropY = r.Y;
+        _cropW = r.W;
+        _cropH = r.H;
+
+        DrawCropOverlay();
+        _developPanel?.SetCropRect(_cropX, _cropY, _cropW, _cropH);
+    }
 
     /// <summary>Đổi kiểu lưới guide crop (phím O kiểu Lightroom). Chỉ tác dụng khi đang crop.</summary>
     public void CycleCropGuide()

@@ -57,14 +57,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <!-- Filter Tabs (sử dụng RadioButton phẳng dạng ToggleButton) -->
-                <UniformGrid Grid.Column="0" Rows="1" x:Name="tabFilterBar">
-                    <RadioButton Content="All" IsChecked="True" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="All" Height="22" FontSize="10" Padding="1,0"/>
-                    <RadioButton Content="Basic" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="Basic" Height="22" FontSize="10" Padding="1,0"/>
-                    <RadioButton Content="Color" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="Color" Height="22" FontSize="10" Padding="1,0"/>
-                    <RadioButton Content="Detail" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="Detail" Height="22" FontSize="10" Padding="1,0"/>
-                    <RadioButton Content="Advanced" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="Advanced" Height="22" FontSize="10" Padding="1,0"/>
-                </UniformGrid>
+                <!-- Filter Tabs (ZeroUI SegmentedControl) -->
+                <edit:SegmentedControl Grid.Column="0" x:Name="segFilterTabs" Height="22" CornerRadius="4" VerticalAlignment="Center"/>
                 
                 <!-- Solo Mode Toggle -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">

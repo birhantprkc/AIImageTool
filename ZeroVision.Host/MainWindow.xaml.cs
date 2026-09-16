@@ -133,19 +133,27 @@ public partial class MainWindow : Window
         _workspace.SelectionChanged += (s, e) =>
             Dispatcher.BeginInvoke(() => UpdateSelectionInfo(e.Selection.Count));
 
+        modeSwitcher.Items = new[] { "◰ Single", "▦ Grid", "❐ Cull", "⛶ Full" };
+        modeSwitcher.SelectedIndex = 0;
+        modeSwitcher.SelectedIndexChanged += ModeSwitcher_SelectedIndexChanged;
+
         centerView.ModeChanged += (s, mode) =>
         {
             if (_suppressModeSync) return;
             _suppressModeSync = true;
-            switch (mode)
+            modeSwitcher.SelectedIndex = mode switch
             {
-                case LighttableMode.Single: rbModeSingle.IsChecked = true; break;
-                case LighttableMode.Grid:   rbModeGrid.IsChecked = true; break;
-                case LighttableMode.Cull:   rbModeCull.IsChecked = true; break;
-                case LighttableMode.Full:   rbModeFull.IsChecked = true; break;
-            }
+                LighttableMode.Single => 0,
+                LighttableMode.Grid => 1,
+                LighttableMode.Cull => 2,
+                LighttableMode.Full => 3,
+                _ => 0
+            };
             _suppressModeSync = false;
         };
+
+        Activated += (s, e) => UpdateAutoAdvanceBadge();
+        UpdateAutoAdvanceBadge();
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
 
@@ -239,6 +247,11 @@ public partial class MainWindow : Window
         bool typingNow = System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox
             || System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase;
 
+        if (e.Key == System.Windows.Input.Key.CapsLock)
+        {
+            Dispatcher.BeginInvoke(UpdateAutoAdvanceBadge);
+        }
+
         // Bảng phím tắt: F1 hoặc ? (Shift+/) bật/tắt; Esc đóng. Hoạt động cả khi chưa chọn ảnh.
         if (!typingNow && (e.Key == System.Windows.Input.Key.F1
             || (e.Key == System.Windows.Input.Key.OemQuestion && !ctrlMod)))
@@ -285,7 +298,7 @@ public partial class MainWindow : Window
         {
             switch (e.Key)
             {
-                case System.Windows.Input.Key.C: CopyDevelopSettings(); e.Handled = true; return;
+                case System.Windows.Input.Key.C: CopyDevelopSettings(showDialog: true); e.Handled = true; return;
                 case System.Windows.Input.Key.V: PasteDevelopSettings(); e.Handled = true; return;
                 case System.Windows.Input.Key.E: exportPanel.QuickExport(); e.Handled = true; return;
             }
@@ -295,7 +308,7 @@ public partial class MainWindow : Window
         {
             switch (e.Key)
             {
-                case System.Windows.Input.Key.C: if (!typing) { CopyDevelopSettings(); e.Handled = true; return; } break;
+                case System.Windows.Input.Key.C: if (!typing) { CopyDevelopSettings(showDialog: false); e.Handled = true; return; } break;
                 case System.Windows.Input.Key.V: if (!typing) { PasteDevelopSettings(); e.Handled = true; return; } break;
             }
         }
@@ -321,19 +334,74 @@ public partial class MainWindow : Window
 
         switch (e.Key)
         {
-            case System.Windows.Input.Key.D0: ApplyRatingToTargets(0); e.Handled = true; break;
-            case System.Windows.Input.Key.D1: ApplyRatingToTargets(1); e.Handled = true; break;
-            case System.Windows.Input.Key.D2: ApplyRatingToTargets(2); e.Handled = true; break;
-            case System.Windows.Input.Key.D3: ApplyRatingToTargets(3); e.Handled = true; break;
-            case System.Windows.Input.Key.D4: ApplyRatingToTargets(4); e.Handled = true; break;
-            case System.Windows.Input.Key.D5: ApplyRatingToTargets(5); e.Handled = true; break;
-            case System.Windows.Input.Key.P: ApplyPickToTargets(PickFlag.Pick); e.Handled = true; break;
-            case System.Windows.Input.Key.X: ApplyPickToTargets(PickFlag.Reject); e.Handled = true; break;
-            case System.Windows.Input.Key.U: ApplyPickToTargets(PickFlag.None); e.Handled = true; break;
-            case System.Windows.Input.Key.D6: ApplyLabelToTargets(ColorLabel.Red); e.Handled = true; break;
-            case System.Windows.Input.Key.D7: ApplyLabelToTargets(ColorLabel.Yellow); e.Handled = true; break;
-            case System.Windows.Input.Key.D8: ApplyLabelToTargets(ColorLabel.Green); e.Handled = true; break;
-            case System.Windows.Input.Key.D9: ApplyLabelToTargets(ColorLabel.Blue); e.Handled = true; break;
+            case System.Windows.Input.Key.D0:
+            case System.Windows.Input.Key.NumPad0:
+                ApplyRatingToTargets(0);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D1:
+            case System.Windows.Input.Key.NumPad1:
+                ApplyRatingToTargets(1);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D2:
+            case System.Windows.Input.Key.NumPad2:
+                ApplyRatingToTargets(2);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D3:
+            case System.Windows.Input.Key.NumPad3:
+                ApplyRatingToTargets(3);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D4:
+            case System.Windows.Input.Key.NumPad4:
+                ApplyRatingToTargets(4);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D5:
+            case System.Windows.Input.Key.NumPad5:
+                ApplyRatingToTargets(5);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.P:
+                ApplyPickToTargets(PickFlag.Pick);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.X:
+                if (centerView.IsCropMode)
+                {
+                    centerView.SwapCropOrientation();
+                    e.Handled = true;
+                    break;
+                }
+                ApplyPickToTargets(PickFlag.Reject);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.U:
+                ApplyPickToTargets(PickFlag.None);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D6:
+            case System.Windows.Input.Key.NumPad6:
+                ApplyLabelToTargets(ColorLabel.Red);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D7:
+            case System.Windows.Input.Key.NumPad7:
+                ApplyLabelToTargets(ColorLabel.Yellow);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D8:
+            case System.Windows.Input.Key.NumPad8:
+                ApplyLabelToTargets(ColorLabel.Green);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
+            case System.Windows.Input.Key.D9:
+            case System.Windows.Input.Key.NumPad9:
+                ApplyLabelToTargets(ColorLabel.Blue);
+                if (IsAutoAdvanceActive()) NavigateActiveImage(1);
+                e.Handled = true; break;
             case System.Windows.Input.Key.B: if (!typing) { ToggleQuickCollection(); e.Handled = true; } break;
             // (← → điều hướng ảnh đã xử lý sớm phía trên, trước guard ActiveImage.)
         }
@@ -519,14 +587,31 @@ public partial class MainWindow : Window
         }
     }
 
-    public void CopyDevelopSettings()
+    public void CopyDevelopSettings(bool showDialog = false)
     {
         var src = _workspace.ActiveImage;
         if (string.IsNullOrEmpty(src)) return;
-        if (_developClipboard.Copy(_history, src))
-            txtStatus.Text = _developClipboard.HasData
-                ? $"Đã copy settings ({_developClipboard.Count} bước) từ {Path.GetFileName(src)}"
-                : "Đã copy (ảnh gốc, không có chỉnh sửa)";
+
+        if (showDialog)
+        {
+            var dlg = new CopySettingsDialog { Owner = this };
+            if (dlg.ShowDialog() != true) return;
+            if (_developClipboard.Copy(_history, src, dlg.SelectedKeys))
+            {
+                txtStatus.Text = _developClipboard.HasData
+                    ? $"Đã copy settings ({_developClipboard.Count} bước, {dlg.SelectedKeys.Count} nhóm) từ {Path.GetFileName(src)}"
+                    : "Đã copy (ảnh gốc, không có chỉnh sửa)";
+            }
+        }
+        else
+        {
+            if (_developClipboard.Copy(_history, src))
+            {
+                txtStatus.Text = _developClipboard.HasData
+                    ? $"Đã copy settings ({_developClipboard.Count} bước) từ {Path.GetFileName(src)}"
+                    : "Đã copy (ảnh gốc, không có chỉnh sửa)";
+            }
+        }
     }
 
     public void PasteDevelopSettings()
@@ -980,15 +1065,33 @@ public partial class MainWindow : Window
         Closed += (s, args) => _toolsWindow?.Close();
     }
 
-    private void ModeBtn_Click(object sender, RoutedEventArgs e)
+    private void ModeSwitcher_SelectedIndexChanged(object? sender, int index)
     {
         if (_suppressModeSync) return;
-        if (sender is RadioButton rb && rb.Tag is string tag &&
-            Enum.TryParse<LighttableMode>(tag, out var mode))
+        var mode = index switch
         {
-            _suppressModeSync = true;
-            centerView.SwitchMode(mode);
-            _suppressModeSync = false;
+            0 => LighttableMode.Single,
+            1 => LighttableMode.Grid,
+            2 => LighttableMode.Cull,
+            3 => LighttableMode.Full,
+            _ => LighttableMode.Single
+        };
+        _suppressModeSync = true;
+        centerView.SwitchMode(mode);
+        _suppressModeSync = false;
+    }
+
+    private static bool IsAutoAdvanceActive()
+    {
+        try { return System.Console.CapsLock || System.Windows.Input.Keyboard.IsKeyToggled(System.Windows.Input.Key.CapsLock); }
+        catch { return false; }
+    }
+
+    private void UpdateAutoAdvanceBadge()
+    {
+        if (badgeAutoAdvance != null)
+        {
+            badgeAutoAdvance.Visibility = IsAutoAdvanceActive() ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 

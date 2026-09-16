@@ -1,0 +1,124 @@
+<Window x:Class="ZeroVision.Host.CopySettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
+        Title="Copy Settings" Height="480" Width="680"
+        Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+        WindowStartupLocation="CenterOwner" WindowStyle="ToolWindow" ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Margin="0,0,0,12" Padding="0,0,0,8"
+                BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <TextBlock Text="✦ Copy Settings" FontSize="14" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Chọn các nhóm thông số cần sao chép sang clipboard" FontSize="11"
+                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                           HorizontalAlignment="Right"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Checkbox Grid (3 Columns) -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Col 1: Light & Tone -->
+                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                    <Border Background="{DynamicResource BgPanelAltBrush}" CornerRadius="4" Padding="8,4" Margin="0,0,0,6">
+                        <TextBlock Text="LIGHT &amp; TONE" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                    <CheckBox x:Name="chkBasic" Content="Basic Tone" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Exposure, Contrast, Highlights, Shadows, Whites, Blacks"/>
+                    <CheckBox x:Name="chkCurve" Content="Tone Curve" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="RGB Master &amp; Per-channel spline curves"/>
+                    <CheckBox x:Name="chkTonemap" Content="Tone Mapping" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Dehaze, Filmic RGB, Sigmoid, Tone Equalizer, Levels"/>
+                    <CheckBox x:Name="chkInput" Content="Input Profile" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Color profile &amp; matrix"/>
+                </StackPanel>
+
+                <!-- Col 2: Color -->
+                <StackPanel Grid.Column="1" Margin="4,0,4,0">
+                    <Border Background="{DynamicResource BgPanelAltBrush}" CornerRadius="4" Padding="8,4" Margin="0,0,0,6">
+                        <TextBlock Text="COLOR" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                    <CheckBox x:Name="chkWb" Content="White Balance" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Kelvin, Tint &amp; Gains"/>
+                    <CheckBox x:Name="chkColormix" Content="Color Mixer (HSL)" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="8-band Hue, Saturation, Luminance"/>
+                    <CheckBox x:Name="chkColorgrade" Content="Color Grading" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="3-way Color Wheels (Shadows, Midtones, Highlights, Global)"/>
+                    <CheckBox x:Name="chkBw" Content="Black &amp; White" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Monochrome channel mix &amp; toning"/>
+                    <CheckBox x:Name="chkLut" Content="3D LUT" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="3D LUT .cube lookup tables"/>
+                    <CheckBox x:Name="chkInvert" Content="Negative / Invert" IsChecked="False" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Film negative &amp; inversion"/>
+                </StackPanel>
+
+                <!-- Col 3: Detail, Optics & Geometry -->
+                <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                    <Border Background="{DynamicResource BgPanelAltBrush}" CornerRadius="4" Padding="8,4" Margin="0,0,0,6">
+                        <TextBlock Text="DETAIL &amp; CORRECTION" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                    <CheckBox x:Name="chkDetail" Content="Detail &amp; Denoise" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Sharpen, Luma &amp; Color Noise Reduction, Defringe"/>
+                    <CheckBox x:Name="chkEffects" Content="Effects" IsChecked="True" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Vignette, Grain, Orton Glow"/>
+                    <CheckBox x:Name="chkAi" Content="AI (Denoise/Upscale)" IsChecked="False" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Neural Denoise &amp; Super-Resolution"/>
+                    
+                    <Border Background="{DynamicResource BgPanelAltBrush}" CornerRadius="4" Padding="8,4" Margin="0,10,0,6">
+                        <TextBlock Text="COMPOSITION &amp; MASKS" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                    <CheckBox x:Name="chkLocal" Content="Local Adjustments" IsChecked="False" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Linear, Radial, Brush &amp; Range masks"/>
+                    <CheckBox x:Name="chkHealing" Content="Healing / Clone" IsChecked="False" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Spot removal &amp; dust spots"/>
+                    <CheckBox x:Name="chkGeometry" Content="Crop &amp; Geometry" IsChecked="False" Margin="4,3"
+                              Foreground="{DynamicResource TextPrimaryBrush}" ToolTip="Crop rectangle, Straighten, Orientation, Perspective"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Bottom Actions -->
+        <Border Grid.Row="2" Padding="0,8,0,0" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,1,0,0">
+            <DockPanel LastChildFill="False">
+                <!-- Check All / Check None -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button x:Name="btnCheckAll" Content="Check All" Padding="12,5" Margin="0,0,6,0"
+                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                            BorderThickness="0" Cursor="Hand" Click="BtnCheckAll_Click"/>
+                    <Button x:Name="btnCheckNone" Content="Check None" Padding="12,5" Margin="0,0,6,0"
+                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                            BorderThickness="0" Cursor="Hand" Click="BtnCheckNone_Click"/>
+                </StackPanel>
+
+                <!-- Cancel / Copy -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button x:Name="btnCancel" Content="Cancel" Padding="16,5" Margin="0,0,8,0"
+                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                            BorderThickness="0" Cursor="Hand" IsCancel="True"/>
+                    <Button x:Name="btnCopy" Content="Copy" Padding="20,5"
+                            Background="{DynamicResource AccentBrush}" Foreground="#FF0F172A" FontWeight="SemiBold"
+                            BorderThickness="0" Cursor="Hand" IsDefault="True" Click="BtnCopy_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

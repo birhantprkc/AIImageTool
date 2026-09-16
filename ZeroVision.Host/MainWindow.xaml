@@ -59,24 +59,10 @@
                         Click="BtnPopOutTools_Click"
                         ToolTip="Tách panel Tools sang cửa sổ riêng (multi-monitor)"/>
 
-                <!-- Mode switcher -->
-                <Border DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0"
-                        BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1" CornerRadius="3">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="rbModeSingle" GroupName="Mode" Content="◰ Single" IsChecked="True"
-                                     Style="{DynamicResource ModeToggleStyle}" Click="ModeBtn_Click" Tag="Single"
-                                     ToolTip="E"/>
-                        <RadioButton x:Name="rbModeGrid" GroupName="Mode" Content="▦ Grid"
-                                     Style="{DynamicResource ModeToggleStyle}" Click="ModeBtn_Click" Tag="Grid"
-                                     ToolTip="G"/>
-                        <RadioButton x:Name="rbModeCull" GroupName="Mode" Content="❐ Cull"
-                                     Style="{DynamicResource ModeToggleStyle}" Click="ModeBtn_Click" Tag="Cull"
-                                     ToolTip="C"/>
-                        <RadioButton x:Name="rbModeFull" GroupName="Mode" Content="⛶ Full"
-                                     Style="{DynamicResource ModeToggleStyle}" Click="ModeBtn_Click" Tag="Full"
-                                     ToolTip="F"/>
-                    </StackPanel>
-                </Border>
+                <!-- Mode switcher (ZeroUI SegmentedControl) -->
+                <edit:SegmentedControl x:Name="modeSwitcher" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                       Margin="12,0,0,0" Width="260" Height="26" CornerRadius="4"
+                                       ToolTip="Chế độ hiển thị: Single (E), Grid (G), Cull (C), Full (F)"/>
 
                 <!-- Quick filter: rating + labels -->
                 <Border DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0"
@@ -129,6 +115,14 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                     <TextBlock x:Name="txtStatus" Text="Ready"
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                    <Border x:Name="badgeAutoAdvance" Background="{DynamicResource AccentDimBrush}" BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="1" CornerRadius="3" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Visibility="Collapsed" ToolTip="Tự động nhảy sang ảnh kế khi gán sao/cờ/nhãn (bật/tắt bằng Caps Lock)">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="AUTO-ADVANCE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                     <ProgressBar x:Name="barBatchProgress" Width="100" Height="8" Margin="12,0,0,0" 
                                  Visibility="Collapsed" Minimum="0" Maximum="100" Value="0" VerticalAlignment="Center"/>
                     <TextBlock x:Name="txtBatchInfo" Text="" Margin="6,0,0,0"
@@ -312,18 +306,19 @@
                         <TextBlock Text="J   Cảnh báo clip   K   Focus peaking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="CẮT / HÌNH HỌC" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <TextBlock Text="R   Bật/tắt cắt   O   Đổi lưới guide" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Enter   Áp cắt   Esc   Huỷ cắt" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="[ / ]   Xoay trái / phải" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="X   Đảo ngang/dọc   Enter   Áp cắt" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Esc   Huỷ cắt   [ / ]   Xoay 90°" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="ĐÁNH GIÁ / CỜ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                        <TextBlock Text="0–5   Rating sao" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="P / X / U   Pick / Reject / Bỏ cờ" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="6 / 7 / 8 / 9   Nhãn màu" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="0–5   Rating sao   P / X / U   Cờ" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="6–9   Nhãn màu (Đỏ/Vàng/Lục/Lam)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Caps Lock   Auto-Advance (khi đánh giá)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="CHỈNH SỬA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <TextBlock Text="D   Develop   M   Masking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Ctrl+Z / Ctrl+Y   Undo / Redo" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Ctrl+Shift+C / V   Copy / Paste chỉnh" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+Z / Y   Undo / Redo" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+Shift+C   Hộp thoại chọn copy" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+C / V   Copy / Paste nhanh" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                     </StackPanel>
                 </Grid>
                 <TextBlock Text="Nhấn F1, ? hoặc Esc để đóng" FontSize="10" Foreground="{DynamicResource TextDimBrush}"
