@@ -36,6 +36,8 @@ public partial class Filmstrip : UserControl
         _meta.MetaChanged += OnMetaChanged;
     }
 
+    public event EventHandler<string>? SetReferenceRequested;
+
     /// <summary>Provide service for context menu (call after Bind).</summary>
     public void BindContext(IHistoryService history, DevelopClipboard clipboard)
     {
@@ -151,7 +153,7 @@ public partial class Filmstrip : UserControl
                 _workspace.SetSelection(new[] { item.Id });
                 _workspace.SetActiveImage(item.Id);
             }
-            var menu = ImageContextMenu.Build(item.Id, _workspace, _meta, _history, _clipboard);
+            var menu = ImageContextMenu.Build(item.Id, _workspace, _meta, _history, _clipboard, p => SetReferenceRequested?.Invoke(this, p));
             menu.IsOpen = true;
         }
     }

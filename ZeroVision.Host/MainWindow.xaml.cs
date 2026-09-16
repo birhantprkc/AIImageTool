@@ -70,12 +70,14 @@ public partial class MainWindow : Window
         browser.Bind(_workspace, _thumbs, _meta);
         browser.BindCollections(_serviceProvider.GetRequiredService<ICatalogService>(), _workspace);
         browser.BindContext(_history, _developClipboard);
+        browser.SetReferenceRequested += (_, path) => centerView.SetReferenceImage(path);
         centerView.Bind(_workspace, _thumbs, _meta, _history);
         centerView.BindContext(_developClipboard);
         centerView.ProgressReported += (s, p) =>
             Dispatcher.BeginInvoke(() => txtStatus.Text = p.Percent < 0 ? "Ready" : $"{p.Status} {p.Percent}%");
         filmstrip.Bind(_workspace, _thumbs, _meta);
         filmstrip.BindContext(_history, _developClipboard);
+        filmstrip.SetReferenceRequested += (_, path) => centerView.SetReferenceImage(path);
         infoPanel.Bind(_workspace, _meta, _settings);
         historyPanel.Bind(_workspace, _history, centerView.Renderer);
         batchPanel.Bind(_batch);
@@ -445,6 +447,27 @@ public partial class MainWindow : Window
                 if (IsAutoAdvanceActive()) NavigateActiveImage(1);
                 e.Handled = true; break;
             case System.Windows.Input.Key.B: if (!typing) { ToggleQuickCollection(); e.Handled = true; } break;
+            case System.Windows.Input.Key.Back:
+                if (!typing && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+                {
+                    DeleteRejectedPhotosAction();
+                    e.Handled = true;
+                }
+                break;
+            case System.Windows.Input.Key.R:
+                if (!typing && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0)
+                {
+                    centerView.ToggleReferenceMode();
+                    e.Handled = true;
+                }
+                break;
+            case System.Windows.Input.Key.S:
+                if (!typing && System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.None)
+                {
+                    centerView.ToggleGamutWarningOverlay();
+                    e.Handled = true;
+                }
+                break;
             case System.Windows.Input.Key.Delete:
                 if (!typing && VirtualCopyHelper.IsVirtualCopy(path))
                 {
@@ -598,6 +621,58 @@ public partial class MainWindow : Window
             _history.DeleteVirtualCopy(path);
             _workspace.RemoveVirtualCopy(path);
             txtStatus.Text = "Deleted Virtual Copy";
+        }
+    }
+
+    /// <summary>Batch delete or purge all photos marked as Rejected (Ctrl+Backspace).</summary>
+    public void DeleteRejectedPhotosAction()
+    {
+        var allImages = _workspace.Images;
+        var rejected = allImages
+            .Where(p => _meta.Get(p).Pick == PickFlag.Reject)
+            .ToList();
+
+        if (rejected.Count == 0)
+        {
+            txtStatus.Text = "No rejected photos found in current folder";
+            return;
+        }
+
+        long totalBytes = 0;
+        foreach (var p in rejected)
+        {
+            try
+            {
+                var fi = new FileInfo(p);
+                if (fi.Exists) totalBytes += fi.Length;
+            }
+            catch { }
+        }
+
+        var dlg = new DeleteRejectedDialog(rejected.Count, totalBytes) { Owner = this };
+        if (dlg.ShowDialog() == true)
+        {
+            var catalog = _serviceProvider.GetService<ICatalogService>();
+            if (dlg.Choice == DeleteRejectedChoice.RecycleBin)
+            {
+                int deletedCount = 0;
+                foreach (var p in rejected)
+                {
+                    if (FileRecycleHelper.SendToRecycleBin(p))
+                        deletedCount++;
+                }
+                catalog?.RemoveFromCatalog(rejected);
+                if (!string.IsNullOrEmpty(_workspace.CurrentFolder))
+                    _workspace.OpenFolder(_workspace.CurrentFolder);
+                txtStatus.Text = $"Moved {deletedCount} rejected photo(s) to Recycle Bin";
+            }
+            else if (dlg.Choice == DeleteRejectedChoice.CatalogOnly)
+            {
+                catalog?.RemoveFromCatalog(rejected);
+                if (!string.IsNullOrEmpty(_workspace.CurrentFolder))
+                    _workspace.OpenFolder(_workspace.CurrentFolder);
+                txtStatus.Text = $"Removed {rejected.Count} rejected photo(s) from catalog";
+            }
         }
     }
 

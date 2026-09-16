@@ -253,9 +253,10 @@ public partial class DevelopPanel
                     DockPanel.SetDock(eye, Dock.Left);
 
                     // Tên mask & kích hoạt
+                    string combineBadge = mm.CombineMode != "none" ? $" ⋂ {mm.CombineMode}" : "";
                     var sel = new Button
                     {
-                        Content = $"{m.Name}",
+                        Content = $"{m.Name}{combineBadge}",
                         HorizontalContentAlignment = HorizontalAlignment.Left, FontSize = 11,
                         Padding = new Thickness(6, 2, 6, 2),
                         Background = mm == _activeMask ? new SolidColorBrush(Color.FromArgb(40, 0x3D, 0x7E, 0xFF)) : Brushes.Transparent,
@@ -263,6 +264,67 @@ public partial class DevelopPanel
                     };
                     sel.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
                     sel.Click += (_, _) => { SelectMask(mm); RefreshMaskList(); };
+
+                    // Context menu for Lightroom-style layer actions (Intersect, Invert, Duplicate, Delete)
+                    var layerMenu = new ContextMenu();
+                    var miIntersect = new MenuItem { Header = "Intersect with Luminance Range..." };
+                    miIntersect.Click += (_, _) =>
+                    {
+                        mm.CombineMode = "intersect";
+                        mm.CombineMin = 0.5f;
+                        mm.CombineMax = 1.0f;
+                        mm.CombineSmooth = 0.1f;
+                        SelectMask(mm);
+                        RefreshMaskList();
+                        BuildMaskEditor();
+                        Commit();
+                    };
+                    layerMenu.Items.Add(miIntersect);
+
+                    var miSubtract = new MenuItem { Header = "Subtract Luminance Range..." };
+                    miSubtract.Click += (_, _) =>
+                    {
+                        mm.CombineMode = "subtract";
+                        mm.CombineMin = 0.5f;
+                        mm.CombineMax = 1.0f;
+                        mm.CombineSmooth = 0.1f;
+                        SelectMask(mm);
+                        RefreshMaskList();
+                        BuildMaskEditor();
+                        Commit();
+                    };
+                    layerMenu.Items.Add(miSubtract);
+
+                    var miInvert = new MenuItem { Header = "Invert Mask" };
+                    miInvert.Click += (_, _) =>
+                    {
+                        bool inv = mm.MaskParams.TryGetValue("invert", out var iv) && string.Equals(iv, "true", StringComparison.OrdinalIgnoreCase);
+                        mm.MaskParams["invert"] = (!inv).ToString().ToLowerInvariant();
+                        SelectMask(mm);
+                        RefreshMaskList();
+                        BuildMaskEditor();
+                        Commit();
+                    };
+                    layerMenu.Items.Add(miInvert);
+
+                    layerMenu.Items.Add(new Separator());
+
+                    var miDup = new MenuItem { Header = "Duplicate Mask" };
+                    miDup.Click += (_, _) =>
+                    {
+                        var copy = mm.Clone();
+                        _masks.Add(copy);
+                        SelectMask(copy);
+                        RefreshMaskList();
+                        Commit();
+                    };
+                    layerMenu.Items.Add(miDup);
+
+                    var miDel = new MenuItem { Header = "Delete Mask" };
+                    miDel.Click += (_, _) => RemoveMask(mm);
+                    layerMenu.Items.Add(miDel);
+
+                    sel.ContextMenu = layerMenu;
 
                     row.Children.Add(eye);
                     row.Children.Add(del);
@@ -402,14 +464,19 @@ public partial class DevelopPanel
         {
             if (_loading) return;
             m.MaskParams["combine"] = (cmbCombine.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "none";
+            RefreshMaskList();
+            BuildMaskEditor();
             ScheduleCommit();
         };
         combineRow.Children.Add(cmbCombine);
         _maskEditPanel!.Children.Add(combineRow);
 
-        AddMaskGeomSlider(m, "c_min", "  Refine Min", 0, 1, 0);
-        AddMaskGeomSlider(m, "c_max", "  Refine Max", 0, 1, 1);
-        AddMaskGeomSlider(m, "c_smooth", "  Refine Smooth", 0.001, 0.5, 0.1);
+        if (curCombine != "none")
+        {
+            AddMaskGeomSlider(m, "c_min", "  Refine Min", 0, 1, 0);
+            AddMaskGeomSlider(m, "c_max", "  Refine Max", 0, 1, 1);
+            AddMaskGeomSlider(m, "c_smooth", "  Refine Smooth", 0.001, 0.5, 0.1);
+        }
     }
 
     private void AddMaskGeomSlider(LocalMask m, string key, string label, double min, double max, double def, string fmt = "0.00")

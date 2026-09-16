@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
 using Xunit;
@@ -112,4 +112,33 @@ public class MaskCombineTests
         Assert.True(img.Pixels[0] > ColorSpace.SrgbToLinear(0.1f) * 1.3f);
         Assert.Equal(ColorSpace.SrgbToLinear(0.9f), img.Pixels[4], 3);
     }
+
+    [Fact]
+    public void LocalMask_CombineProperties_RoundtripCorrectly()
+    {
+        var lm = new LocalMask
+        {
+            Name = "Subject + Shadows",
+            CombineMode = "intersect",
+            CombineMin = 0.1f,
+            CombineMax = 0.6f,
+            CombineSmooth = 0.05f
+        };
+
+        Assert.Equal("intersect", lm.CombineMode);
+        Assert.Equal(0.1f, lm.CombineMin, 3);
+        Assert.Equal(0.6f, lm.CombineMax, 3);
+        Assert.Equal(0.05f, lm.CombineSmooth, 3);
+
+        var clone = lm.Clone();
+        Assert.Equal("intersect", clone.CombineMode);
+        Assert.Equal(0.1f, clone.CombineMin, 3);
+        Assert.Equal(0.6f, clone.CombineMax, 3);
+        Assert.Equal(0.05f, clone.CombineSmooth, 3);
+
+        var bag = lm.MaskParamBag();
+        Assert.Equal("intersect", bag["combine"]);
+        Assert.Equal("0.1", bag["c_min"]);
+    }
 }
+

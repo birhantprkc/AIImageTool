@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
 
-namespace ZeroVision.Host.Workspace;
+namespace ZeroVision.Imaging;
 
 /// <summary>
 /// 1 "local adjustment" kiểu Lightroom: 1 mask (gradient/radial/brush/range) + 1 BỘ ĐẦY ĐỦ
@@ -35,6 +35,28 @@ public sealed class LocalMask
     public string BlendMode = "normal";
     public float Opacity = 1f;
 
+    // --- Mask Combine / Intersect (D4.2) ---
+    public string CombineMode
+    {
+        get => MaskParams.TryGetValue("combine", out var s) ? s : "none";
+        set { if (value == "none") MaskParams.Remove("combine"); else MaskParams["combine"] = value; }
+    }
+    public float CombineMin
+    {
+        get => MaskParams.TryGetValue("c_min", out var s) && float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0f;
+        set => MaskParams["c_min"] = value.ToString("R", CultureInfo.InvariantCulture);
+    }
+    public float CombineMax
+    {
+        get => MaskParams.TryGetValue("c_max", out var s) && float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 1f;
+        set => MaskParams["c_max"] = value.ToString("R", CultureInfo.InvariantCulture);
+    }
+    public float CombineSmooth
+    {
+        get => MaskParams.TryGetValue("c_smooth", out var s) && float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0.1f;
+        set => MaskParams["c_smooth"] = value.ToString("R", CultureInfo.InvariantCulture);
+    }
+
     public bool HasAdjustments =>
         !Z(Exposure) || !Z(Contrast) || !Z(Highlights) || !Z(Shadows) || !Z(Whites) || !Z(Blacks) ||
         !Z(Temp) || !Z(Tint) || !Z(Saturation) || !Z(Vibrance) || !Z(Clarity) || !Z(Sharpen);
@@ -52,7 +74,7 @@ public sealed class LocalMask
     }
 
     /// <summary>Gộp tham số mask vào 1 dict mới (kèm "mask"=type).</summary>
-    private Dictionary<string, string> MaskParamBag()
+    public Dictionary<string, string> MaskParamBag()
     {
         var d = new Dictionary<string, string>(MaskParams) { ["mask"] = MaskType };
         return d;

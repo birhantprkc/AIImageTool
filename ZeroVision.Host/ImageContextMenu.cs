@@ -23,7 +23,8 @@ public static class ImageContextMenu
         IWorkspaceService workspace,
         IImageMetaService meta,
         IHistoryService history,
-        DevelopClipboard clipboard)
+        DevelopClipboard clipboard,
+        Action<string>? onSetReference = null)
     {
         // Tập ảnh đích: nếu ảnh thuộc selection nhiều ảnh -> áp cả selection; ngược lại chỉ ảnh này.
         List<string> Targets()
@@ -141,6 +142,14 @@ public static class ImageContextMenu
             try { System.Windows.Clipboard.SetText(imagePath); } catch { }
         };
         menu.Items.Add(miCopyPath);
+
+        // --- Reference Photo ---
+        if (onSetReference != null)
+        {
+            var miRef = new MenuItem { Header = "Set as Reference Photo\tShift+R" };
+            miRef.Click += (_, _) => onSetReference(imagePath);
+            menu.Items.Add(miRef);
+        }
 
         // --- Virtual Copy ---
         var miVc = new MenuItem { Header = "Create Virtual Copy\tCtrl+'" };

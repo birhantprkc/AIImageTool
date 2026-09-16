@@ -58,6 +58,8 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
         collectionsPanel.Bind(catalog, workspace);
     }
 
+    public event EventHandler<string>? SetReferenceRequested;
+
     /// <summary>Provide service for thumbnail context menu (call after Bind).</summary>
     public void BindContext(IHistoryService history, DevelopClipboard clipboard)
     {
@@ -281,7 +283,7 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
                 _workspace.SetSelection(new[] { item.ImagePath });
                 _workspace.SetActiveImage(item.ImagePath);
             }
-            var cm = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard);
+            var cm = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard, p => SetReferenceRequested?.Invoke(this, p));
             cm.IsOpen = true;
         }
     }

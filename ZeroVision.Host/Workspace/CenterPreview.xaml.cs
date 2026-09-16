@@ -175,6 +175,12 @@ public partial class CenterPreview : UserControl, IImageToolHost
             return;
         }
 
+        // Update compare / reference viewer if active
+        if (_referenceMode && !string.IsNullOrEmpty(_referenceImagePath))
+            _ = LoadReferenceAsync(_referenceImagePath, path);
+        else if (_compareMode)
+            _ = LoadCompareAsync(path);
+
         // If image has edit history and decoder supports it, render via non-destructive pipeline.
         int pointer = _history?.GetPointer(path) ?? 0;
         if (pointer > 0 && _renderer.CanDecode(path))
@@ -205,6 +211,11 @@ public partial class CenterPreview : UserControl, IImageToolHost
             txtFile.Text = Path.GetFileName(path);
             var fi = new FileInfo(path);
             txtMeta.Text = $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  {fi.Length / 1024.0:N0} KB";
+            if (_cropMode) DrawCropOverlay();
+            RefreshClipOverlayIfActive();
+            RefreshPeakOverlayIfActive();
+            RefreshProofOverlayIfActive();
+            RefreshCompareAfter(bmp);
             NotifyViewportChanged();
         }
         catch
@@ -250,6 +261,8 @@ public partial class CenterPreview : UserControl, IImageToolHost
             if (_cropMode) DrawCropOverlay();
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
+            RefreshProofOverlayIfActive();
+            RefreshCompareAfter(bmp);
             NotifyViewportChanged();
         }
         catch { }
@@ -268,14 +281,36 @@ public partial class CenterPreview : UserControl, IImageToolHost
             ctrlCompare.Clear();
             btnCompare.Background = ThemeManager.GetBrush("BgHoverBrush");
         }
+        if (_referenceMode && m != LighttableMode.Reference)
+        {
+            _referenceMode = false;
+            if (btnReference != null) btnReference.Background = ThemeManager.GetBrush("BgHoverBrush");
+        }
+
         paneSingle.Visibility = m == LighttableMode.Single ? Visibility.Visible : Visibility.Collapsed;
         paneGridHost.Visibility = m == LighttableMode.Grid ? Visibility.Visible : Visibility.Collapsed;
         btnToggleFilter.Visibility = m == LighttableMode.Grid ? Visibility.Visible : Visibility.Collapsed;
         paneCull.Visibility = m == LighttableMode.Cull ? Visibility.Visible : Visibility.Collapsed;
         paneFull.Visibility = m == LighttableMode.Full ? Visibility.Visible : Visibility.Collapsed;
-        paneReference.Visibility = m == LighttableMode.Reference ? Visibility.Visible : Visibility.Collapsed;
+
+        if (m == LighttableMode.Reference)
+        {
+            _referenceMode = true;
+            ctrlCompare.Visibility = Visibility.Visible;
+            ctrlCompare.BeforeLabel = "REFERENCE";
+            ctrlCompare.AfterLabel = "ACTIVE";
+            if (btnReference != null) btnReference.Background = ThemeManager.GetBrush("AccentBrush");
+            var active = _workspace?.ActiveImage;
+            if (!string.IsNullOrEmpty(_referenceImagePath) && !string.IsNullOrEmpty(active))
+                _ = LoadReferenceAsync(_referenceImagePath, active);
+        }
+        else if (!_compareMode)
+        {
+            ctrlCompare.Visibility = Visibility.Collapsed;
+            ctrlCompare.Clear();
+        }
+
         if (m == LighttableMode.Cull) RebuildCullView();
-        if (m == LighttableMode.Reference) UpdateReferenceView();
         ModeChanged?.Invoke(this, m);
     }
 
@@ -333,7 +368,25 @@ public partial class CenterPreview : UserControl, IImageToolHost
             case Key.E: SetMode(LighttableMode.Single); e.Handled = true; break;
             case Key.C: SetMode(LighttableMode.Cull); e.Handled = true; break;
             case Key.F: SetMode(LighttableMode.Full); e.Handled = true; break;
-            case Key.R: ToggleCropMode(); e.Handled = true; break;
+            case Key.R:
+                if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+                {
+                    ToggleReferenceMode();
+                    e.Handled = true;
+                }
+                else
+                {
+                    ToggleCropMode();
+                    e.Handled = true;
+                }
+                break;
+            case Key.S:
+                if (Keyboard.Modifiers == ModifierKeys.None)
+                {
+                    ToggleGamutWarningOverlay();
+                    e.Handled = true;
+                }
+                break;
             case Key.X:
                 if (_cropMode)
                 {
@@ -484,7 +537,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 _workspace.SetSelection(new[] { item.ImagePath });
                 _workspace.SetActiveImage(item.ImagePath);
             }
-            fe.ContextMenu = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard);
+            fe.ContextMenu = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard, SetReferenceImage);
             fe.ContextMenu.IsOpen = true;
             e.Handled = true;
         }
@@ -654,6 +707,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
         zoomPanAfter.Y = zoomPan.Y;
         if (_clipOverlay) SyncClipTransform();
         if (_peakOverlay) SyncPeakTransform();
+        if (_proofOverlay) SyncProofTransform();
         RedrawMaskGizmo();
     }
 
@@ -904,54 +958,6 @@ public partial class CenterPreview : UserControl, IImageToolHost
     }
 
     private void BtnClearAfter_Click(object sender, RoutedEventArgs e) => ClearResult();
-
-    // ===== Reference View =====
-    private void BtnSetReference_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Select Reference Photo",
-            Filter = "Image Files|*.jpg;*.jpeg;*.png;*.tiff;*.tif;*.bmp;*.webp|All Files|*.*"
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            _referenceImagePath = dlg.FileName;
-            UpdateReferenceView();
-        }
-    }
-
-    public void SetReferenceImage(string? path)
-    {
-        _referenceImagePath = path;
-        if (_mode == LighttableMode.Reference) UpdateReferenceView();
-    }
-
-    private async void UpdateReferenceView()
-    {
-        if (_referenceImagePath == null || !File.Exists(_referenceImagePath))
-        {
-            imgReference.Source = null;
-            return;
-        }
-
-        // Load reference image
-        try
-        {
-            var bmp = await _renderer.RenderPreviewAsync(_referenceImagePath,
-                Array.Empty<EditOperation>(), 0);
-            imgReference.Source = bmp;
-        }
-        catch { }
-
-        // Update current image
-        var active = _workspace?.ActiveImage;
-        if (active != null)
-        {
-            var ops = _history?.GetStack(active) ?? Array.Empty<EditOperation>();
-            var currentBmp = await _renderer.RenderPreviewAsync(active, ops, _history?.GetPointer(active) ?? 0);
-            imgRefCurrent.Source = currentBmp;
-        }
-    }
 
     // ===== IImageToolHost =====
     public string? ActiveImagePath => _workspace?.ActiveImage;

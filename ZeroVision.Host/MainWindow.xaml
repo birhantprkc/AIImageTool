@@ -305,9 +305,10 @@
                         <TextBlock Text="E / G / C / F   Single / Grid / Cull / Full" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Z   Zoom 100% / Fit     + / −   Zoom In / Out" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Space   Hold to Pan" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="Y   Before/After Compare   \   Hold for Original" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="J   Clipping Warning   K   Focus Peaking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
-                        <TextBlock Text="CROP &amp; GEOMETRY" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                        <TextBlock Text="Y   Before/After   Shift+R   Reference View" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="J   Clipping   S   Soft Proof   K   Peaking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="\   Hold for Original" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="CROP &amp; GEOMETRY" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,4"/>
                         <TextBlock Text="R   Toggle Crop   O   Cycle Grid Overlay" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="X   Swap Orientation   Enter   Apply Crop" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Esc   Cancel Crop   [ / ]   Rotate 90° CCW / CW" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
@@ -316,6 +317,7 @@
                         <TextBlock Text="RATINGS &amp; FLAGS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                         <TextBlock Text="0–5   Star Rating   P / X / U   Flag Pick/Reject/Unflag" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="6–9   Color Label (Red/Yellow/Green/Blue)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
+                        <TextBlock Text="Ctrl+Backspace   Delete Rejected Photos" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="Caps Lock   Auto-Advance (when rating/flagging)" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,1"/>
                         <TextBlock Text="DEVELOP ADJUSTMENTS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <TextBlock Text="D   Develop   M   Masking" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" Margin="0,1"/>
