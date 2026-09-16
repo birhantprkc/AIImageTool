@@ -4,22 +4,22 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
-using System.Windows.Shapes;
+using System.Windows.Media.Imaging;
+using ZeroUI.Wpf.Editors;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
 
 namespace ZeroVision.Host.Workspace;
 
-// Visual histogram + clipping warnings in DevelopPanel (11.3).
+// Visual histogram + clipping warnings in DevelopPanel using ZeroUI.Wpf.Editors.HistogramScopeControl.
 public partial class DevelopPanel
 {
     private Border? _histHost;
-    private Canvas? _histCanvas;
+    private HistogramScopeControl? _histScopeControl;
     private TextBlock? _histClipLabel;
-    private Rectangle? _histHoverRect;
-    private string? _histHoverKey;
     private string _normalClipText = "No clipping";
     private Brush? _normalClipBrush;
+
     // Channel display mode: 0 = RGB overlay, 1 = Luma.
     private int _histChannelMode;
     // Scope display mode: 0 = histogram, 1 = waveform/parade.
@@ -28,55 +28,59 @@ public partial class DevelopPanel
     private ToggleButton? _histBtnLuma;
     private ToggleButton? _histBtnWave;
 
+    private HistogramData? _lastHist;
+    private WaveformData? _lastWave;
+
     /// <summary>Build histogram widget (called first in BuildUI, pinned at top).</summary>
     private FrameworkElement BuildHistogram()
     {
         var outer = new StackPanel { Margin = new Thickness(2, 2, 2, 6) };
 
         // RGB / Luma channel buttons + Waveform scope.
-        var toggleRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 0, 2) };
+        var toggleRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+
         _histBtnRgb = new ToggleButton { Content = "RGB", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), IsChecked = true, Margin = new Thickness(0, 0, 4, 0) };
         _histBtnLuma = new ToggleButton { Content = "Luma", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 8, 0) };
         _histBtnWave = new ToggleButton { Content = "Wave", FontSize = 10, Padding = new Thickness(6, 1, 6, 1), ToolTip = "Toggle Waveform / RGB Parade (column-wise distribution)" };
+
         _histBtnRgb.Click += (_, _) => SetHistChannelMode(0);
         _histBtnLuma.Click += (_, _) => SetHistChannelMode(1);
         _histBtnWave.Click += (_, _) => SetScopeMode(_histBtnWave.IsChecked == true ? 1 : 0);
+
         toggleRow.Children.Add(_histBtnRgb);
         toggleRow.Children.Add(_histBtnLuma);
         toggleRow.Children.Add(_histBtnWave);
         outer.Children.Add(toggleRow);
 
-        _histCanvas = new Canvas
+        _histScopeControl = new HistogramScopeControl
         {
             Height = 110,
-            Background = ThemeManager.GetBrush("BgBaseBrush"),
-            ClipToBounds = true,
-            Cursor = System.Windows.Input.Cursors.SizeWE,
-            ToolTip = "Drag horizontally on histogram to adjust tone: left→right = Blacks · Shadows · Exposure · Highlights · Whites"
+            ToolTip = "Drag horizontally on tonal zones: Blacks · Shadows · Exposure · Highlights · Whites"
         };
-        _histHoverRect = new Rectangle
-        {
-            Fill = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-            Stroke = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
-            StrokeThickness = 1,
-            IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed
-        };
-        _histCanvas.Children.Add(_histHoverRect);
-        _histCanvas.SizeChanged += (_, _) => DrawScope();
-        _histCanvas.MouseLeftButtonDown += HistCanvas_MouseDown;
-        _histCanvas.MouseMove += HistCanvas_MouseMove;
-        _histCanvas.MouseLeftButtonUp += HistCanvas_MouseUp;
-        _histCanvas.MouseLeave += HistCanvas_MouseLeave;
+        _histScopeControl.ZoneDragged += HistScope_ZoneDragged;
+        _histScopeControl.ZoneReset += HistScope_ZoneReset;
+
         _histHost = new Border
         {
             BorderBrush = ThemeManager.GetBrush("BorderBrush_"),
             BorderThickness = new Thickness(1),
-            Child = _histCanvas
+            Child = _histScopeControl
         };
         outer.Children.Add(_histHost);
-        _histClipLabel = new TextBlock { Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, Margin = new Thickness(2, 2, 0, 0) };
+
+        _histClipLabel = new TextBlock
+        {
+            Foreground = ThemeManager.GetBrush("TextDimBrush"),
+            FontSize = 10,
+            Margin = new Thickness(2, 2, 0, 0)
+        };
         outer.Children.Add(_histClipLabel);
+
         return outer;
     }
 
@@ -95,17 +99,15 @@ public partial class DevelopPanel
         RefreshHistogram(); // reload scope data (waveform/histogram)
     }
 
-    private HistogramData? _lastHist;
-    private WaveformData? _lastWave;
-
     /// <summary>Recalculate scope for image + current ops off-UI, then render.</summary>
     private void RefreshHistogram()
     {
-        if (_renderer == null || _history == null || string.IsNullOrEmpty(_currentPath) || _histCanvas == null) return;
+        if (_renderer == null || _history == null || string.IsNullOrEmpty(_currentPath)) return;
         var path = _currentPath;
         var ops = _history.GetStack(path);
         int ptr = _history.GetPointer(path);
         bool wave = _scopeMode == 1;
+
         System.Threading.Tasks.Task.Run(() =>
         {
             if (wave)
@@ -141,90 +143,90 @@ public partial class DevelopPanel
 
     private void DrawHistogram()
     {
-        if (_histCanvas == null || _lastHist == null) return;
-        double w = _histCanvas.ActualWidth, h = _histCanvas.ActualHeight;
-        if (w <= 0 || h <= 0) return;
-        _histCanvas.Children.Clear();
-        if (_histHoverRect != null)
-        {
-            _histCanvas.Children.Add(_histHoverRect);
-        }
-
+        if (_histScopeControl == null || _lastHist == null) return;
         var hist = _lastHist;
-        if (_histChannelMode == 1)
+
+        _histScopeControl.ChannelMode = _histChannelMode == 1 ? HistogramChannelMode.Luma : HistogramChannelMode.Rgb;
+        _histScopeControl.SetChannels(hist.R, hist.G, hist.B, hist.Luma);
+        _histScopeControl.ShadowClipPercent = hist.ShadowClipWarning ? hist.ShadowClipPercent : 0.0;
+        _histScopeControl.HighlightClipPercent = hist.HighlightClipWarning ? hist.HighlightClipPercent : 0.0;
+
+        if (_histHost != null && _histHost.Child != _histScopeControl)
         {
-            // Luma: 1 đường xám.
-            int lmax = 1;
-            for (int i = 0; i < 256; i++) if (hist.Luma[i] > lmax) lmax = hist.Luma[i];
-            DrawChannelPath(hist.Luma, lmax, w, h, Color.FromArgb(160, 220, 225, 230));
-        }
-        else
-        {
-            int max = hist.MaxBin();
-            DrawChannelPath(hist.R, max, w, h, Color.FromArgb(120, 255, 77, 109)); // Neon Pink/Red
-            DrawChannelPath(hist.G, max, w, h, Color.FromArgb(120, 6, 214, 160));  // Neon Mint/Green
-            DrawChannelPath(hist.B, max, w, h, Color.FromArgb(120, 58, 134, 255)); // Neon Blue
+            _histHost.Child = _histScopeControl;
         }
 
-        // marker clip: tam giác góc trên trái (shadow) / phải (highlight).
-        if (hist.ShadowClipWarning)
-            _histCanvas.Children.Add(ClipTriangle(0, 0, 9, Color.FromRgb(0x50, 0xA0, 0xFF)));
-        if (hist.HighlightClipWarning)
-            _histCanvas.Children.Add(ClipTriangle(w - 9, 0, 9, Color.FromRgb(0xFF, 0x5A, 0x5A)));
+        UpdateClipLabel();
+    }
+
+    private void UpdateClipLabel()
+    {
+        if (_histClipLabel == null || _lastHist == null) return;
+        var hist = _lastHist;
+        var parts = new List<string>();
+        if (hist.ShadowClipWarning) parts.Add($"▼ Shadow {hist.ShadowClipPercent:0.0}%");
+        if (hist.HighlightClipWarning) parts.Add($"▲ Highlight {hist.HighlightClipPercent:0.0}%");
+        _normalClipText = parts.Count > 0 ? string.Join("   ", parts) : "No clipping";
+        _normalClipBrush = parts.Count > 0 ? Brushes.Orange : ThemeManager.GetBrush("TextDimBrush");
+        _histClipLabel.Text = _normalClipText;
+        _histClipLabel.Foreground = _normalClipBrush;
+    }
+
+    private void HistScope_ZoneDragged(object? sender, HistogramZoneDragEventArgs e)
+    {
+        if (_loading || string.IsNullOrEmpty(_currentPath)) return;
+        string key = e.ZoneIndex switch
+        {
+            0 => "blacks",
+            1 => "shadows",
+            2 => "exposure",
+            3 => "highlights",
+            _ => "whites"
+        };
+
+        double gain = key == "exposure" ? 4.0 : 1.6;
+        double cur = GetVal(key);
+        double next = cur + e.NormalizedDelta * gain;
+        next = key == "exposure" ? Math.Clamp(next, -5, 5) : Math.Clamp(next, -1, 1);
+        SetVal(key, next);
 
         if (_histClipLabel != null)
         {
-            var parts = new List<string>();
-            if (hist.ShadowClipWarning) parts.Add($"▼ Shadow {hist.ShadowClipPercent:0.0}%");
-            if (hist.HighlightClipWarning) parts.Add($"▲ Highlight {hist.HighlightClipPercent:0.0}%");
-            _normalClipText = parts.Count > 0 ? string.Join("   ", parts) : "No clipping";
-            _normalClipBrush = parts.Count > 0 ? Brushes.Orange : ThemeManager.GetBrush("TextDimBrush");
-            if (string.IsNullOrEmpty(_histHoverKey))
-            {
-                _histClipLabel.Text = _normalClipText;
-                _histClipLabel.Foreground = _normalClipBrush;
-            }
+            double val = GetVal(key);
+            string valStr = key == "exposure" ? $"{val:+0.00;-0.00;0.00} EV" : $"{val * 100:+0;-0;0}";
+            _histClipLabel.Text = $"{e.ZoneName}: {valStr}";
+            _histClipLabel.Foreground = ThemeManager.GetBrush("AccentBrush");
         }
     }
 
-    private void DrawChannelPath(int[] data, int max, double w, double h, Color color)
+    private void HistScope_ZoneReset(object? sender, int zoneIndex)
     {
-        if (_histCanvas == null) return;
-        var fig = new PathFigure { StartPoint = new Point(0, h), IsClosed = true };
-        for (int i = 0; i < 256; i++)
+        if (_loading || string.IsNullOrEmpty(_currentPath)) return;
+        string key = zoneIndex switch
         {
-            double x = i / 255.0 * w;
-            double y = h - (double)data[i] / max * h;
-            fig.Segments.Add(new LineSegment(new Point(x, y), true));
-        }
-        fig.Segments.Add(new LineSegment(new Point(w, h), true));
-        var geo = new PathGeometry();
-        geo.Figures.Add(fig);
-        _histCanvas.Children.Add(new Path { Fill = new SolidColorBrush(color), Data = geo });
+            0 => "blacks",
+            1 => "shadows",
+            2 => "exposure",
+            3 => "highlights",
+            _ => "whites"
+        };
+        SetVal(key, 0.0);
+        UpdateClipLabel();
     }
-
-    private static Polygon ClipTriangle(double x, double y, double s, Color c) => new()
-    {
-        Fill = new SolidColorBrush(c),
-        Points = new PointCollection { new(x, y), new(x + s, y), new(x, y + s) }
-    };
 
     /// <summary>Vẽ waveform/RGB-parade bằng WriteableBitmap (additive theo cột). RGB mode = 3 kênh chồng màu.</summary>
     private void DrawWaveform()
     {
-        if (_histCanvas == null || _lastWave == null) return;
-        double cw = _histCanvas.ActualWidth, ch = _histCanvas.ActualHeight;
-        if (cw <= 0 || ch <= 0) return;
-        _histCanvas.Children.Clear();
+        if (_histHost == null || _lastWave == null) return;
+        double cw = _histHost.ActualWidth > 0 ? _histHost.ActualWidth : 260;
+        double ch = _histHost.ActualHeight > 0 ? _histHost.ActualHeight : 110;
 
         var wf = _lastWave;
         int cols = wf.Columns;
-        // Bitmap nội bộ: rộng = số cột, cao = 256 (mức), vẽ rồi để Image stretch ra canvas.
         int bw = cols, bh = 256;
-        var bmp = new System.Windows.Media.Imaging.WriteableBitmap(bw, bh, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null);
+        var bmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
         var buf = new byte[bw * bh * 4];
 
-        // Chuẩn hoá theo log để vệt mờ không bị chìm. gain ~ độ sáng vệt.
         float norm = wf.MaxCount > 0 ? 1f / MathF.Log(1 + wf.MaxCount) : 1f;
         bool luma = _histChannelMode == 1;
 
@@ -232,7 +234,6 @@ public partial class DevelopPanel
         {
             for (int v = 0; v < 256; v++)
             {
-                // y đảo: mức 255 (sáng) ở trên cùng.
                 int yRow = (255 - v) * bw;
                 int o = (yRow + c) * 4;
                 if (luma)
@@ -247,19 +248,21 @@ public partial class DevelopPanel
                     byte gg = Intensity(wf.G[c, v], norm);
                     byte bb = Intensity(wf.B[c, v], norm);
                     if ((rr | gg | bb) == 0) continue;
-                    buf[o] = bb; buf[o + 1] = gg; buf[o + 2] = rr; buf[o + 3] = 255; // BGRA
+                    buf[o] = bb; buf[o + 1] = gg; buf[o + 2] = rr; buf[o + 3] = 255;
                 }
             }
         }
         bmp.WritePixels(new Int32Rect(0, 0, bw, bh), buf, bw * 4, 0);
 
-        var img = new System.Windows.Controls.Image
+        var img = new Image
         {
-            Source = bmp, Stretch = Stretch.Fill, Width = cw, Height = ch,
-            // pixel scope nét hơn khi không làm mượt quá.
+            Source = bmp,
+            Stretch = Stretch.Fill,
+            Width = cw,
+            Height = ch
         };
-        System.Windows.Media.RenderOptions.SetBitmapScalingMode(img, System.Windows.Media.BitmapScalingMode.Linear);
-        _histCanvas.Children.Add(img);
+        RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Linear);
+        _histHost.Child = img;
 
         if (_histClipLabel != null)
         {
@@ -271,128 +274,9 @@ public partial class DevelopPanel
     private static byte Intensity(int count, float norm)
     {
         if (count <= 0) return 0;
-        float t = MathF.Log(1 + count) * norm; // [0..1]
-        int v = (int)(40 + t * 215); // sàn 40 để vệt mảnh vẫn thấy
+        float t = MathF.Log(1 + count) * norm;
+        int v = (int)(40 + t * 215);
         if (v > 255) v = 255;
         return (byte)v;
     }
-
-    // ===== Kéo trực tiếp trên histogram để chỉnh tone (13.10) =====
-    // Chia trục ngang [0..1] làm 5 vùng tone, mỗi vùng map sang 1 slider Basic. Kéo ngang:
-    // sang phải = tăng, sang trái = giảm. Bước nhỏ để mượt; commit debounce như slider thường.
-    private bool _histDragging;
-    private double _histDragLastX;
-    private string? _histDragKey;
-
-    private void HistCanvas_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (_histCanvas == null || _loading || string.IsNullOrEmpty(_currentPath)) return;
-        if (_scopeMode == 1) return; // waveform: không kéo chỉnh tone
-        double w = _histCanvas.ActualWidth;
-        if (w <= 0) return;
-        double x = e.GetPosition(_histCanvas).X;
-        _histDragKey = ToneKeyAt(Math.Clamp(x / w, 0.0, 1.0));
-        _histDragging = true;
-        _histDragLastX = x;
-        _histCanvas.CaptureMouse();
-        e.Handled = true;
-    }
-
-    private void HistCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-    {
-        if (_histCanvas == null || _scopeMode == 1) return;
-        double w = _histCanvas.ActualWidth;
-        double h = _histCanvas.ActualHeight;
-        if (w <= 0 || h <= 0) return;
-
-        double x = e.GetPosition(_histCanvas).X;
-        double frac = Math.Clamp(x / w, 0.0, 1.0);
-        string key = ToneKeyAt(frac);
-
-        if (_histDragging && _histDragKey != null)
-        {
-            double dxFrac = (x - _histDragLastX) / w;
-            _histDragLastX = x;
-            if (Math.Abs(dxFrac) >= 1e-4)
-            {
-                double gain = _histDragKey == "exposure" ? 4.0 : 1.6;
-                double cur = GetVal(_histDragKey);
-                double next = cur + dxFrac * gain;
-                next = _histDragKey == "exposure" ? Math.Clamp(next, -5, 5) : Math.Clamp(next, -1, 1);
-                SetVal(_histDragKey, next);
-            }
-            key = _histDragKey;
-        }
-
-        UpdateHoverZone(key, w, h);
-    }
-
-    private void HistCanvas_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-    {
-        if (_histDragging) return;
-        ClearHoverZone();
-    }
-
-    private void HistCanvas_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (!_histDragging) return;
-        _histDragging = false;
-        _histDragKey = null;
-        _histCanvas?.ReleaseMouseCapture();
-        if (_histCanvas != null && !_histCanvas.IsMouseOver)
-            ClearHoverZone();
-        e.Handled = true;
-    }
-
-    private void UpdateHoverZone(string key, double w, double h)
-    {
-        if (_histCanvas == null || _histHoverRect == null) return;
-        _histHoverKey = key;
-        var (s0, s1, name) = ZoneInfo(key);
-        double left = s0 * w;
-        double width = (s1 - s0) * w;
-        Canvas.SetLeft(_histHoverRect, left);
-        Canvas.SetTop(_histHoverRect, 0);
-        _histHoverRect.Width = width;
-        _histHoverRect.Height = h;
-        _histHoverRect.Visibility = Visibility.Visible;
-
-        if (_histClipLabel != null)
-        {
-            double val = GetVal(key);
-            string valStr = key == "exposure" ? $"{val:+0.00;-0.00;0.00} EV" : $"{val * 100:+0;-0;0}";
-            _histClipLabel.Text = $"{name}: {valStr}";
-            _histClipLabel.Foreground = ThemeManager.GetBrush("AccentBrush");
-        }
-    }
-
-    private void ClearHoverZone()
-    {
-        if (_histHoverRect != null) _histHoverRect.Visibility = Visibility.Collapsed;
-        _histHoverKey = null;
-        if (_histClipLabel != null)
-        {
-            _histClipLabel.Text = _normalClipText;
-            _histClipLabel.Foreground = _normalClipBrush ?? ThemeManager.GetBrush("TextDimBrush");
-        }
-    }
-
-    private static (double startFrac, double endFrac, string name) ZoneInfo(string key) => key switch
-    {
-        "blacks" => (0.00, 0.20, "Blacks"),
-        "shadows" => (0.20, 0.40, "Shadows"),
-        "exposure" => (0.40, 0.60, "Exposure"),
-        "highlights" => (0.60, 0.80, "Highlights"),
-        _ => (0.80, 1.00, "Whites"),
-    };
-
-    /// <summary>Vùng tone theo vị trí ngang chuẩn hoá [0..1] -> slider Basic tương ứng.</summary>
-    private static string ToneKeyAt(double xFrac) => xFrac switch
-    {
-        < 0.20 => "blacks",
-        < 0.40 => "shadows",
-        < 0.60 => "exposure",
-        < 0.80 => "highlights",
-        _ => "whites",
-    };
 }
