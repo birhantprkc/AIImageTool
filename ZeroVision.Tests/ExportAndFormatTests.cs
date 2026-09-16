@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
@@ -83,4 +83,40 @@ public class ExportAndFormatTests : IDisposable
         Assert.Contains("OpA", content);
         Assert.DoesNotContain("OpB", content);
     }
+
+    [Fact]
+    public void ExportPreset_Properties_Preserved()
+    {
+        var preset1 = new ExportPreset
+        {
+            Name = "Web sRGB 2048px",
+            Format = "jpg",
+            Quality = 85,
+            MaxLongEdge = 2048,
+            OutputProfile = "srgb",
+            JpegSubsample = "420",
+            JpegProgressive = true,
+            StripMetadata = true
+        };
+
+        var preset2 = new ExportPreset
+        {
+            Name = "Master Archive TIFF",
+            Format = "tiff",
+            Quality = 100,
+            MaxLongEdge = 0,
+            TiffCompression = "deflate",
+            OutputProfile = "adobergb"
+        };
+
+        Assert.Equal("Web sRGB 2048px", preset1.Name);
+        Assert.Equal("jpg", preset1.Format);
+        Assert.Equal(2048, preset1.MaxLongEdge);
+        Assert.True(preset1.StripMetadata);
+
+        Assert.Equal("Master Archive TIFF", preset2.Name);
+        Assert.Equal("tiff", preset2.Format);
+        Assert.Equal("deflate", preset2.TiffCompression);
+    }
 }
+

@@ -35,6 +35,21 @@ public partial class DevelopPanel
     /// <summary>Bắn khi active mask thay đổi (CenterPreview lắng nghe để vẽ Interactive Gizmo). null = không có mask.</summary>
     public event EventHandler<LocalMask?>? ActiveMaskChanged;
 
+    /// <summary>Bắn khi user muốn lấy mẫu màu từ ảnh cho ColorRangeMask (CenterPreview lắng nghe click).</summary>
+    public event EventHandler<LocalMask>? ColorMaskSampleRequested;
+
+    /// <summary>Áp dụng màu đã lấy mẫu vào ColorRangeMask.</summary>
+    public void ApplyColorMaskSample(LocalMask mask, float hue, float sat)
+    {
+        mask.MaskParams["hue"] = Math.Round(hue).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        mask.MaskParams["minSat"] = Math.Max(0.05f, sat * 0.7f).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        if (_activeMask == mask)
+        {
+            BuildMaskEditor();
+        }
+        Commit();
+    }
+
     /// <summary>CenterPreview Gizmo gọi khi kéo thả tham số hình học của mask để cập nhật UI và render lại.</summary>
     public void NotifyMaskParamsUpdated(LocalMask mask)
     {
@@ -392,6 +407,16 @@ public partial class DevelopPanel
                 AddMaskGeomSlider(m, "smooth", "Smoothness", 0.001, 0.5, 0.1);
                 break;
             case ColorRangeMask.Type:
+                var btnSampleColor = new Button
+                {
+                    Content = "💧 Sample Color from Photo",
+                    Padding = new Thickness(8, 3, 8, 3),
+                    Margin = new Thickness(0, 2, 0, 4),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    ToolTip = "Click here, then click any pixel on the photo to isolate its color range automatically."
+                };
+                btnSampleColor.Click += (_, _) => ColorMaskSampleRequested?.Invoke(this, m);
+                _maskEditPanel.Children.Add(btnSampleColor);
                 AddMaskGeomSlider(m, "hue", "Target Hue", 0, 360, 0, "0");
                 AddMaskGeomSlider(m, "range", "Hue Range", 1, 90, 30, "0");
                 AddMaskGeomSlider(m, "minSat", "Min Sat", 0, 1, 0.1);

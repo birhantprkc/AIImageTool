@@ -183,6 +183,19 @@
                         MouseMove="LiquifyOverlay_MouseMove"
                         MouseLeftButtonUp="LiquifyOverlay_MouseUp"/>
 
+                <!-- Floating Targeted Adjustment Tool (TAT) HUD Swatch & Delta -->
+                <Canvas x:Name="tatOverlay" IsHitTestVisible="False" Visibility="Collapsed">
+                    <Border x:Name="tatHud" Background="#EE1E1E1E" BorderBrush="#555555" BorderThickness="1"
+                            CornerRadius="4" Padding="6,4" Canvas.Left="0" Canvas.Top="0">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="tatColorSwatch" Width="16" Height="16" CornerRadius="2"
+                                    BorderBrush="#888888" BorderThickness="1" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="tatInfoText" Foreground="#F0F0F0" FontSize="11" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" Text="Targeted Adjustment"/>
+                        </StackPanel>
+                    </Border>
+                </Canvas>
+
                 <!-- Navigator mini-map: visible when zoom > 100% -->
                 <Border x:Name="navigatorOverlay" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                         Margin="0,0,16,16" Visibility="Collapsed" IsHitTestVisible="True" Cursor="Hand"

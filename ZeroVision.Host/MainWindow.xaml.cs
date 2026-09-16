@@ -87,6 +87,7 @@ public partial class MainWindow : Window
         developPanel.Bind(_workspace, _history, centerView.Renderer, _developClipboard, _styles,
             serviceProvider.GetRequiredService<LensfunService>());
         developPanel.BindActiveLayersHost(panelActiveLayers);
+        developPanel.ReferenceImageProvider = () => centerView.ReferenceImagePath;
         developPanel.RequestClippingPreview += (s, active) =>
         {
             Dispatcher.BeginInvoke(() => centerView.SetTemporaryClipOverlay(active));

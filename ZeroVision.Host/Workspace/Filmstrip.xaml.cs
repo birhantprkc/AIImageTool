@@ -172,18 +172,6 @@ public partial class Filmstrip : UserControl
         };
     }
 
-    private static BitmapImage? LoadBitmap(string path)
-    {
-        try
-        {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.UriSource = new Uri(path);
-            bmp.EndInit();
-            bmp.Freeze();
-            return bmp;
-        }
-        catch { return null; }
-    }
+    private static BitmapSource? LoadBitmap(string path)
+        => ThumbnailMemoryCache.GetOrLoad(path, 128);
 }

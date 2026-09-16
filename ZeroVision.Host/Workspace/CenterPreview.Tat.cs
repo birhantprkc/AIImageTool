@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -23,6 +24,21 @@ public partial class CenterPreview
 
     private static readonly float[] TatBandCenters = { 0f, 30f, 60f, 120f, 180f, 240f, 280f, 320f };
 
+    private static readonly string[] TatBandNames = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta" };
+    private int _tatDominantBand;
+    private Color _tatSampledColor;
+
+    private bool _colorMaskPickMode;
+    private LocalMask? _colorMaskTarget;
+
+    private static string TatSubModeTitle(string mode) => mode switch
+    {
+        "sat" => "Saturation",
+        "lum" => "Luminance",
+        "hue" => "Hue",
+        _ => "HSL"
+    };
+
     public void BindTat(DevelopPanel panel)
     {
         _tatPanel = panel;
@@ -38,8 +54,55 @@ public partial class CenterPreview
             else
             {
                 paneSingle.Cursor = Cursors.Arrow;
+                HideTatHud();
             }
         };
+
+        panel.ColorMaskSampleRequested += (s, mask) =>
+        {
+            panel.DisableTat();
+            _colorMaskTarget = mask;
+            _colorMaskPickMode = true;
+            SetMode(LighttableMode.Single);
+            paneSingle.Cursor = Cursors.Cross;
+        };
+    }
+
+    /// <summary>Sample color on photo to set Color Range Mask hue and minSat.</summary>
+    public bool TryHandleColorMaskPick(MouseButtonEventArgs e)
+    {
+        if (!_colorMaskPickMode || _tatPanel == null || _colorMaskTarget == null) return false;
+        var p = e.GetPosition(paneSingle);
+        var colorOpt = GetPixelColorAt(p);
+        _colorMaskPickMode = false;
+        paneSingle.Cursor = Cursors.Arrow;
+
+        if (colorOpt == null) return true;
+        var c = colorOpt.Value;
+        RgbToHsv(c.R / 255f, c.G / 255f, c.B / 255f, out float h, out float s, out _);
+
+        _tatPanel.ApplyColorMaskSample(_colorMaskTarget, h, s);
+        _colorMaskTarget = null;
+        e.Handled = true;
+        return true;
+    }
+
+    private void UpdateTatHud(Point p, float delta)
+    {
+        if (tatOverlay == null || tatHud == null || tatColorSwatch == null || tatInfoText == null) return;
+        tatOverlay.Visibility = Visibility.Visible;
+        Canvas.SetLeft(tatHud, Math.Clamp(p.X + 16, 8, Math.Max(8, paneSingle.ActualWidth - 180)));
+        Canvas.SetTop(tatHud, Math.Clamp(p.Y - 28, 8, Math.Max(8, paneSingle.ActualHeight - 40)));
+
+        tatColorSwatch.Background = new SolidColorBrush(_tatSampledColor);
+        string bandName = _tatDominantBand >= 0 && _tatDominantBand < TatBandNames.Length ? TatBandNames[_tatDominantBand] : "Band";
+        int pct = (int)Math.Round(delta * 100);
+        tatInfoText.Text = $"{bandName} {TatSubModeTitle(_tatSubMode)}: {(pct >= 0 ? "+" : "")}{pct}%";
+    }
+
+    private void HideTatHud()
+    {
+        if (tatOverlay != null) tatOverlay.Visibility = Visibility.Collapsed;
     }
 
     private bool TryHandleTatMouseDown(MouseButtonEventArgs e)
@@ -77,6 +140,19 @@ public partial class CenterPreview
             for (int i = 0; i < HslMixerOp.Bands; i++) _tatWeights[i] *= inv;
         }
 
+        // Determine dominant band
+        _tatDominantBand = 0;
+        float maxW = -1f;
+        for (int i = 0; i < HslMixerOp.Bands; i++)
+        {
+            if (_tatWeights[i] > maxW)
+            {
+                maxW = _tatWeights[i];
+                _tatDominantBand = i;
+            }
+        }
+        _tatSampledColor = color;
+
         // Get current HSL values
         _tatPanel.GetHslValues(out var startHue, out var startSat, out var startLum);
         _tatStartHue = startHue;
@@ -86,6 +162,8 @@ public partial class CenterPreview
         _isDraggingTat = true;
         _tatStartMouse = p;
         paneSingle.CaptureMouse();
+
+        UpdateTatHud(p, 0f);
 
         e.Handled = true;
         return true;
@@ -123,6 +201,7 @@ public partial class CenterPreview
         }
 
         _tatPanel.UpdateHslValues(newHue, newSat, newLum, schedule: true);
+        UpdateTatHud(p, delta);
         e.Handled = true;
     }
 
@@ -132,6 +211,7 @@ public partial class CenterPreview
 
         _isDraggingTat = false;
         paneSingle.ReleaseMouseCapture();
+        HideTatHud();
 
         var p = e.GetPosition(paneSingle);
         double dy = _tatStartMouse.Y - p.Y;

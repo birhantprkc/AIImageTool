@@ -16,6 +16,23 @@
                     <ComboBox x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged" ToolTip="Apply saved preset"/>
                 </DockPanel>
 
+                <Expander x:Name="expMultiPreset" Header="Multi-Preset Batch Export" IsExpanded="False" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10">
+                    <StackPanel Margin="4,6,4,2">
+                        <TextBlock Text="Select multiple presets to export simultaneously:" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4"/>
+                        <ItemsControl x:Name="icMultiPresets">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button x:Name="btnExportMultiPresets" Content="Export Selected Presets" Height="26" Margin="0,6,0,0"
+                                Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" Cursor="Hand"
+                                Click="BtnExportMultiPresets_Click" ToolTip="Batch export selected photos using all checked presets concurrently."/>
+                    </StackPanel>
+                </Expander>
+
                 <TextBlock Text="Format" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <ComboBox x:Name="cmbFormat" Height="22" SelectedIndex="0" Margin="0,0,0,8">
                     <ComboBoxItem Content="PNG (lossless)" Tag="png"/>

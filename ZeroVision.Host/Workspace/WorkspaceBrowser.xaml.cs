@@ -380,7 +380,7 @@ public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
     public string ImagePath { get; }
     public string FileName { get; }
 
-    private BitmapImage? _thumb;
+    private BitmapSource? _thumb;
     private int _rating;
     private ColorLabel _label;
     private PickFlag _pick;
@@ -389,7 +389,7 @@ public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
     private bool _isEdited;
     private int _stackCount;
 
-    public BitmapImage? Thumb { get => _thumb; private set { _thumb = value; Raise(nameof(Thumb)); } }
+    public BitmapSource? Thumb { get => _thumb; private set { _thumb = value; Raise(nameof(Thumb)); } }
     public int Rating { get => _rating; set { if (_rating == value) return; _rating = value; Raise(nameof(Rating), nameof(RatingDisplay)); } }
     public ColorLabel Label { get => _label; set { if (_label == value) return; _label = value; Raise(nameof(Label), nameof(LabelBrush)); } }
     public PickFlag Pick { get => _pick; set { if (_pick == value) return; _pick = value; Raise(nameof(Pick), nameof(PickDisplay)); } }
@@ -433,18 +433,7 @@ public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
 
     public void SetThumb(string thumbPath)
     {
-        try
-        {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.UriSource = new Uri(thumbPath);
-            bmp.DecodePixelWidth = 256;
-            bmp.EndInit();
-            bmp.Freeze();
-            Thumb = bmp;
-        }
-        catch { }
+        Thumb = ThumbnailMemoryCache.GetOrLoad(thumbPath, 256);
     }
 
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;

@@ -75,6 +75,7 @@ public partial class DevelopPanel : UserControl
     private TextBox? _gmShadow, _gmMid, _gmHigh; // #5 màu 3 chặng tuỳ chỉnh (hex sRGB)
     private TextBlock? _colorMatchInfo; // #8 color match reference label
     private ZeroVision.Imaging.ColorMatch.Stats? _colorMatchStats; // stats ảnh tham chiếu đã đo
+    public Func<string?>? ReferenceImageProvider { get; set; }
 
     // Lensfun auto lens-correction (5.3).
     private LensfunService? _lensfun;
@@ -394,18 +395,22 @@ public partial class DevelopPanel : UserControl
         var gMatch = AddGroup("Color Match", false);
         var matchRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         _colorMatchInfo = new TextBlock { Text = "(no reference photo selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        var btnMatch = new Button { Content = "Choose Photo...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
-        var btnMatchClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Clear color match" };
-        DockPanel.SetDock(btnMatch, Dock.Right);
+        var btnMatchRef = new Button { Content = "Match Ref", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Match color grading from the active Reference Photo (Shift+R)" };
+        var btnMatch = new Button { Content = "Choose File...", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0) };
+        var btnMatchClear = new Button { Content = "✕", Padding = new Thickness(5, 3, 5, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Clear color match" };
         DockPanel.SetDock(btnMatchClear, Dock.Right);
+        DockPanel.SetDock(btnMatch, Dock.Right);
+        DockPanel.SetDock(btnMatchRef, Dock.Right);
+        btnMatchRef.Click += BtnColorMatchReference_Click;
         btnMatch.Click += BtnColorMatch_Click;
         btnMatchClear.Click += BtnColorMatchClear_Click;
         matchRow.Children.Add(btnMatchClear);
         matchRow.Children.Add(btnMatch);
+        matchRow.Children.Add(btnMatchRef);
         matchRow.Children.Add(_colorMatchInfo);
         gMatch.Children.Add(matchRow);
         AddSlider(gMatch, "match_strength", "Match Strength", 0, 1, 0.8, "0.00");
-        gMatch.Children.Add(new TextBlock { Text = "Match color grading from a reference photo.", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        gMatch.Children.Add(new TextBlock { Text = "Match color grading from a reference photo (Reinhard Lab transfer).", FontSize = 10, Foreground = ThemeManager.GetBrush("TextDimBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
 
         // 3D LUT (.cube)
         var gLut = AddGroup("3D LUT (.cube)", false);
@@ -2072,6 +2077,36 @@ public partial class DevelopPanel : UserControl
     }
 
     /// <summary>Color Match (#8): chọn ảnh tham chiếu -> đo thống kê Lab -> dựng op.</summary>
+    /// <summary>Color Match (#8): đo trực tiếp từ ảnh tham chiếu (Shift+R) đang ghim.</summary>
+    private void BtnColorMatchReference_Click(object sender, RoutedEventArgs e)
+    {
+        if (_renderer == null) return;
+        string? refPath = ReferenceImageProvider?.Invoke();
+        if (string.IsNullOrEmpty(refPath) || !System.IO.File.Exists(refPath))
+        {
+            MessageBox.Show("No Reference Photo is active.\n\nRight-click any photo and select 'Set as Reference Photo' (or press Shift+R) to lock it as reference first.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            if (!_renderer.Decoders.CanDecode(refPath))
+            {
+                MessageBox.Show("Cannot decode reference photo: " + System.IO.Path.GetFileName(refPath), "Color Match", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var decoded = _renderer.Decoders.Decode(refPath);
+            _colorMatchStats = ZeroVision.Imaging.ColorMatch.Measure(decoded.Image);
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "Ref: " + System.IO.Path.GetFileName(refPath);
+            Commit();
+        }
+        catch (Exception ex)
+        {
+            ZeroVision.Shared.AppLog.Warn("DevelopPanel.ColorMatch", $"{refPath}: {ex.Message}");
+            MessageBox.Show("Error analyzing reference photo colors.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void BtnColorMatch_Click(object sender, RoutedEventArgs e)
     {
         if (_renderer == null) return;

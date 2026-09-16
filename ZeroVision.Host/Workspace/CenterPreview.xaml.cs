@@ -548,6 +548,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
     {
         if (TryHandleHealClick(e)) { e.Handled = true; return; }
         if (TryHandleWbPick(e)) { e.Handled = true; return; }
+        if (TryHandleColorMaskPick(e)) { e.Handled = true; return; }
         if (TryHandleTatMouseDown(e)) { e.Handled = true; return; }
         // Space + left drag = pan (when zoomed).
         if (_spaceHeld && _zoom > 1.0 && imgPreview.Source != null)

@@ -14,10 +14,12 @@ public partial class ExportPanel : UserControl
     private IWorkspaceService? _workspace;
     private ISettingsService? _settings;
     private bool _loadingPreset;
+    private readonly System.Collections.ObjectModel.ObservableCollection<MultiPresetItem> _multiPresetItems = new();
 
     public ExportPanel()
     {
         InitializeComponent();
+        icMultiPresets.ItemsSource = _multiPresetItems;
         txtOutDir.Text = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Output");
         foreach (var s in ZeroVision.Shared.SocialPresets.All)
             cmbSocial.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s });
@@ -127,9 +129,15 @@ public partial class ExportPanel : UserControl
         cmbPreset.Items.Clear();
         cmbPreset.Items.Add(new ComboBoxItem { Content = "(preset)", Tag = null });
         cmbPreset.SelectedIndex = 0;
+        _multiPresetItems.Clear();
         if (_settings != null)
+        {
             foreach (var p in _settings.Current.ExportPresets)
+            {
                 cmbPreset.Items.Add(new ComboBoxItem { Content = p.Name, Tag = p });
+                _multiPresetItems.Add(new MultiPresetItem(p));
+            }
+        }
         _loadingPreset = false;
     }
 
@@ -542,4 +550,98 @@ public partial class ExportPanel : UserControl
             MessageBox.Show("Error creating print file (see app.log).", "Print Module", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private void BtnExportMultiPresets_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace == null || _batch == null) return;
+        var paths = _workspace.Selection.ToList();
+        if (paths.Count == 0)
+        {
+            MessageBox.Show("Please select photos before exporting.", "Multi-Preset Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var selectedPresets = _multiPresetItems.Where(x => x.IsSelected).Select(x => x.Preset).ToList();
+        if (selectedPresets.Count == 0)
+        {
+            MessageBox.Show("Please check at least one preset in the Multi-Preset list.", "Multi-Preset Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var allJobs = new List<BatchJob>();
+        foreach (var preset in selectedPresets)
+        {
+            string format = preset.Format;
+            int quality = preset.Quality;
+            int maxLong = preset.MaxLongEdge;
+            string outDir = string.IsNullOrWhiteSpace(preset.OutDir)
+                ? (string.IsNullOrWhiteSpace(txtOutDir.Text) ? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Output", preset.Name) : System.IO.Path.Combine(txtOutDir.Text, preset.Name))
+                : preset.OutDir;
+            string pattern = string.IsNullOrWhiteSpace(preset.Pattern) ? "{name}.{ext}" : preset.Pattern;
+            string outputSharpen = string.IsNullOrWhiteSpace(preset.OutputSharpen) ? "none" : preset.OutputSharpen;
+            string copyExif = preset.CopyExif ? "true" : "false";
+            var adv = CollectPresetAdvancedParams(preset);
+
+            foreach (var p in paths)
+            {
+                allJobs.Add(MakeJob(p, format, quality, maxLong, outDir, pattern, outputSharpen, copyExif, null, adv));
+            }
+        }
+
+        _batch.EnqueueRange(allJobs);
+        MessageBox.Show($"Queued {allJobs.Count} export jobs ({paths.Count} photos × {selectedPresets.Count} presets) into the Batch Export Queue.", "Multi-Preset Export", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private static Dictionary<string, string> CollectPresetAdvancedParams(ExportPreset p)
+    {
+        var d = new Dictionary<string, string>();
+        if (p.TargetKB > 0) d["targetKB"] = p.TargetKB.ToString();
+        if (p.StripMetadata) d["stripMetadata"] = "true";
+        if (p.OutputProfile != "none") d["outputProfile"] = p.OutputProfile;
+
+        switch (p.Format)
+        {
+            case "jpg":
+            case "jpeg":
+                d["jpegSubsample"] = p.JpegSubsample;
+                if (p.JpegProgressive) d["jpegProgressive"] = "true";
+                break;
+            case "png":
+                d["pngLevel"] = p.PngLevel.ToString();
+                if (p.PngPaletteColors > 0)
+                {
+                    d["pngColorType"] = "palette";
+                    d["pngPaletteColors"] = p.PngPaletteColors.ToString();
+                }
+                break;
+            case "webp":
+                d["webpMode"] = p.WebpMode;
+                d["webpMethod"] = p.WebpMethod.ToString();
+                break;
+            case "tif":
+            case "tiff":
+                d["tiffCompression"] = p.TiffCompression;
+                break;
+        }
+        return d;
+    }
+}
+
+public class MultiPresetItem : System.ComponentModel.INotifyPropertyChanged
+{
+    public ExportPreset Preset { get; }
+    public string Name => Preset.Name;
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+    public MultiPresetItem(ExportPreset preset) => Preset = preset;
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 }
