@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.ExportPanel"
+<UserControl x:Class="ZeroVision.Host.Workspace.ExportPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
              Background="{DynamicResource BgBaseBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource BgPanelAltBrush}" Padding="10,8">
@@ -47,7 +48,10 @@
                                 <ComboBoxItem Content="4:2:2 (cân bằng)" Tag="422"/>
                                 <ComboBoxItem Content="4:4:4 (sắc nét, lớn hơn)" Tag="444"/>
                             </ComboBox>
-                            <CheckBox x:Name="chkJpegProgressive" Content="Progressive JPEG" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,6"/>
+                            <DockPanel Margin="0,0,0,6">
+                                <edit:ToggleSwitch x:Name="chkJpegProgressive" DockPanel.Dock="Right" Width="30" Height="16"/>
+                                <TextBlock Text="Progressive JPEG" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                            </DockPanel>
                         </StackPanel>
 
                         <!-- PNG -->
@@ -57,7 +61,10 @@
                                 <TextBlock Text="{Binding Value, ElementName=slPngLevel, StringFormat={}{0:F0}}" DockPanel.Dock="Right" Foreground="{DynamicResource AccentBrush}" Width="24"/>
                                 <Slider x:Name="slPngLevel" Minimum="0" Maximum="9" Value="6" TickFrequency="1" IsSnapToTickEnabled="True"/>
                             </DockPanel>
-                            <CheckBox x:Name="chkPngPalette" Content="Palette (PNG-8, giảm mạnh dung lượng)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                            <DockPanel Margin="0,0,0,4">
+                                <edit:ToggleSwitch x:Name="chkPngPalette" DockPanel.Dock="Right" Width="30" Height="16"/>
+                                <TextBlock Text="Palette (PNG-8, giảm mạnh dung lượng)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                            </DockPanel>
                             <DockPanel x:Name="pnlPngColors" Margin="0,0,0,6">
                                 <TextBlock Text="{Binding Value, ElementName=slPngColors, StringFormat={}{0:F0} màu}" DockPanel.Dock="Right" Foreground="{DynamicResource AccentBrush}" Width="60"/>
                                 <Slider x:Name="slPngColors" Minimum="2" Maximum="256" Value="256" TickFrequency="1" IsSnapToTickEnabled="True"/>
@@ -90,7 +97,10 @@
                             </ComboBox>
                         </StackPanel>
 
-                        <CheckBox x:Name="chkStripMeta" Content="Xoá metadata (giảm dung lượng cho web)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,2,0,0"/>
+                        <DockPanel Margin="0,2,0,0">
+                            <edit:ToggleSwitch x:Name="chkStripMeta" DockPanel.Dock="Right" Width="30" Height="16"/>
+                            <TextBlock Text="Xoá metadata (giảm dung lượng cho web)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                        </DockPanel>
 
                         <TextBlock Text="Output Color Profile (ICC nhúng)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                         <ComboBox x:Name="cmbOutputProfile" Height="22" SelectedIndex="0"
@@ -137,8 +147,10 @@
                 <TextBox x:Name="txtPattern" Text="{}{name}_export.{ext}" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22" Margin="0,0,0,8"/>
                 <TextBlock Text="Tokens: {name} {ext} {w} {h} {n:000} {date} {date:yyyyMMdd} {parent}" FontSize="9" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
 
-                <CheckBox x:Name="chkCopyExif" Content="Giữ EXIF gốc (camera/lens/ngày/GPS)" IsChecked="True"
-                          Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,12"/>
+                <DockPanel Margin="0,0,0,12">
+                    <edit:ToggleSwitch x:Name="chkCopyExif" DockPanel.Dock="Right" Width="30" Height="16" IsChecked="True"/>
+                    <TextBlock Text="Giữ EXIF gốc (camera/lens/ngày/GPS)" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                </DockPanel>
 
                 <Button x:Name="btnExportSelection" Content="Export Selection" Height="32" Background="{DynamicResource SuccessBrush}" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnExportSelection_Click"/>
                 <TextBlock x:Name="txtEstSize" Text="" FontSize="10" Foreground="{DynamicResource AccentBrush}" Margin="0,6,0,0"/>

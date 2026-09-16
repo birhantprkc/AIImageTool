@@ -1,7 +1,8 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.WorkspaceBrowser"
+<UserControl x:Class="ZeroVision.Host.Workspace.WorkspaceBrowser"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:ZeroVision.Host.Workspace"
+             xmlns:opt="clr-namespace:ZeroUI.Wpf.Rendering.Optimizer;assembly=ZeroUI.Wpf"
              Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid>
         <Grid.RowDefinitions>
@@ -134,7 +135,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Width="130" Height="140" Margin="4" Background="{DynamicResource BgInputBrush}"
-                                    BorderThickness="2" CornerRadius="3"
+                                    BorderThickness="2" CornerRadius="4"
+                                    opt:RenderOptimizer.Elevation="1" opt:RenderOptimizer.CornerRadius="4"
                                     Cursor="Hand"
                                     MouseLeftButtonUp="Thumbnail_MouseLeftButtonUp"
                                     MouseRightButtonUp="Thumbnail_MouseRightButtonUp">

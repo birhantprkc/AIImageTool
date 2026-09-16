@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
 using ZeroVision.Shared;
+using ZeroUI.Wpf.Editors;
 
 namespace ZeroVision.Host.Workspace;
 
@@ -50,7 +51,7 @@ public partial class DevelopPanel : UserControl
     // Tone curve editor + channel selector.
     private CurveEditor? _curveEditor;
     private ComboBox? _curveChannel; // 0=RGB,1=R,2=G,3=B
-    private CheckBox? _chkCurvePreserveHue; // D1.4
+    private ToggleSwitch? _chkCurvePreserveHue; // D1.4
     private readonly string[] _curveData = { "0,0;1,1", "0,0;1,1", "0,0;1,1", "0,0;1,1" };
 
     // Color grading 3-way wheels + lum sliders. 0=Shadows,1=Midtones,2=Highlights,3=Global.
@@ -62,10 +63,10 @@ public partial class DevelopPanel : UserControl
     private float _cropX, _cropY, _cropW = 1f, _cropH = 1f;
 
     // B&W + Invert toggles.
-    private CheckBox? _chkBw;
-    private CheckBox? _chkInvert;
-    private CheckBox? _chkFilmNeg;
-    private CheckBox? _chkAiUpscale;
+    private ToggleSwitch? _chkBw;
+    private ToggleSwitch? _chkInvert;
+    private ToggleSwitch? _chkFilmNeg;
+    private ToggleSwitch? _chkAiUpscale;
     private ComboBox? _cmbInputProfile; // D2.2 working/input color space
     private TextBlock? _iccAutoInfo;    // hiển thị ICC nhúng phát hiện được (D2.2/7.3)
     private ComboBox? _cmbSoftProof;    // #1 soft-proof / gamut map đích
@@ -244,15 +245,10 @@ public partial class DevelopPanel : UserControl
         };
         gCurve.Children.Add(curveHint);
 
-        _chkCurvePreserveHue = new CheckBox
-        {
-            Content = "Preserve hue (master theo luminance)", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 11,
-            Margin = new Thickness(0, 4, 0, 2),
-            ToolTip = "Đường master áp lên độ sáng và scale RGB giữ hue — tránh dịch màu ở vùng rực."
-        };
-        _chkCurvePreserveHue.Checked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _chkCurvePreserveHue.Unchecked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gCurve.Children.Add(_chkCurvePreserveHue);
+        var (rowCurveHue, swCurveHue) = CreateToggleRow("Preserve hue (master theo luminance)", "Đường master áp lên độ sáng và scale RGB giữ hue — tránh dịch màu ở vùng rực.");
+        _chkCurvePreserveHue = swCurveHue;
+        _chkCurvePreserveHue.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gCurve.Children.Add(rowCurveHue);
 
         var gPres = AddGroup("Presence", true);
         AddSlider(gPres, "vibrance", "Vibrance", -1, 1, 0);
@@ -447,10 +443,10 @@ public partial class DevelopPanel : UserControl
         btnAutoCa.Click += BtnAutoCa_Click;
         gDetail.Children.Add(btnAutoCa);
         AddSlider(gDetail, "aiDenoise", "AI Denoise", 0, 1, 0);
-        _chkAiUpscale = new CheckBox { Content = "AI Upscale 4x (khi export)", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 4, 0, 2), ToolTip = "Phóng to 4x bằng AI lúc export (cần model Upscaler)" };
-        _chkAiUpscale.Checked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _chkAiUpscale.Unchecked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gDetail.Children.Add(_chkAiUpscale);
+        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (khi export)", "Phóng to 4x bằng AI lúc export (cần model Upscaler)");
+        _chkAiUpscale = swAiUp;
+        _chkAiUpscale.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gDetail.Children.Add(rowAiUp);
 
         // Effects
         var gFx = AddGroup("Effects", false);
@@ -464,10 +460,10 @@ public partial class DevelopPanel : UserControl
         AddSlider(gFx, "grain_rough", "Grain Roughness", 0, 1, 0.5, "0.00");
         AddSlider(gFx, "grain_color", "Grain Color", 0, 1, 0, "0.00");
         AddSlider(gFx, "glow", "Glow / Soften", 0, 1, 0);
-        _chkInvert = new CheckBox { Content = "Negative / Invert", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 4, 0, 2) };
-        _chkInvert.Checked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _chkInvert.Unchecked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gFx.Children.Add(_chkInvert);
+        var (rowInvert, swInvert) = CreateToggleRow("Negative / Invert");
+        _chkInvert = swInvert;
+        _chkInvert.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gFx.Children.Add(rowInvert);
 
         // Gradient Map (#5): preset dải màu + opacity. Map luminance -> gradient (grading/duotone).
         var gradRow = new DockPanel { Margin = new Thickness(0, 6, 0, 2) };
@@ -513,10 +509,10 @@ public partial class DevelopPanel : UserControl
 
         // Film Negative (negadoctor) — chuyển scan phim âm bản thành dương bản.
         var gFilm = AddGroup("Film Negative", false);
-        _chkFilmNeg = new CheckBox { Content = "Bật Film Negative (scan phim âm bản)", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 2, 0, 4) };
-        _chkFilmNeg.Checked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _chkFilmNeg.Unchecked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gFilm.Children.Add(_chkFilmNeg);
+        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Bật Film Negative (scan phim âm bản)");
+        _chkFilmNeg = swFilmNeg;
+        _chkFilmNeg.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gFilm.Children.Add(rowFilmNeg);
         AddSlider(gFilm, "film_rbase", "Base R", 0.02, 1, 0.50, "0.00");
         AddSlider(gFilm, "film_gbase", "Base G", 0.02, 1, 0.30, "0.00");
         AddSlider(gFilm, "film_bbase", "Base B", 0.02, 1, 0.18, "0.00");
@@ -529,10 +525,10 @@ public partial class DevelopPanel : UserControl
 
         // Black & White
         var gBw = AddGroup("Black & White", false);
-        _chkBw = new CheckBox { Content = "Chuyển đen trắng", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 2, 0, 4) };
-        _chkBw.Checked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        _chkBw.Unchecked += (_, _) => { if (!_loading) ScheduleCommit(); };
-        gBw.Children.Add(_chkBw);
+        var (rowBw, swBw) = CreateToggleRow("Chuyển đen trắng");
+        _chkBw = swBw;
+        _chkBw.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gBw.Children.Add(rowBw);
         AddSlider(gBw, "bw_r", "Red mix", 0, 1, 0.299, "0.00");
         AddSlider(gBw, "bw_g", "Green mix", 0, 1, 0.587, "0.00");
         AddSlider(gBw, "bw_b", "Blue mix", 0, 1, 0.114, "0.00");
@@ -780,6 +776,30 @@ public partial class DevelopPanel : UserControl
         ["fsep_radius"] = "Bán kính tách tần số (lớn = vùng mịn rộng hơn).",
         ["fsep_detail"] = "Giữ/khuếch chi tiết tần cao (lỗ chân lông, kết cấu).",
     };
+
+    private static (DockPanel Row, ToggleSwitch Switch) CreateToggleRow(string label, string? tip = null)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
+        var sw = new ToggleSwitch
+        {
+            Width = 32,
+            Height = 18,
+            Margin = new Thickness(6, 0, 0, 0),
+            ToolTip = tip
+        };
+        DockPanel.SetDock(sw, Dock.Right);
+        var tb = new TextBlock
+        {
+            Text = label,
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = tip
+        };
+        tb.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        row.Children.Add(sw);
+        row.Children.Add(tb);
+        return (row, sw);
+    }
 
     private void AddSlider(Panel host, string key, string label, double min, double max, double def, string fmt = "0.00")
     {
@@ -2483,28 +2503,25 @@ public partial class DevelopPanel : UserControl
     }
 
     // ===== Tab Filter & Solo Mode Event Handlers =====
-    private void ChkSoloMode_Changed(object sender, RoutedEventArgs e)
+    private void ChkSoloMode_Changed(object? sender, bool isChecked)
     {
-        if (chkSoloMode != null)
+        _soloMode = isChecked;
+        
+        // Nếu bật Solo Mode, tự động đóng toàn bộ trừ cái đầu tiên đang mở
+        if (_soloMode)
         {
-            _soloMode = chkSoloMode.IsChecked == true;
-            
-            // Nếu bật Solo Mode, tự động đóng toàn bộ trừ cái đầu tiên đang mở
-            if (_soloMode)
+            bool foundFirst = false;
+            foreach (var child in panelSliders.Children)
             {
-                bool foundFirst = false;
-                foreach (var child in panelSliders.Children)
+                if (child is Expander exp)
                 {
-                    if (child is Expander exp)
+                    if (exp.IsExpanded && !foundFirst)
                     {
-                        if (exp.IsExpanded && !foundFirst)
-                        {
-                            foundFirst = true;
-                        }
-                        else
-                        {
-                            exp.IsExpanded = false;
-                        }
+                        foundFirst = true;
+                    }
+                    else
+                    {
+                        exp.IsExpanded = false;
                     }
                 }
             }

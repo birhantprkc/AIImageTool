@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.StylePanel"
+<UserControl x:Class="ZeroVision.Host.Workspace.StylePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
              Background="{DynamicResource BgBaseBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource BgPanelAltBrush}" Padding="10,8">
@@ -12,9 +13,11 @@
                 <Button x:Name="btnImportXmp" DockPanel.Dock="Right" Content="Import XMP" Height="22" Padding="8,2" Margin="0,0,4,0"
                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
                         Click="BtnImportXmp_Click" ToolTip="Nhập preset Lightroom (.xmp) thành Style"/>
-                <CheckBox x:Name="chkAppend" DockPanel.Dock="Right" Content="Append" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"
-                          VerticalAlignment="Center" Margin="0,0,8,0" IsChecked="True"
-                          ToolTip="Append: giữ chỉnh sửa hiện có, chỉ thay/thêm module của style. Bỏ chọn = thay toàn bộ."/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <TextBlock Text="Append" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <edit:ToggleSwitch x:Name="chkAppend" Width="30" Height="16" IsChecked="True"
+                                       ToolTip="Append: giữ chỉnh sửa hiện có, chỉ thay/thêm module của style. Bỏ chọn = thay toàn bộ."/>
+                </StackPanel>
             </DockPanel>
         </Border>
         <ScrollViewer VerticalScrollBarVisibility="Auto">

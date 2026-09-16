@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -43,8 +43,7 @@ public partial class ExportPanel : UserControl
         txtMaxLong.TextChanged += (_, _) => UpdateEstimate();
         foreach (var chk in new[] { chkSize2048, chkSize1024, chkSize512, chkSize256 })
         { chk.Checked += (_, _) => UpdateEstimate(); chk.Unchecked += (_, _) => UpdateEstimate(); }
-        chkPngPalette.Checked += (_, _) => UpdatePngPaletteVisibility();
-        chkPngPalette.Unchecked += (_, _) => UpdatePngPaletteVisibility();
+        chkPngPalette.CheckedChanged += (_, _) => { UpdatePngPaletteVisibility(); UpdateEstimate(); };
         // Tuỳ chọn nén nâng cao -> cập nhật ước lượng dung lượng.
         txtTargetKB.TextChanged += (_, _) => UpdateEstimate();
         cmbJpegSubsample.SelectionChanged += (_, _) => UpdateEstimate();
@@ -52,8 +51,6 @@ public partial class ExportPanel : UserControl
         cmbTiffCompression.SelectionChanged += (_, _) => UpdateEstimate();
         slPngLevel.ValueChanged += (_, _) => UpdateEstimate();
         slPngColors.ValueChanged += (_, _) => UpdateEstimate();
-        chkPngPalette.Checked += (_, _) => UpdateEstimate();
-        chkPngPalette.Unchecked += (_, _) => UpdateEstimate();
         UpdateAdvancedVisibility();
         UpdatePngPaletteVisibility();
         RefreshPresetList();

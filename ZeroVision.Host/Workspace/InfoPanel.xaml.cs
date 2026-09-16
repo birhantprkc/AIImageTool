@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -50,7 +50,11 @@ public partial class InfoPanel : UserControl
         _meta.MetaChanged += (s, e) =>
         {
             if (string.Equals(e.ImagePath, _currentPath, System.StringComparison.OrdinalIgnoreCase))
-                Dispatcher.BeginInvoke(() => LoadKeywords(e.ImagePath));
+                Dispatcher.BeginInvoke(() =>
+                {
+                    LoadKeywords(e.ImagePath);
+                    UpdateCurationUi(e.Meta);
+                });
         };
         Bind(ws);
     }
@@ -74,6 +78,14 @@ public partial class InfoPanel : UserControl
             btnSaveMeta.IsEnabled = false;
             ClearMetaFields();
             LoadKeywords(path);
+            if (!string.IsNullOrEmpty(path) && _meta != null)
+            {
+                UpdateCurationUi(_meta.Get(path));
+            }
+            else
+            {
+                UpdateCurationUi(null);
+            }
         });
 
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
@@ -443,6 +455,84 @@ public partial class InfoPanel : UserControl
         {
             double bh = (double)data[i] / max * h;
             dc.DrawRectangle(brush, null, new Rect(i * bw, h - bh, bw, bh));
+        }
+    }
+
+    private bool _updatingCuration;
+    private void UpdateCurationUi(ImageMeta? meta)
+    {
+        _updatingCuration = true;
+        try
+        {
+            if (meta == null)
+            {
+                ratingControl.Value = 0;
+                btnPick.SetResourceReference(Button.BackgroundProperty, "BgHoverBrush");
+                btnReject.SetResourceReference(Button.BackgroundProperty, "BgHoverBrush");
+                return;
+            }
+            ratingControl.Value = meta.Rating;
+            if (meta.Pick == PickFlag.Pick)
+                btnPick.SetResourceReference(Button.BackgroundProperty, "SuccessBrush");
+            else
+                btnPick.SetResourceReference(Button.BackgroundProperty, "BgHoverBrush");
+
+            if (meta.Pick == PickFlag.Reject)
+                btnReject.SetResourceReference(Button.BackgroundProperty, "DangerBrush");
+            else
+                btnReject.SetResourceReference(Button.BackgroundProperty, "BgHoverBrush");
+        }
+        finally
+        {
+            _updatingCuration = false;
+        }
+    }
+
+    private void RatingControl_ValueChanged(object? sender, decimal e)
+    {
+        if (_updatingCuration || _currentPath == null || _meta == null) return;
+        int rating = (int)Math.Round(e);
+        _meta.SetRating(_currentPath, rating);
+    }
+
+    private void BtnResetRating_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _meta == null) return;
+        _meta.SetRating(_currentPath, 0);
+        ratingControl.Value = 0;
+    }
+
+    private void BtnPick_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _meta == null) return;
+        var current = _meta.Get(_currentPath);
+        var next = current.Pick == PickFlag.Pick ? PickFlag.None : PickFlag.Pick;
+        _meta.SetPick(_currentPath, next);
+        UpdateCurationUi(_meta.Get(_currentPath));
+    }
+
+    private void BtnReject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _meta == null) return;
+        var current = _meta.Get(_currentPath);
+        var next = current.Pick == PickFlag.Reject ? PickFlag.None : PickFlag.Reject;
+        _meta.SetPick(_currentPath, next);
+        UpdateCurationUi(_meta.Get(_currentPath));
+    }
+
+    private void BtnUnflag_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _meta == null) return;
+        _meta.SetPick(_currentPath, PickFlag.None);
+        UpdateCurationUi(_meta.Get(_currentPath));
+    }
+
+    private void BtnLabel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _meta == null || sender is not Button btn || btn.Tag is not string tagStr) return;
+        if (Enum.TryParse<ColorLabel>(tagStr, out var label))
+        {
+            _meta.SetLabel(_currentPath, label);
         }
     }
 }

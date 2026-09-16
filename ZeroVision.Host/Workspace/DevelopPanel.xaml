@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="ZeroVision.Host.Workspace.DevelopPanel"
+<UserControl x:Class="ZeroVision.Host.Workspace.DevelopPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
              Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
     <DockPanel>
         <!-- Title Bar -->
@@ -65,11 +66,13 @@
                     <RadioButton Content="Advanced" Style="{DynamicResource {x:Type ToggleButton}}" Click="FilterTab_Click" Tag="Advanced" Height="22" FontSize="10" Padding="1,0"/>
                 </UniformGrid>
                 
-                <!-- Solo Mode Checkbox -->
-                <CheckBox x:Name="chkSoloMode" Grid.Column="1" Content="Solo" IsChecked="True"
-                          VerticalAlignment="Center" Margin="8,0,0,0" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
-                          Checked="ChkSoloMode_Changed" Unchecked="ChkSoloMode_Changed"
-                          ToolTip="Solo Mode: Chỉ mở một bảng điều khiển tại một thời điểm"/>
+                <!-- Solo Mode Toggle -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock Text="Solo" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <edit:ToggleSwitch x:Name="chkSoloMode" Width="30" Height="16" IsChecked="True"
+                                       VerticalAlignment="Center" CheckedChanged="ChkSoloMode_Changed"
+                                       ToolTip="Solo Mode: Chỉ mở một bảng điều khiển tại một thời điểm"/>
+                </StackPanel>
             </Grid>
         </Border>
 
