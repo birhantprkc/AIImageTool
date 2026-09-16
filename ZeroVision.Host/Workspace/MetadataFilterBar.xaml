@@ -1,135 +1,18 @@
 <UserControl x:Class="ZeroVision.Host.Workspace.MetadataFilterBar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
              Background="{DynamicResource BgPanelBrush}" BorderBrush="{DynamicResource BorderBrush_}"
              BorderThickness="0,0,0,1" Height="175">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="26"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Top Header Bar -->
-        <Border Grid.Row="0" Background="{DynamicResource BgBaseBrush}" Padding="8,2" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
-            <DockPanel LastChildFill="True">
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <TextBlock Text="🔍  METADATA DRILL-DOWN" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="txtSummary" Text="· All Photos" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button x:Name="btnClose" DockPanel.Dock="Right" Content="✕" Width="22" Height="20" Padding="0" Margin="4,0,0,0"
-                        Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"
-                        Click="BtnClose_Click" ToolTip="Hide metadata filter bar (\)"/>
-                <Button x:Name="btnResetAll" DockPanel.Dock="Right" Content="Clear All" Padding="6,1" FontSize="10"
-                        Background="Transparent" Foreground="{DynamicResource AccentBrush}" BorderThickness="0" Cursor="Hand"
-                        Click="BtnResetAll_Click" ToolTip="Reset all metadata filters"/>
-            </DockPanel>
-        </Border>
-
-        <!-- 4 Columns Drill-Down -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="1"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="1"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="1"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Column 1: DATE -->
-            <Grid Grid.Column="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="22"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="{DynamicResource BgHoverBrush}" Padding="6,2">
-                    <TextBlock Text="DATE (YEAR)" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </Border>
-                <ListBox x:Name="lstDate" Grid.Row="1" Background="Transparent" BorderThickness="0"
-                         SelectionChanged="LstDate_SelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel LastChildFill="True" Margin="2,1">
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountBadge}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" Margin="4,0,0,0"/>
-                                <TextBlock Text="{Binding DisplayText}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-
-            <Border Grid.Column="1" Background="{DynamicResource BorderBrush_}"/>
-
-            <!-- Column 2: CAMERA -->
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="22"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="{DynamicResource BgHoverBrush}" Padding="6,2">
-                    <TextBlock Text="CAMERA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </Border>
-                <ListBox x:Name="lstCamera" Grid.Row="1" Background="Transparent" BorderThickness="0"
-                         SelectionChanged="LstCamera_SelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel LastChildFill="True" Margin="2,1">
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountBadge}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" Margin="4,0,0,0"/>
-                                <TextBlock Text="{Binding DisplayText}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-
-            <Border Grid.Column="3" Background="{DynamicResource BorderBrush_}"/>
-
-            <!-- Column 3: LENS -->
-            <Grid Grid.Column="4">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="22"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="{DynamicResource BgHoverBrush}" Padding="6,2">
-                    <TextBlock Text="LENS" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </Border>
-                <ListBox x:Name="lstLens" Grid.Row="1" Background="Transparent" BorderThickness="0"
-                         SelectionChanged="LstLens_SelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel LastChildFill="True" Margin="2,1">
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountBadge}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" Margin="4,0,0,0"/>
-                                <TextBlock Text="{Binding DisplayText}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-
-            <Border Grid.Column="5" Background="{DynamicResource BorderBrush_}"/>
-
-            <!-- Column 4: ISO -->
-            <Grid Grid.Column="6">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="22"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="{DynamicResource BgHoverBrush}" Padding="6,2">
-                    <TextBlock Text="ISO SPEED" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </Border>
-                <ListBox x:Name="lstIso" Grid.Row="1" Background="Transparent" BorderThickness="0"
-                         SelectionChanged="LstIso_SelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel LastChildFill="True" Margin="2,1">
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountBadge}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" Margin="4,0,0,0"/>
-                                <TextBlock Text="{Binding DisplayText}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Grid>
+        <edit:FacetedFilterBar x:Name="filterBar"
+                               HeaderTitle="🔍  METADATA DRILL-DOWN"
+                               SummaryText="· All Photos"
+                               SelectionChanged="FilterBar_SelectionChanged"
+                               FiltersCleared="FilterBar_FiltersCleared"/>
+        <Button x:Name="btnClose" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" Width="22" Height="20" Padding="0" Margin="0,3,8,0"
+                Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"
+                Click="BtnClose_Click" ToolTip="Hide metadata filter bar (\)"/>
     </Grid>
 </UserControl>

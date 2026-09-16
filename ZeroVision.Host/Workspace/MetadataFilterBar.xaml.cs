@@ -4,38 +4,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using ZeroUI.Wpf.Editors;
 using ZeroVision.Core;
 using ZeroVision.Shared;
 
 namespace ZeroVision.Host.Workspace;
-
-public sealed class FilterEntry<T>
-{
-    public string DisplayText { get; }
-    public int Count { get; }
-    public T? Value { get; }
-    public bool IsAll { get; }
-    public string CountBadge => $"({Count})";
-
-    public FilterEntry(string text, int count, T? value, bool isAll = false)
-    {
-        DisplayText = text;
-        Count = count;
-        Value = value;
-        IsAll = isAll;
-    }
-
-    public override string ToString() => DisplayText;
-}
 
 public partial class MetadataFilterBar : UserControl
 {
     private IWorkspaceService? _workspace;
     private bool _suppressSelectionEvents;
 
+    private readonly FacetColumnModel _dateCol = new() { Key = "date", Title = "Date (Year)" };
+    private readonly FacetColumnModel _camCol = new() { Key = "camera", Title = "Camera" };
+    private readonly FacetColumnModel _lensCol = new() { Key = "lens", Title = "Lens" };
+    private readonly FacetColumnModel _isoCol = new() { Key = "iso", Title = "ISO Speed" };
+
     public MetadataFilterBar()
     {
         InitializeComponent();
+        filterBar.Columns.Add(_dateCol);
+        filterBar.Columns.Add(_camCol);
+        filterBar.Columns.Add(_lensCol);
+        filterBar.Columns.Add(_isoCol);
     }
 
     public void Bind(IWorkspaceService workspace)
@@ -54,11 +45,11 @@ public partial class MetadataFilterBar : UserControl
         {
             Dispatcher.BeginInvoke(() =>
             {
-                txtSummary.Text = "· No photos";
-                lstDate.ItemsSource = null;
-                lstCamera.ItemsSource = null;
-                lstLens.ItemsSource = null;
-                lstIso.ItemsSource = null;
+                filterBar.SummaryText = "· No photos";
+                _dateCol.Items.Clear();
+                _camCol.Items.Clear();
+                _lensCol.Items.Clear();
+                _isoCol.Items.Clear();
             });
             return;
         }
@@ -91,36 +82,29 @@ public partial class MetadataFilterBar : UserControl
                 }
             }
 
-            // Build UI list
-            var dateList = new List<FilterEntry<int>> { new("All Dates", images.Count, 0, true) };
-            dateList.AddRange(dateCounts.OrderByDescending(kv => kv.Key).Select(kv => new FilterEntry<int>(kv.Key.ToString(), kv.Value, kv.Key)));
+            var dateItems = new List<FacetItemModel> { new() { Key = "", DisplayText = "All Dates", Count = images.Count } };
+            dateItems.AddRange(dateCounts.OrderByDescending(kv => kv.Key).Select(kv => new FacetItemModel { Key = kv.Key.ToString(), DisplayText = kv.Key.ToString(), Count = kv.Value }));
 
-            var camList = new List<FilterEntry<string>> { new("All Cameras", images.Count, "", true) };
-            camList.AddRange(camCounts.OrderByDescending(kv => kv.Value).Select(kv => new FilterEntry<string>(kv.Key, kv.Value, kv.Key)));
+            var camItems = new List<FacetItemModel> { new() { Key = "", DisplayText = "All Cameras", Count = images.Count } };
+            camItems.AddRange(camCounts.OrderByDescending(kv => kv.Value).Select(kv => new FacetItemModel { Key = kv.Key, DisplayText = kv.Key, Count = kv.Value }));
 
-            var lensList = new List<FilterEntry<string>> { new("All Lenses", images.Count, "", true) };
-            lensList.AddRange(lensCounts.OrderByDescending(kv => kv.Value).Select(kv => new FilterEntry<string>(kv.Key, kv.Value, kv.Key)));
+            var lensItems = new List<FacetItemModel> { new() { Key = "", DisplayText = "All Lenses", Count = images.Count } };
+            lensItems.AddRange(lensCounts.OrderByDescending(kv => kv.Value).Select(kv => new FacetItemModel { Key = kv.Key, DisplayText = kv.Key, Count = kv.Value }));
 
-            var isoList = new List<FilterEntry<int>> { new("All ISOs", images.Count, 0, true) };
-            isoList.AddRange(isoCounts.OrderBy(kv => kv.Key).Select(kv => new FilterEntry<int>($"ISO {kv.Key}", kv.Value, kv.Key)));
+            var isoItems = new List<FacetItemModel> { new() { Key = "", DisplayText = "All ISOs", Count = images.Count } };
+            isoItems.AddRange(isoCounts.OrderBy(kv => kv.Key).Select(kv => new FacetItemModel { Key = kv.Key.ToString(), DisplayText = $"ISO {kv.Key}", Count = kv.Value }));
 
             Dispatcher.BeginInvoke(() =>
             {
                 _suppressSelectionEvents = true;
                 try
                 {
-                    txtSummary.Text = $"· {images.Count} photo(s)";
-                    lstDate.ItemsSource = dateList;
-                    lstDate.SelectedIndex = FindSelectedIndex(dateList, _workspace.Filter.RequiredDateYear);
+                    filterBar.SummaryText = $"· {images.Count} photo(s)";
 
-                    lstCamera.ItemsSource = camList;
-                    lstCamera.SelectedIndex = FindSelectedIndex(camList, _workspace.Filter.RequiredCamera);
-
-                    lstLens.ItemsSource = lensList;
-                    lstLens.SelectedIndex = FindSelectedIndex(lensList, _workspace.Filter.RequiredLens);
-
-                    lstIso.ItemsSource = isoList;
-                    lstIso.SelectedIndex = FindSelectedIndex(isoList, _workspace.Filter.RequiredIso);
+                    UpdateColumnItems(_dateCol, dateItems, _workspace.Filter.RequiredDateYear?.ToString());
+                    UpdateColumnItems(_camCol, camItems, _workspace.Filter.RequiredCamera);
+                    UpdateColumnItems(_lensCol, lensItems, _workspace.Filter.RequiredLens);
+                    UpdateColumnItems(_isoCol, isoItems, _workspace.Filter.RequiredIso?.ToString());
                 }
                 finally
                 {
@@ -130,54 +114,42 @@ public partial class MetadataFilterBar : UserControl
         });
     }
 
-    private static int FindSelectedIndex<T>(List<FilterEntry<T>> list, object? currentVal)
+    private static void UpdateColumnItems(FacetColumnModel col, List<FacetItemModel> items, string? currentVal)
     {
-        if (currentVal == null) return 0; // "All"
-        int idx = list.FindIndex(item => !item.IsAll && object.Equals(item.Value, currentVal));
-        return idx >= 0 ? idx : 0;
+        col.Items.Clear();
+        foreach (var itm in items) col.Items.Add(itm);
+
+        var selected = string.IsNullOrEmpty(currentVal)
+            ? col.Items.FirstOrDefault()
+            : col.Items.FirstOrDefault(i => !string.IsNullOrEmpty(i.Key) && string.Equals(i.Key, currentVal, StringComparison.OrdinalIgnoreCase)) ?? col.Items.FirstOrDefault();
+
+        col.SelectedItem = selected;
     }
 
-    private void LstDate_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressSelectionEvents || _workspace == null) return;
-        if (lstDate.SelectedItem is FilterEntry<int> entry)
-        {
-            _workspace.Filter.RequiredDateYear = entry.IsAll ? null : entry.Value;
-            _workspace.ApplyFilterAndSort();
-        }
-    }
-
-    private void LstCamera_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void FilterBar_SelectionChanged(object? sender, (string ColumnKey, string? SelectedItemKey) e)
     {
         if (_suppressSelectionEvents || _workspace == null) return;
-        if (lstCamera.SelectedItem is FilterEntry<string> entry)
+
+        switch (e.ColumnKey)
         {
-            _workspace.Filter.RequiredCamera = entry.IsAll ? null : entry.Value;
-            _workspace.ApplyFilterAndSort();
+            case "date":
+                _workspace.Filter.RequiredDateYear = int.TryParse(e.SelectedItemKey, out int yr) && yr > 0 ? yr : null;
+                break;
+            case "camera":
+                _workspace.Filter.RequiredCamera = string.IsNullOrEmpty(e.SelectedItemKey) ? null : e.SelectedItemKey;
+                break;
+            case "lens":
+                _workspace.Filter.RequiredLens = string.IsNullOrEmpty(e.SelectedItemKey) ? null : e.SelectedItemKey;
+                break;
+            case "iso":
+                _workspace.Filter.RequiredIso = int.TryParse(e.SelectedItemKey, out int iso) && iso > 0 ? iso : null;
+                break;
         }
+
+        _workspace.ApplyFilterAndSort();
     }
 
-    private void LstLens_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressSelectionEvents || _workspace == null) return;
-        if (lstLens.SelectedItem is FilterEntry<string> entry)
-        {
-            _workspace.Filter.RequiredLens = entry.IsAll ? null : entry.Value;
-            _workspace.ApplyFilterAndSort();
-        }
-    }
-
-    private void LstIso_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressSelectionEvents || _workspace == null) return;
-        if (lstIso.SelectedItem is FilterEntry<int> entry)
-        {
-            _workspace.Filter.RequiredIso = entry.IsAll ? null : entry.Value;
-            _workspace.ApplyFilterAndSort();
-        }
-    }
-
-    private void BtnResetAll_Click(object sender, RoutedEventArgs e)
+    private void FilterBar_FiltersCleared(object? sender, EventArgs e)
     {
         if (_workspace == null) return;
         _suppressSelectionEvents = true;
@@ -188,10 +160,10 @@ public partial class MetadataFilterBar : UserControl
             _workspace.Filter.RequiredLens = null;
             _workspace.Filter.RequiredIso = null;
 
-            if (lstDate.Items.Count > 0) lstDate.SelectedIndex = 0;
-            if (lstCamera.Items.Count > 0) lstCamera.SelectedIndex = 0;
-            if (lstLens.Items.Count > 0) lstLens.SelectedIndex = 0;
-            if (lstIso.Items.Count > 0) lstIso.SelectedIndex = 0;
+            _dateCol.SelectedItem = _dateCol.Items.FirstOrDefault();
+            _camCol.SelectedItem = _camCol.Items.FirstOrDefault();
+            _lensCol.SelectedItem = _lensCol.Items.FirstOrDefault();
+            _isoCol.SelectedItem = _isoCol.Items.FirstOrDefault();
         }
         finally
         {
