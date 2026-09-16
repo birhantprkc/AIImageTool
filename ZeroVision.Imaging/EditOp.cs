@@ -127,6 +127,7 @@ public sealed class EditOpRegistry
         GradientMapOp.Register(reg);
         ColorMatchOp.Register(reg);
         FrequencySeparationOp.Register(reg);
+        ClaheOp.Register(reg);
         LuaScriptOp.Register(reg);
         // Masked op cần chính registry để dựng inner op -> đăng ký bằng closure.
         reg.Register(MaskedOp.Type, p => MaskedOp.FromParams(p, reg));

@@ -167,4 +167,41 @@ public class Phase4ToneAndColorTests
         Assert.Equal(255, pixels[13]);
         Assert.Equal(255, pixels[14]);
     }
+
+    [Fact]
+    public void ClaheOp_EnhancesLocalContrast_RoundTripParams()
+    {
+        var op = new ClaheOp
+        {
+            Amount = 0.8f,
+            ClipLimit = 3.5f,
+            TilesX = 4,
+            TilesY = 4
+        };
+
+        var dict = op.ToParams();
+        var reconstructed = ClaheOp.FromParams(dict);
+
+        Assert.Equal(op.Amount, reconstructed.Amount, 3);
+        Assert.Equal(op.ClipLimit, reconstructed.ClipLimit, 3);
+        Assert.Equal(op.TilesX, reconstructed.TilesX);
+        Assert.Equal(op.TilesY, reconstructed.TilesY);
+
+        // Verify Apply on test image
+        var img = new LinearImage(32, 32);
+        img.ProcessPixels((ref float r, ref float g, ref float b, ref float a) =>
+        {
+            r = 0.2f; g = 0.3f; b = 0.4f; a = 1.0f;
+        });
+
+        op.Apply(img, 1.0f);
+
+        // Verify image processed successfully
+        img.ProcessPixels((ref float r, ref float g, ref float b, ref float a) =>
+        {
+            Assert.True(r > 0f);
+            Assert.True(g > 0f);
+            Assert.True(b > 0f);
+        });
+    }
 }

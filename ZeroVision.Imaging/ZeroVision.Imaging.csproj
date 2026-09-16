@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ZeroVision.Core\ZeroVision.Core.csproj" />
+    <ProjectReference Include="..\..\..\ZeroPlatform\ZeroGraphics\src\ZeroGraphics.Imaging\ZeroGraphics.Imaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -67,128 +67,18 @@ public sealed class LutCubeOp : IEditOp
     }
 
     /// <summary>
-    /// High-precision Tetrahedral 3D interpolation. Splits each cube into 6 tetrahedra,
-    /// evaluating only 4 corners per point and guaranteeing smooth neutral diagonal tracking.
+    /// High-precision Tetrahedral 3D interpolation delegating to ZeroGraphics.Imaging.Filters.ColorLut3D.
     /// </summary>
     public static void Tetrahedral(float[] lut, int size, float r, float g, float b,
         out float or, out float og, out float ob)
-    {
-        float fr = Math.Clamp(r, 0f, 1f) * (size - 1);
-        float fg = Math.Clamp(g, 0f, 1f) * (size - 1);
-        float fb = Math.Clamp(b, 0f, 1f) * (size - 1);
-        int r0 = (int)fr, g0 = (int)fg, b0 = (int)fb;
-        int r1 = Math.Min(size - 1, r0 + 1), g1 = Math.Min(size - 1, g0 + 1), b1 = Math.Min(size - 1, b0 + 1);
-        float dr = fr - r0, dg = fg - g0, db = fb - b0;
+        => ZeroGraphics.Imaging.Filters.ColorLut3D.SampleTetrahedral(lut, size, r, g, b, out or, out og, out ob);
 
-        int i000 = Idx(size, r0, g0, b0);
-        int i111 = Idx(size, r1, g1, b1);
-        int iA, iB;
-        float w0, wA, wB, w1;
-
-        // Determine which of the 6 tetrahedra contains (dr, dg, db)
-        if (dr >= dg)
-        {
-            if (dg >= db)
-            {
-                // dr >= dg >= db
-                iA = Idx(size, r1, g0, b0);
-                iB = Idx(size, r1, g1, b0);
-                w0 = 1f - dr;
-                wA = dr - dg;
-                wB = dg - db;
-                w1 = db;
-            }
-            else if (dr >= db)
-            {
-                // dr >= db > dg
-                iA = Idx(size, r1, g0, b0);
-                iB = Idx(size, r1, g0, b1);
-                w0 = 1f - dr;
-                wA = dr - db;
-                wB = db - dg;
-                w1 = dg;
-            }
-            else
-            {
-                // db > dr >= dg
-                iA = Idx(size, r0, g0, b1);
-                iB = Idx(size, r1, g0, b1);
-                w0 = 1f - db;
-                wA = db - dr;
-                wB = dr - dg;
-                w1 = dg;
-            }
-        }
-        else
-        {
-            if (db > dg)
-            {
-                // db > dg > dr
-                iA = Idx(size, r0, g0, b1);
-                iB = Idx(size, r0, g1, b1);
-                w0 = 1f - db;
-                wA = db - dg;
-                wB = dg - dr;
-                w1 = dr;
-            }
-            else if (db > dr)
-            {
-                // dg >= db > dr
-                iA = Idx(size, r0, g1, b0);
-                iB = Idx(size, r0, g1, b1);
-                w0 = 1f - dg;
-                wA = dg - db;
-                wB = db - dr;
-                w1 = dr;
-            }
-            else
-            {
-                // dg > dr >= db
-                iA = Idx(size, r0, g1, b0);
-                iB = Idx(size, r1, g1, b0);
-                w0 = 1f - dg;
-                wA = dg - dr;
-                wB = dr - db;
-                w1 = db;
-            }
-        }
-
-        or = w0 * lut[i000]     + wA * lut[iA]     + wB * lut[iB]     + w1 * lut[i111];
-        og = w0 * lut[i000 + 1] + wA * lut[iA + 1] + wB * lut[iB + 1] + w1 * lut[i111 + 1];
-        ob = w0 * lut[i000 + 2] + wA * lut[iA + 2] + wB * lut[iB + 2] + w1 * lut[i111 + 2];
-    }
-
+    /// <summary>
+    /// Trilinear 3D interpolation delegating to ZeroGraphics.Imaging.Filters.ColorLut3D.
+    /// </summary>
     public static void Trilinear(float[] lut, int size, float r, float g, float b,
         out float or, out float og, out float ob)
-    {
-        float fr = Math.Clamp(r, 0f, 1f) * (size - 1);
-        float fg = Math.Clamp(g, 0f, 1f) * (size - 1);
-        float fb = Math.Clamp(b, 0f, 1f) * (size - 1);
-        int r0 = (int)fr, g0 = (int)fg, b0 = (int)fb;
-        int r1 = Math.Min(size - 1, r0 + 1), g1 = Math.Min(size - 1, g0 + 1), b1 = Math.Min(size - 1, b0 + 1);
-        float dr = fr - r0, dg = fg - g0, db = fb - b0;
-
-        or = og = ob = 0f;
-        for (int c = 0; c < 3; c++)
-        {
-            float c000 = lut[Idx(size, r0, g0, b0) + c];
-            float c100 = lut[Idx(size, r1, g0, b0) + c];
-            float c010 = lut[Idx(size, r0, g1, b0) + c];
-            float c110 = lut[Idx(size, r1, g1, b0) + c];
-            float c001 = lut[Idx(size, r0, g0, b1) + c];
-            float c101 = lut[Idx(size, r1, g0, b1) + c];
-            float c011 = lut[Idx(size, r0, g1, b1) + c];
-            float c111 = lut[Idx(size, r1, g1, b1) + c];
-            float c00 = c000 + (c100 - c000) * dr;
-            float c10 = c010 + (c110 - c010) * dr;
-            float c01 = c001 + (c101 - c001) * dr;
-            float c11 = c011 + (c111 - c011) * dr;
-            float c0 = c00 + (c10 - c00) * dg;
-            float c1 = c01 + (c11 - c01) * dg;
-            float val = c0 + (c1 - c0) * db;
-            if (c == 0) or = val; else if (c == 1) og = val; else ob = val;
-        }
-    }
+        => ZeroGraphics.Imaging.Filters.ColorLut3D.SampleTrilinear(lut, size, r, g, b, out or, out og, out ob);
 
     private static int Idx(int size, int r, int g, int b) => ((b * size + g) * size + r) * 3;
 
