@@ -57,11 +57,11 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Histogram -->
-                <Border Background="#0F0F0F" Margin="6" Height="120">
+                <!-- Histogram Scope Control -->
+                <Border Margin="6" Height="100" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1">
                     <Grid>
-                        <Image x:Name="imgHistogram" Stretch="Fill"/>
-                        <TextBlock x:Name="txtHistEmpty" Text="(histogram)" Foreground="#444" FontSize="10"
+                        <edit:HistogramScopeControl x:Name="ctrlHistScope" Height="100" ReadOnly="True"/>
+                        <TextBlock x:Name="txtHistEmpty" Text="(histogram)" Foreground="{DynamicResource TextDimBrush}" FontSize="10"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                 </Border>

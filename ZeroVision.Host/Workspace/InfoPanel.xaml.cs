@@ -71,7 +71,7 @@ public partial class InfoPanel : UserControl
             Exif.Clear();
             Colors.Clear();
             Suggestions.Clear();
-            imgHistogram.Source = null;
+            ctrlHistScope.Reset();
             txtHistEmpty.Visibility = Visibility.Visible;
             txtCaptureSummary.Visibility = Visibility.Collapsed;
             txtContrastAdvice.Visibility = Visibility.Collapsed;
@@ -165,8 +165,6 @@ public partial class InfoPanel : UserControl
                 double loPct = total > 0 ? loClip / (3.0 * total) * 100.0 : 0;
                 bool hiWarn = hiPct > 0.5, loWarn = loPct > 0.5;
 
-                var bmp = RenderHistogram(r, g, b, 256, 100, hiWarn, loWarn);
-
                 Dispatcher.BeginInvoke(() =>
                 {
                     if (ct.IsCancellationRequested) return;
@@ -174,7 +172,9 @@ public partial class InfoPanel : UserControl
                     foreach (var row in rows) Exif.Add(row);
                     if (hiWarn) Exif.Insert(0, new ExifRow("⚠ Highlight clip", $"{hiPct:0.0}%"));
                     if (loWarn) Exif.Insert(hiWarn ? 1 : 0, new ExifRow("⚠ Shadow clip", $"{loPct:0.0}%"));
-                    imgHistogram.Source = bmp;
+                    ctrlHistScope.SetChannels(r, g, b);
+                    ctrlHistScope.ShadowClipPercent = loWarn ? loPct : 0.0;
+                    ctrlHistScope.HighlightClipPercent = hiWarn ? hiPct : 0.0;
                     txtHistEmpty.Visibility = Visibility.Collapsed;
                     _gpsLat = gpsLat; _gpsLon = gpsLon; _hasGps = hasGps;
                     btnMap.Visibility = hasGps ? Visibility.Visible : Visibility.Collapsed;
@@ -408,55 +408,6 @@ public partial class InfoPanel : UserControl
         LoadKeywords(_currentPath);
     }
 
-    private static BitmapSource RenderHistogram(int[] r, int[] g, int[] b, int w, int h, bool hiClip = false, bool loClip = false)
-    {
-        var visual = new DrawingVisual();
-        using (var dc = visual.RenderOpen())
-        {
-            dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 15, 15)),
-                null, new Rect(0, 0, w, h));
-            int max = 0;
-            for (int i = 0; i < 256; i++) max = Math.Max(max, Math.Max(r[i], Math.Max(g[i], b[i])));
-            if (max <= 0) max = 1;
-            DrawChannel(dc, r, max, w, h, System.Windows.Media.Color.FromArgb(160, 240, 80, 80));
-            DrawChannel(dc, g, max, w, h, System.Windows.Media.Color.FromArgb(160, 80, 220, 80));
-            DrawChannel(dc, b, max, w, h, System.Windows.Media.Color.FromArgb(160, 80, 140, 240));
-
-            // Marker tam giác cảnh báo clip: góc trái-trên (shadow), phải-trên (highlight).
-            if (loClip)
-                dc.DrawGeometry(new SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 160, 255)), null,
-                    Triangle(0, 0, 10));
-            if (hiClip)
-                dc.DrawGeometry(new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 90, 90)), null,
-                    Triangle(w - 10, 0, 10));
-        }
-        var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-        bmp.Render(visual);
-        bmp.Freeze();
-        return bmp;
-    }
-
-    private static Geometry Triangle(double x, double y, double s)
-    {
-        var fig = new PathFigure { StartPoint = new System.Windows.Point(x, y), IsClosed = true };
-        fig.Segments.Add(new LineSegment(new System.Windows.Point(x + s, y), true));
-        fig.Segments.Add(new LineSegment(new System.Windows.Point(x, y + s), true));
-        var geo = new PathGeometry();
-        geo.Figures.Add(fig);
-        geo.Freeze();
-        return geo;
-    }
-
-    private static void DrawChannel(DrawingContext dc, int[] data, int max, int w, int h, System.Windows.Media.Color c)
-    {
-        var brush = new SolidColorBrush(c);
-        double bw = (double)w / 256;
-        for (int i = 0; i < 256; i++)
-        {
-            double bh = (double)data[i] / max * h;
-            dc.DrawRectangle(brush, null, new Rect(i * bw, h - bh, bw, bh));
-        }
-    }
 
     private bool _updatingCuration;
     private void UpdateCurationUi(ImageMeta? meta)
