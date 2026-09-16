@@ -106,6 +106,7 @@ public partial class DevelopPanel : UserControl
         _debounce.Tick += (s, e) => { _debounce.Stop(); if (_pendingCommit) { _pendingCommit = false; Commit(); } };
 
         BuildUI();
+        chkSoloMode.CheckedChanged += ChkSoloMode_Changed;
         SetEnabled(false);
     }
 
@@ -2508,7 +2509,7 @@ public partial class DevelopPanel : UserControl
         _soloMode = isChecked;
         
         // Nếu bật Solo Mode, tự động đóng toàn bộ trừ cái đầu tiên đang mở
-        if (_soloMode)
+        if (_soloMode && panelSliders?.Children != null)
         {
             bool foundFirst = false;
             foreach (var child in panelSliders.Children)
@@ -2533,6 +2534,7 @@ public partial class DevelopPanel : UserControl
         if (sender is not RadioButton rb || rb.Tag is not string tabName) return;
         _currentTab = tabName;
 
+        if (panelSliders?.Children == null) return;
         foreach (var child in panelSliders.Children)
         {
             if (child is Expander exp)
