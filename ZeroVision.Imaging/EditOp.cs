@@ -131,6 +131,7 @@ public sealed class EditOpRegistry
         LuaScriptOp.Register(reg);
         GuidedFilterOp.Register(reg);
         DirectedMedianOp.Register(reg);
+        WaveletDenoiseOp.Register(reg);
         // Masked op cần chính registry để dựng inner op -> đăng ký bằng closure.
         reg.Register(MaskedOp.Type, p => MaskedOp.FromParams(p, reg));
         return reg;

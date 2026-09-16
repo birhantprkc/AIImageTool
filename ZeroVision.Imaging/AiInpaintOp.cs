@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using ZeroGraphics.Imaging.Filters;
 
 namespace ZeroVision.Imaging;
 
@@ -81,15 +82,7 @@ public sealed class AiInpaintOp : IEditOp
         int rx, int ry, int rw, int rh,
         bool[] mask, int iterations, float strength)
     {
-        // Allocate working sub-buffers for iterative PDE diffusion
-        float[] bufR = new float[rw * rh];
-        float[] bufG = new float[rw * rh];
-        float[] bufB = new float[rw * rh];
-
-        // Initialize with source or boundary mean
-        float sumR = 0, sumG = 0, sumB = 0;
-        int borderCount = 0;
-
+        float[] subPixels = new float[rw * rh * 4];
         for (int y = 0; y < rh; y++)
         {
             int globalY = ry + y;
@@ -97,85 +90,40 @@ public sealed class AiInpaintOp : IEditOp
             {
                 int globalX = rx + x;
                 int gOff = (globalY * fullW + globalX) * 4;
+                int sOff = (y * rw + x) * 4;
+                subPixels[sOff] = pixels[gOff];
+                subPixels[sOff + 1] = pixels[gOff + 1];
+                subPixels[sOff + 2] = pixels[gOff + 2];
+                subPixels[sOff + 3] = pixels[gOff + 3];
+            }
+        }
+
+        FastMarchingInpaint.InpaintRgbaFloat(subPixels, rw, rh, mask, radius: 3);
+
+        // Write back inpainted region into LinearImage
+        for (int y = 0; y < rh; y++)
+        {
+            int globalY = ry + y;
+            for (int x = 0; x < rw; x++)
+            {
                 int mIdx = y * rw + x;
-
-                bufR[mIdx] = pixels[gOff];
-                bufG[mIdx] = pixels[gOff + 1];
-                bufB[mIdx] = pixels[gOff + 2];
-
-                if (!mask[mIdx])
-                {
-                    sumR += pixels[gOff];
-                    sumG += pixels[gOff + 1];
-                    sumB += pixels[gOff + 2];
-                    borderCount++;
-                }
-            }
-        }
-
-        if (borderCount > 0)
-        {
-            float avgR = sumR / borderCount;
-            float avgG = sumG / borderCount;
-            float avgB = sumB / borderCount;
-
-            // Fill initial hole with ambient mean
-            for (int i = 0; i < mask.Length; i++)
-            {
-                if (mask[i])
-                {
-                    bufR[i] = avgR;
-                    bufG[i] = avgG;
-                    bufB[i] = avgB;
-                }
-            }
-        }
-
-        // Iterative 4-neighbor Laplace smoothing over the hole
-        for (int iter = 0; iter < iterations; iter++)
-        {
-            for (int y = 1; y < rh - 1; y++)
-            {
-                for (int x = 1; x < rw - 1; x++)
-                {
-                    int idx = y * rw + x;
-                    if (!mask[idx]) continue;
-
-                    int up = (y - 1) * rw + x;
-                    int down = (y + 1) * rw + x;
-                    int left = y * rw + (x - 1);
-                    int right = y * rw + (x + 1);
-
-                    bufR[idx] = 0.25f * (bufR[up] + bufR[down] + bufR[left] + bufR[right]);
-                    bufG[idx] = 0.25f * (bufG[up] + bufG[down] + bufG[left] + bufG[right]);
-                    bufB[idx] = 0.25f * (bufB[up] + bufB[down] + bufB[left] + bufB[right]);
-                }
-            }
-        }
-
-        // Write back diffused region into LinearImage
-        for (int y = 0; y < rh; y++)
-        {
-            int globalY = ry + y;
-            for (int x = 0; x < rw; x++)
-            {
-                int idx = y * rw + x;
-                if (!mask[idx]) continue;
+                if (!mask[mIdx]) continue;
 
                 int globalX = rx + x;
                 int gOff = (globalY * fullW + globalX) * 4;
+                int sOff = mIdx * 4;
 
                 if (strength >= 0.999f)
                 {
-                    pixels[gOff] = bufR[idx];
-                    pixels[gOff + 1] = bufG[idx];
-                    pixels[gOff + 2] = bufB[idx];
+                    pixels[gOff] = subPixels[sOff];
+                    pixels[gOff + 1] = subPixels[sOff + 1];
+                    pixels[gOff + 2] = subPixels[sOff + 2];
                 }
                 else
                 {
-                    pixels[gOff] = MathF.FusedMultiplyAdd(bufR[idx] - pixels[gOff], strength, pixels[gOff]);
-                    pixels[gOff + 1] = MathF.FusedMultiplyAdd(bufG[idx] - pixels[gOff + 1], strength, pixels[gOff + 1]);
-                    pixels[gOff + 2] = MathF.FusedMultiplyAdd(bufB[idx] - pixels[gOff + 2], strength, pixels[gOff + 2]);
+                    pixels[gOff] = MathF.FusedMultiplyAdd(subPixels[sOff] - pixels[gOff], strength, pixels[gOff]);
+                    pixels[gOff + 1] = MathF.FusedMultiplyAdd(subPixels[sOff + 1] - pixels[gOff + 1], strength, pixels[gOff + 1]);
+                    pixels[gOff + 2] = MathF.FusedMultiplyAdd(subPixels[sOff + 2] - pixels[gOff + 2], strength, pixels[gOff + 2]);
                 }
             }
         }
