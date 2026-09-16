@@ -32,8 +32,7 @@ public partial class DevelopPanel : UserControl
     private string? _currentPath;
     private bool _loading;
 
-    private readonly Dictionary<string, Slider> _sliders = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, TextBox> _inputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NumericSliderEdit> _sliders = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _defaults = new(StringComparer.OrdinalIgnoreCase);
 
     // HSL state: 8 dải × (hue, sat, lum).
@@ -89,8 +88,7 @@ public partial class DevelopPanel : UserControl
     private ComboBox? _cmbLuaScript;
     private StackPanel? _panelLuaSliders;
     private readonly Dictionary<string, double> _luaSliderVals = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Slider> _luaSliders = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, TextBox> _luaInputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NumericSliderEdit> _luaSliders = new(StringComparer.OrdinalIgnoreCase);
 
     // Solo Mode & Tab Filter
     private bool _soloMode = true;
@@ -808,83 +806,31 @@ public partial class DevelopPanel : UserControl
     private void AddSlider(Panel host, string key, string label, double min, double max, double def, string fmt = "0.00")
     {
         _defaults[key] = def;
-        var grid = new Grid { Margin = new Thickness(0, 2, 0, 2) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-
         string? tip = SliderTips.TryGetValue(key, out var t) ? t : null;
 
-        var lbl = new TextBlock { Text = label, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
-        lbl.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        if (tip != null) lbl.ToolTip = tip;
-        Grid.SetColumn(lbl, 0);
-
-        var slider = new Slider
+        var edit = new NumericSliderEdit(label, min, max, def, fmt)
         {
-            Minimum = min, Maximum = max, Value = def,
-            SmallChange = (max - min) / 100.0, LargeChange = (max - min) / 10.0,
-            VerticalAlignment = VerticalAlignment.Center, IsMoveToPointEnabled = true, Tag = key
+            Tag = key
         };
-        if (tip != null) slider.ToolTip = tip;
-        Grid.SetColumn(slider, 1);
+        if (tip != null) edit.ToolTip = tip;
 
-        var input = new TextBox
+        edit.ValueChanged += (s, e) =>
         {
-            Text = def.ToString(fmt, CultureInfo.InvariantCulture),
-            FontSize = 10, TextAlignment = TextAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0),
-            Tag = fmt, BorderThickness = new Thickness(0)
-        };
-        Grid.SetColumn(input, 2);
-
-        slider.ValueChanged += (s, e) =>
-        {
-            if (!input.IsKeyboardFocused) input.Text = e.NewValue.ToString(fmt, CultureInfo.InvariantCulture);
             if (_loading) return;
             ScheduleCommit();
 
-            // QoL: Bật clipping preview nếu người dùng đang giữ phím Alt khi kéo slider
-            bool isAlt = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
-            if (isAlt)
+            if (e.IsAltDown)
             {
                 RequestClippingPreview?.Invoke(this, true);
             }
-        };
-        // Nhập số trực tiếp -> cập nhật slider khi Enter hoặc rời focus.
-        input.KeyDown += (s, e) => { if (e.Key == Key.Enter) CommitInput(slider, input, min, max); };
-        input.LostFocus += (s, e) => CommitInput(slider, input, min, max);
-
-        // Đăng ký sự kiện dừng kéo để tắt clipping preview
-        slider.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler((s, e) =>
-        {
-            RequestClippingPreview?.Invoke(this, false);
-        }));
-
-        slider.LostFocus += (s, e) =>
-        {
-            RequestClippingPreview?.Invoke(this, false);
+            else
+            {
+                RequestClippingPreview?.Invoke(this, false);
+            }
         };
 
-        // Double-click reset.
-        lbl.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) slider.Value = def; };
-        slider.MouseDoubleClick += (s, e) => { slider.Value = def; e.Handled = true; };
-
-        grid.Children.Add(lbl);
-        grid.Children.Add(slider);
-        grid.Children.Add(input);
-        host.Children.Add(grid);
-
-        _sliders[key] = slider;
-        _inputs[key] = input;
-    }
-
-    private static void CommitInput(Slider slider, TextBox input, double min, double max)
-    {
-        if (double.TryParse(input.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
-            slider.Value = Math.Clamp(v, min, max);
-        else
-            input.Text = slider.Value.ToString((string)input.Tag, CultureInfo.InvariantCulture);
+        host.Children.Add(edit);
+        _sliders[key] = edit;
     }
 
     /// <summary>Ô nhập màu hex (RRGGBB) cho Gradient Map; sửa tay -> commit (debounce).</summary>
@@ -1226,10 +1172,6 @@ public partial class DevelopPanel : UserControl
                         if (_luaSliders.TryGetValue(kvp.Key, out var slider))
                         {
                             slider.Value = val;
-                        }
-                        if (_luaInputs.TryGetValue(kvp.Key, out var input))
-                        {
-                            input.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
                         }
                     }
                 }
@@ -2407,7 +2349,6 @@ public partial class DevelopPanel : UserControl
         if (_panelLuaSliders == null) return;
         _panelLuaSliders.Children.Clear();
         _luaSliders.Clear();
-        _luaInputs.Clear();
         _luaSliderVals.Clear();
 
         if (_cmbLuaScript?.SelectedItem is not ComboBoxItem item || string.IsNullOrEmpty(item.Tag as string))
@@ -2457,67 +2398,15 @@ public partial class DevelopPanel : UserControl
     private void AddLuaSlider(Panel host, string key, string label, double min, double max, double def, string fmt = "0.00")
     {
         _luaSliderVals[key] = def;
-        var grid = new Grid { Margin = new Thickness(0, 2, 0, 2) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-
-        var lbl = new TextBlock { Text = label, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
-        lbl.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        Grid.SetColumn(lbl, 0);
-
-        var slider = new Slider
+        var edit = new NumericSliderEdit(label, min, max, def, fmt) { Tag = key };
+        edit.ValueChanged += (s, e) =>
         {
-            Minimum = min, Maximum = max, Value = def,
-            SmallChange = (max - min) / 100.0, LargeChange = (max - min) / 10.0,
-            VerticalAlignment = VerticalAlignment.Center, IsMoveToPointEnabled = true, Tag = key
-        };
-        Grid.SetColumn(slider, 1);
-
-        var input = new TextBox
-        {
-            Text = def.ToString(fmt, CultureInfo.InvariantCulture),
-            FontSize = 10, TextAlignment = TextAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0),
-            Tag = fmt, BorderThickness = new Thickness(0)
-        };
-        Grid.SetColumn(input, 2);
-
-        slider.ValueChanged += (s, e) =>
-        {
-            if (!input.IsKeyboardFocused) input.Text = e.NewValue.ToString(fmt, CultureInfo.InvariantCulture);
             _luaSliderVals[key] = e.NewValue;
             if (_loading) return;
             ScheduleCommit();
         };
-
-        input.KeyDown += (s, e) => { if (e.Key == Key.Enter) CommitLuaInput(slider, input, min, max, key); };
-        input.LostFocus += (s, e) => CommitLuaInput(slider, input, min, max, key);
-
-        lbl.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) slider.Value = def; };
-        slider.MouseDoubleClick += (s, e) => { slider.Value = def; e.Handled = true; };
-
-        grid.Children.Add(lbl);
-        grid.Children.Add(slider);
-        grid.Children.Add(input);
-        host.Children.Add(grid);
-
-        _luaSliders[key] = slider;
-        _luaInputs[key] = input;
-    }
-
-    private void CommitLuaInput(Slider slider, TextBox input, double min, double max, string key)
-    {
-        if (double.TryParse(input.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
-        {
-            double val = Math.Clamp(v, min, max);
-            slider.Value = val;
-            _luaSliderVals[key] = val;
-        }
-        else
-        {
-            input.Text = slider.Value.ToString(input.Tag as string ?? "0.00", CultureInfo.InvariantCulture);
-        }
+        host.Children.Add(edit);
+        _luaSliders[key] = edit;
     }
 
     // ===== Tab Filter & Solo Mode Event Handlers =====
