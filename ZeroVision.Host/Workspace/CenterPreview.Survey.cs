@@ -247,7 +247,7 @@ public partial class CenterPreview
         for (int i = 0; i < sel.Count; i++)
         {
             var p = sel[i];
-            bool isActive = string.Equals(p, _workspace.ActiveImage, StringComparison.OrdinalIgnoreCase);
+            bool isActive = string.Equals(p, _workspace?.ActiveImage, StringComparison.OrdinalIgnoreCase);
 
             var cardGrid = new Grid();
 

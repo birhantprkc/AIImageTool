@@ -11,16 +11,16 @@
                 <TextBlock Text="DEVELOP" FontWeight="SemiBold" FontSize="11"
                            Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button x:Name="btnCopy" Content="Copy" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnCopy_Click" ToolTip="Copy settings (Ctrl+Shift+C)"/>
-                    <Button x:Name="btnPaste" Content="Paste" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnPaste_Click" ToolTip="Paste settings (Ctrl+Shift+V)"/>
-                    <Button x:Name="btnSync" Content="Sync" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnSync_Click" ToolTip="Sync settings (Ctrl+Shift+S)"/>
-                    <Button x:Name="btnAuto" Content="Auto" Padding="8,3" Margin="0,0,4,0"
-                            Click="BtnAuto_Click" ToolTip="Auto tone adjustments"/>
-                    <Button x:Name="btnReset" Content="Reset" Padding="8,3"
-                            Click="BtnReset_Click" ToolTip="Reset all adjustments"/>
+                    <edit:SimpleButton x:Name="btnCopy" Content="Copy" Variant="Secondary" Height="24" Padding="8,2" CornerRadius="4" Margin="0,0,4,0"
+                                       Click="BtnCopy_Click" ToolTip="Copy settings (Ctrl+Shift+C)"/>
+                    <edit:SimpleButton x:Name="btnPaste" Content="Paste" Variant="Secondary" Height="24" Padding="8,2" CornerRadius="4" Margin="0,0,4,0"
+                                       Click="BtnPaste_Click" ToolTip="Paste settings (Ctrl+Shift+V)"/>
+                    <edit:SimpleButton x:Name="btnSync" Content="Sync" Variant="Secondary" Height="24" Padding="8,2" CornerRadius="4" Margin="0,0,4,0"
+                                       Click="BtnSync_Click" ToolTip="Sync settings (Ctrl+Shift+S)"/>
+                    <edit:SimpleButton x:Name="btnAuto" Content="Auto" Variant="Secondary" Height="24" Padding="8,2" CornerRadius="4" Margin="0,0,4,0"
+                                       Click="BtnAuto_Click" ToolTip="Auto tone adjustments"/>
+                    <edit:SimpleButton x:Name="btnReset" Content="Reset" Variant="Secondary" Height="24" Padding="8,2" CornerRadius="4"
+                                       Click="BtnReset_Click" ToolTip="Reset all adjustments"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -30,10 +30,10 @@
                 BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
             <DockPanel>
                 <TextBlock Text="Preset" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Button x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋ Save" Padding="6,2"
-                        Click="BtnSavePreset_Click" ToolTip="Save current settings as preset"/>
-                <ComboBox x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged"
-                          ToolTip="Apply saved preset"/>
+                <edit:SimpleButton x:Name="btnSavePreset" DockPanel.Dock="Right" Content="＋ Save" Variant="Secondary" Height="22" Padding="6,1" CornerRadius="4"
+                                   Click="BtnSavePreset_Click" ToolTip="Save current settings as preset"/>
+                <edit:ComboBoxEdit x:Name="cmbPreset" Height="22" SelectionChanged="CmbPreset_SelectionChanged"
+                                   ToolTip="Apply saved preset"/>
             </DockPanel>
         </Border>
 
@@ -49,18 +49,18 @@
         <Border DockPanel.Dock="Top" Margin="8,0,8,6" Padding="3" CornerRadius="5"
                 Background="{DynamicResource BgPanelAltBrush}" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1">
             <UniformGrid Columns="4">
-                <Button x:Name="btnToolCrop" Content="✂ Crop (R)" Padding="2,4" Margin="1,0"
-                        FontSize="10.5" FontWeight="Medium"
-                        Click="BtnToolCrop_Click" ToolTip="Crop &amp; Straighten (R)"/>
-                <Button x:Name="btnToolHeal" Content="🩹 Heal (Q)" Padding="2,4" Margin="1,0"
-                        FontSize="10.5" FontWeight="Medium"
-                        Click="BtnToolHeal_Click" ToolTip="Spot Removal / Healing Brush (Q)"/>
-                <Button x:Name="btnToolMask" Content="🎭 Mask (M)" Padding="2,4" Margin="1,0"
-                        FontSize="10.5" FontWeight="Medium"
-                        Click="BtnToolMask_Click" ToolTip="Local Masking (M)"/>
-                <Button x:Name="btnToolTat" Content="🎯 TAT (T)" Padding="2,4" Margin="1,0"
-                        FontSize="10.5" FontWeight="Medium"
-                        Click="BtnToolTat_Click" ToolTip="Targeted Adjustment Tool (TAT)"/>
+                <edit:SimpleButton x:Name="btnToolCrop" Content="✂ Crop (R)" Variant="Ghost" Height="26" Padding="2,2" Margin="1,0"
+                                   FontSize="10.5" CornerRadius="4"
+                                   Click="BtnToolCrop_Click" ToolTip="Crop &amp; Straighten (R)"/>
+                <edit:SimpleButton x:Name="btnToolHeal" Content="🩹 Heal (Q)" Variant="Ghost" Height="26" Padding="2,2" Margin="1,0"
+                                   FontSize="10.5" CornerRadius="4"
+                                   Click="BtnToolHeal_Click" ToolTip="Spot Removal / Healing Brush (Q)"/>
+                <edit:SimpleButton x:Name="btnToolMask" Content="🎭 Mask (M)" Variant="Ghost" Height="26" Padding="2,2" Margin="1,0"
+                                   FontSize="10.5" CornerRadius="4"
+                                   Click="BtnToolMask_Click" ToolTip="Local Masking (M)"/>
+                <edit:SimpleButton x:Name="btnToolTat" Content="🎯 TAT (T)" Variant="Ghost" Height="26" Padding="2,2" Margin="1,0"
+                                   FontSize="10.5" CornerRadius="4"
+                                   Click="BtnToolTat_Click" ToolTip="Targeted Adjustment Tool (TAT)"/>
             </UniformGrid>
         </Border>
 

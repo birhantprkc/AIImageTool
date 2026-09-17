@@ -16,54 +16,39 @@
         <Border Grid.Row="0" Background="{DynamicResource BgPanelBrush}" Padding="10,6">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <Button x:Name="btnModeSingle" Content="◰  Single (E)" Padding="10,4" Margin="0,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeSingle_Click" ToolTip="Loupe view / Single photo (E)"/>
-                    <Button x:Name="btnModeGrid" Content="▦  Grid (G)" Padding="10,4" Margin="0,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeGrid_Click" ToolTip="Grid view / Thumbnails (G)"/>
-                    <Button x:Name="btnModeCull" Content="❐  Survey (N)" Padding="10,4" Margin="0,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeCull_Click" ToolTip="Survey view / Multi-photo candidate culling (N / C)"/>
-                    <Button x:Name="btnModeFull" Content="⛶  Full (F)" Padding="10,4" Margin="0,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnModeFull_Click" ToolTip="Full screen view (F, Esc to exit)"/>
-                    <Button x:Name="btnToggleFilter" Content="🔍  Filters (\)" Padding="10,4" Margin="8,0,4,0" Visibility="Collapsed"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnToggleFilter_Click" ToolTip="Toggle Library Filter Bar (\)"/>
-                    <Button x:Name="btnCrop" Content="◳  Crop (R)" Padding="10,4" Margin="12,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnCrop_Click" ToolTip="Toggle Crop Overlay (R)"/>
-                    <Button x:Name="btnRotateLeft" Content="⟲" Padding="9,4" Margin="4,0,0,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnRotateLeft_Click" ToolTip="Rotate Left 90° ([)"/>
-                    <Button x:Name="btnRotateRight" Content="⟳" Padding="9,4" Margin="2,0,0,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnRotateRight_Click" ToolTip="Rotate Right 90° (])"/>
-                    <Button x:Name="btnFlipH" Content="⇋" Padding="9,4" Margin="2,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnFlipH_Click" ToolTip="Flip Horizontal"/>
-                    <Button x:Name="btnCompare" Content="◫  Before/After (Y)" Padding="10,4" Margin="4,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnCompare_Click" ToolTip="Before / After side-by-side comparison (Y)"/>
-                    <Button x:Name="btnReference" Content="⇋  Ref (Shift+R)" Padding="10,4" Margin="2,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnReference_Click" ToolTip="Reference View: compare against locked reference photo (Shift+R)"/>
-                    <Button x:Name="btnProof" Content="🎯 Proof (S)" Padding="10,4" Margin="2,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnProof_Click" ToolTip="Soft Proofing: Gamut Warning Overlay (S)"/>
-                    <Button x:Name="btnZone" Content="▦ Zone (Shift+Z)" Padding="10,4" Margin="2,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnZone_Click" ToolTip="Ansel Adams Zone System Exposure Visualizer (Shift+Z)"/>
-                    <Button x:Name="btnStack" Content="⧉  Stack" Padding="10,4" Margin="4,0,4,0"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnStack_Click" ToolTip="Group burst/bracket photos into stacks in Grid"/>
-                    <ComboBox x:Name="cmbCropRatio" Width="110" Margin="4,0,0,0" Visibility="Collapsed"
-                              VerticalAlignment="Center" SelectionChanged="CmbCropRatio_SelectionChanged"
-                              ToolTip="Crop Aspect Ratio"/>
-                    <Button x:Name="btnSmartCrop" Content="✨ Smart" Padding="8,4" Margin="4,0,0,0" Visibility="Collapsed"
-                            Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Cursor="Hand"
-                            Click="BtnSmartCrop_Click" ToolTip="Auto content-aware crop for selected aspect ratio"/>
+                    <edit:SimpleButton x:Name="btnModeSingle" Content="◰  Single (E)" Variant="Ghost" Height="26" Padding="8,2" Margin="0,0,4,0"
+                                       CornerRadius="4" Click="BtnModeSingle_Click" ToolTip="Loupe view / Single photo (E)"/>
+                    <edit:SimpleButton x:Name="btnModeGrid" Content="▦  Grid (G)" Variant="Ghost" Height="26" Padding="8,2" Margin="0,0,4,0"
+                                       CornerRadius="4" Click="BtnModeGrid_Click" ToolTip="Grid view / Thumbnails (G)"/>
+                    <edit:SimpleButton x:Name="btnModeCull" Content="❐  Survey (N)" Variant="Ghost" Height="26" Padding="8,2" Margin="0,0,4,0"
+                                       CornerRadius="4" Click="BtnModeCull_Click" ToolTip="Survey view / Multi-photo candidate culling (N / C)"/>
+                    <edit:SimpleButton x:Name="btnModeFull" Content="⛶  Full (F)" Variant="Ghost" Height="26" Padding="8,2" Margin="0,0,4,0"
+                                       CornerRadius="4" Click="BtnModeFull_Click" ToolTip="Full screen view (F, Esc to exit)"/>
+                    <edit:SimpleButton x:Name="btnToggleFilter" Content="🔍  Filters (\)" Variant="Ghost" Height="26" Padding="8,2" Margin="8,0,4,0" Visibility="Collapsed"
+                                       CornerRadius="4" Click="BtnToggleFilter_Click" ToolTip="Toggle Library Filter Bar (\)"/>
+                    <edit:SimpleButton x:Name="btnCrop" Content="◳  Crop (R)" Variant="Ghost" Height="26" Padding="8,2" Margin="12,0,4,0"
+                                       CornerRadius="4" Click="BtnCrop_Click" ToolTip="Toggle Crop Overlay (R)"/>
+                    <edit:SimpleButton x:Name="btnRotateLeft" Content="⟲" Variant="Ghost" Height="26" Padding="8,2" Margin="4,0,0,0"
+                                       CornerRadius="4" Click="BtnRotateLeft_Click" ToolTip="Rotate Left 90° ([)"/>
+                    <edit:SimpleButton x:Name="btnRotateRight" Content="⟳" Variant="Ghost" Height="26" Padding="8,2" Margin="2,0,0,0"
+                                       CornerRadius="4" Click="BtnRotateRight_Click" ToolTip="Rotate Right 90° (])"/>
+                    <edit:SimpleButton x:Name="btnFlipH" Content="⇋" Variant="Ghost" Height="26" Padding="8,2" Margin="2,0,4,0"
+                                       CornerRadius="4" Click="BtnFlipH_Click" ToolTip="Flip Horizontal"/>
+                    <edit:SimpleButton x:Name="btnCompare" Content="◫  Before/After (Y)" Variant="Ghost" Height="26" Padding="8,2" Margin="4,0,4,0"
+                                       CornerRadius="4" Click="BtnCompare_Click" ToolTip="Before / After side-by-side comparison (Y)"/>
+                    <edit:SimpleButton x:Name="btnReference" Content="⇋  Ref (Shift+R)" Variant="Ghost" Height="26" Padding="8,2" Margin="2,0,4,0"
+                                       CornerRadius="4" Click="BtnReference_Click" ToolTip="Reference View: compare against locked reference photo (Shift+R)"/>
+                    <edit:SimpleButton x:Name="btnProof" Content="🎯 Proof (S)" Variant="Ghost" Height="26" Padding="8,2" Margin="2,0,4,0"
+                                       CornerRadius="4" Click="BtnProof_Click" ToolTip="Soft Proofing: Gamut Warning Overlay (S)"/>
+                    <edit:SimpleButton x:Name="btnZone" Content="▦ Zone (Shift+Z)" Variant="Ghost" Height="26" Padding="8,2" Margin="2,0,4,0"
+                                       CornerRadius="4" Click="BtnZone_Click" ToolTip="Ansel Adams Zone System Exposure Visualizer (Shift+Z)"/>
+                    <edit:SimpleButton x:Name="btnStack" Content="⧉  Stack" Variant="Ghost" Height="26" Padding="8,2" Margin="4,0,4,0"
+                                       CornerRadius="4" Click="BtnStack_Click" ToolTip="Group burst/bracket photos into stacks in Grid"/>
+                    <edit:ComboBoxEdit x:Name="cmbCropRatio" Width="110" Height="24" Margin="4,0,0,0" Visibility="Collapsed"
+                                       VerticalAlignment="Center" SelectionChanged="CmbCropRatio_SelectionChanged"
+                                       ToolTip="Crop Aspect Ratio"/>
+                    <edit:SimpleButton x:Name="btnSmartCrop" Content="✨ Smart" Variant="Secondary" Height="24" Padding="8,2" Margin="4,0,0,0" Visibility="Collapsed"
+                                       CornerRadius="4" Click="BtnSmartCrop_Click" ToolTip="Auto content-aware crop for selected aspect ratio"/>
                 </StackPanel>
                 <TextBlock x:Name="txtFile" DockPanel.Dock="Left" Text="(No photo selected)" Foreground="{DynamicResource TextSecondaryBrush}"
                            FontSize="12" VerticalAlignment="Center" Margin="20,0,0,0"/>
