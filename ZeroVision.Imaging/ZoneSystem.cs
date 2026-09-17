@@ -1,10 +1,10 @@
 using System;
-using ZeroGraphics.Imaging.Filters;
+using ZeroGraphics.Imaging.Photometry;
 
 namespace ZeroVision.Imaging;
 
 /// <summary>
-/// Ansel Adams Zone System bridge delegating to ZeroGraphics.Imaging.Filters.ZoneSystemMeter.
+/// Ansel Adams Zone System bridge delegating to ZeroGraphics.Imaging.Photometry.ZoneSystemMeter.
 /// </summary>
 public static class ZoneSystem
 {

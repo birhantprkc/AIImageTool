@@ -9,6 +9,8 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using ZeroGraphics.Imaging.Core;
 using ZeroGraphics.Vision.Curation;
+using ZeroGraphics.Vision.Matching;
+using ZeroGraphics.Vision.Quality;
 using ZeroVision.Core;
 
 namespace ZeroVision.Shared;
@@ -158,8 +160,8 @@ public class PhotoCullingService : IPhotoCullingService
                     // Standalone image: follow quality recommendations
                     item.ProposedFlag = quality.RecommendedAction switch
                     {
-                        CurationAction.Reject => PickFlag.Reject,
-                        CurationAction.Pick => PickFlag.Pick,
+                        QualityAction.Reject => PickFlag.Reject,
+                        QualityAction.Pick => PickFlag.Pick,
                         _ => PickFlag.None
                     };
                 }
