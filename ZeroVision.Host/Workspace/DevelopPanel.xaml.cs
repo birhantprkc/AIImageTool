@@ -125,6 +125,7 @@ public partial class DevelopPanel : UserControl
 
     // Solo Mode & Tab Filter
     private bool _soloMode = true;
+    private static readonly string[] FilterTabs = { "All", "Basic", "Color", "Detail", "Advanced" };
     private string _currentTab = "All";
 
     private readonly DispatcherTimer _debounce;
@@ -138,7 +139,7 @@ public partial class DevelopPanel : UserControl
 
         BuildUI();
         chkSoloMode.CheckedChanged += ChkSoloMode_Changed;
-        segFilterTabs.Items = new[] { "All", "Basic", "Curve", "Color", "Detail", "Optics", "Geometry", "Effects", "Advanced" };
+        segFilterTabs.Items = FilterTabs;
         segFilterTabs.SelectedIndex = 0;
         segFilterTabs.SelectedIndexChanged += SegFilterTabs_SelectedIndexChanged;
         SetEnabled(false);
@@ -2584,10 +2585,9 @@ public partial class DevelopPanel : UserControl
 
     private void SegFilterTabs_SelectedIndexChanged(object? sender, int index)
     {
-        var tabs = new[] { "All", "Basic", "Curve", "Color", "Detail", "Optics", "Geometry", "Effects", "Advanced" };
-        if (index >= 0 && index < tabs.Length)
+        if (index >= 0 && index < FilterTabs.Length)
         {
-            _currentTab = tabs[index];
+            _currentTab = FilterTabs[index];
             ApplyTabFilter();
         }
     }
@@ -2595,6 +2595,9 @@ public partial class DevelopPanel : UserControl
     private void ApplyTabFilter()
     {
         if (panelSliders?.Children == null) return;
+        Expander? firstVisible = null;
+        bool hasExpandedVisible = false;
+
         foreach (var child in panelSliders.Children)
         {
             if (child is Expander exp)
@@ -2602,7 +2605,17 @@ public partial class DevelopPanel : UserControl
                 string header = exp.Tag as string ?? "";
                 bool isVisible = IsExpanderInTab(header, _currentTab);
                 exp.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+                if (isVisible)
+                {
+                    firstVisible ??= exp;
+                    if (exp.IsExpanded) hasExpandedVisible = true;
+                }
             }
+        }
+
+        if (_soloMode && !hasExpandedVisible && firstVisible != null)
+        {
+            firstVisible.IsExpanded = true;
         }
     }
 
@@ -2619,14 +2632,10 @@ public partial class DevelopPanel : UserControl
 
         return tab switch
         {
-            "Basic" => header is "Basic",
-            "Curve" => header is "Tone Curve",
-            "Color" => header is "Color Mixer & Grading" or "Calibration",
-            "Detail" => header is "Detail",
-            "Optics" => header is "Optics",
-            "Geometry" => header is "Geometry & Transform",
-            "Effects" => header is "Effects",
-            "Advanced" => header is "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp",
+            "Basic" => header is "Basic" or "Tone Curve",
+            "Color" => header is "Tone Curve" or "Color Mixer & Grading" or "Calibration",
+            "Detail" => header is "Detail" or "Optics" or "Geometry & Transform",
+            "Advanced" => header is "Effects" or "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp",
             _ => false
         };
     }
