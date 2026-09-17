@@ -25,7 +25,6 @@ public partial class MainWindow : Window
     private readonly DevelopClipboard _developClipboard;
     private ZeroVision.Shared.FolderWatcher? _folderWatcher;
     private readonly AiMaskService _aiMaskService;
-    private List<PluginEntry> _pluginEntries = new();
     private ToolsWindow? _toolsWindow;
     private Grid? _toolsHostOriginalParent;
     private int _toolsHostOriginalColumn;
@@ -933,7 +932,26 @@ public partial class MainWindow : Window
 
         foreach (var plugin in plugins)
         {
-            try { plugin.Initialize(_serviceProvider); }
+            try
+            {
+                plugin.Initialize(_serviceProvider);
+                var ui = plugin.GetUIComponent();
+                if (ui == null) continue;
+
+                string n = plugin.Name?.ToLowerInvariant() ?? "";
+                if (n.Contains("tag") || n.Contains("vision"))
+                {
+                    infoPanel.SetTaggerPlugin(ui);
+                }
+                else if (n.Contains("face") || n.Contains("restor"))
+                {
+                    developPanel.SetFaceRestorerPlugin(ui);
+                }
+                else if (n.Contains("upscal"))
+                {
+                    exportPanel.SetUpscalerPlugin(ui);
+                }
+            }
             catch (Exception ex)
             {
                 failures.Add($"{plugin.Name}: initialization error - {ex.Message}");
@@ -941,31 +959,10 @@ public partial class MainWindow : Window
             }
         }
 
-        _pluginEntries = plugins
-            .Select(p => new PluginEntry(p))
-            .ToList();
-
-        lstPlugins.ItemsSource = _pluginEntries;
-        if (_pluginEntries.Count > 0) lstPlugins.SelectedIndex = 0;
-
         if (failures.Count > 0)
             ShowToast(failures.Count == 1
                 ? $"Plugin error: {failures[0]}"
                 : $"{failures.Count} plugins failed to load (see app.log)");
-    }
-
-    private void LstPlugins_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (lstPlugins.SelectedItem is PluginEntry entry)
-        {
-            try { contentPresenter.Content = entry.Plugin.GetUIComponent(); }
-            catch (Exception ex)
-            {
-                contentPresenter.Content = null;
-                AppLog.Error("MainWindow.PluginUI", $"GetUIComponent '{entry.Name}' error", ex);
-                ShowToast($"Failed to load UI for plugin '{entry.Name}'");
-            }
-        }
     }
 
     private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
@@ -1545,29 +1542,5 @@ public partial class MainWindow : Window
                 txtBatchInfo.Visibility = Visibility.Collapsed;
             }
         });
-    }
-}
-
-public class PluginEntry
-{
-    public IImagePlugin Plugin { get; }
-    public string Name => Plugin.Name;
-    public string ShortName { get; }
-    public string Glyph { get; }
-
-    public PluginEntry(IImagePlugin plugin)
-    {
-        Plugin = plugin;
-        var n = plugin.Name ?? "?";
-        ShortName = n.Length > 10 ? n.Substring(0, 10) : n;
-        Glyph = n.ToLowerInvariant() switch
-        {
-            var s when s.Contains("upscal") => "⬆",
-            var s when s.Contains("face") => "☺",
-            var s when s.Contains("color") => "◐",
-            var s when s.Contains("meta") => "ℹ",
-            var s when s.Contains("vision") || s.Contains("tag") => "✦",
-            _ => "▣"
-        };
     }
 }

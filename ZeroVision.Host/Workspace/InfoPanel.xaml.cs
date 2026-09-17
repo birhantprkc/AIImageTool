@@ -444,4 +444,11 @@ public partial class InfoPanel : UserControl
             _meta.SetLabel(_currentPath, label);
         }
     }
+
+    /// <summary>Gắn UI component của plugin AI Auto Tagger vào phần Keywords của InfoPanel.</summary>
+    public void SetTaggerPlugin(object? uiComponent)
+    {
+        ccTaggerHost.Content = uiComponent;
+        expAiTagger.Visibility = uiComponent != null ? Visibility.Visible : Visibility.Collapsed;
+    }
 }

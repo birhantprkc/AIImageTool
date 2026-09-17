@@ -135,6 +135,15 @@
                     </StackPanel>
                 </Expander>
 
+                <!-- AI Upscaler Plugin Host -->
+                <Expander x:Name="expAiUpscaler" Header="⚡ AI Upscaler (Super Resolution)" FontSize="11"
+                          IsExpanded="False"
+                          Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                          BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1" Margin="0,0,0,10"
+                          Visibility="Collapsed">
+                    <ContentControl x:Name="ccUpscalerHost" Margin="2,4"/>
+                </Expander>
+
                 <TextBlock Text="Max Long Edge (px, 0 = original size)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                 <TextBox x:Name="txtMaxLong" Text="0" Background="{DynamicResource BgInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="4,2" Height="22" Margin="0,0,0,8"/>
 

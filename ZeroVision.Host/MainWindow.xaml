@@ -54,10 +54,10 @@
                                    ToolTip="Tools on selected photo: Merge HDR, Focus Stack, Batch Rename"/>
 
                 <!-- Right: Pop Out + Mode Switcher + Quick Filter -->
-                <edit:SimpleButton x:Name="btnPopOutTools" DockPanel.Dock="Right" Content="⇱  Pop Out Tools" Variant="Ghost" Height="28"
+                <edit:SimpleButton x:Name="btnPopOutTools" DockPanel.Dock="Right" Content="⇱  Pop Out Panel" Variant="Ghost" Height="28"
                                    CornerRadius="4" Padding="8,3" VerticalAlignment="Center" Margin="6,0,0,0"
                                    Click="BtnPopOutTools_Click"
-                                   ToolTip="Pop out Tools panel to separate window (multi-monitor)"/>
+                                   ToolTip="Pop out right inspector panel to separate window (multi-monitor)"/>
 
                 <!-- Mode switcher (ZeroUI SegmentedControl) -->
                 <edit:SegmentedControl x:Name="modeSwitcher" DockPanel.Dock="Right" VerticalAlignment="Center"
@@ -194,61 +194,6 @@
                     </TabItem>
                     <TabItem Header="Export">
                         <ws:ExportPanel x:Name="exportPanel"/>
-                    </TabItem>
-                    <TabItem Header="Tools">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <ListBox x:Name="lstPlugins" Grid.Column="0" Width="60"
-                                     Background="{DynamicResource BgBaseBrush}"
-                                     BorderThickness="0,0,1,0" BorderBrush="{DynamicResource BorderBrush_}"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                     SelectionChanged="LstPlugins_SelectionChanged">
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-                                        <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                        <Setter Property="Cursor" Value="Hand"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListBoxItem">
-                                                    <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="0,10">
-                                                        <ContentPresenter HorizontalAlignment="Center"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsSelected" Value="True">
-                                                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgHoverBrush}"/>
-                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgPanelAltBrush}"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel HorizontalAlignment="Center">
-                                            <TextBlock Text="{Binding Glyph}" FontSize="20" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding ShortName}" FontSize="9" HorizontalAlignment="Center"
-                                                       Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="56"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <ContentControl x:Name="contentPresenter" Grid.Column="1"
-                                            Background="{DynamicResource BgPanelBrush}"/>
-                        </Grid>
                     </TabItem>
                 </TabControl>
             </Grid>

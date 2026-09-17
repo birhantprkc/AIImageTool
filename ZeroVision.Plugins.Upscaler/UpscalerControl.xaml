@@ -1,13 +1,11 @@
-﻿<UserControl x:Class="ZeroVision.Plugins.Upscaler.UpscalerControl"
+<UserControl x:Class="ZeroVision.Plugins.Upscaler.UpscalerControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#1E1E1E" Foreground="#DDD">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="14">
-            <TextBlock Text="AI Upscaler" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,2"/>
-            <TextBlock x:Name="txtActiveImage" Text="(chưa chọn ảnh)" Foreground="#888" FontSize="11"
-                       Margin="0,0,0,12" TextTrimming="CharacterEllipsis"
-                       ToolTip="Ảnh đang mở ở khung xem trung tâm"/>
+             Background="Transparent" Foreground="#DDD">
+    <StackPanel Margin="6,4">
+        <TextBlock x:Name="txtActiveImage" Text="(chưa chọn ảnh)" Foreground="#888" FontSize="10"
+                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis"
+                   ToolTip="Ảnh đang mở ở khung xem trung tâm"/>
 
             <TextBlock Text="Thiết bị" Foreground="#888" FontSize="11" Margin="0,0,0,4"/>
             <ComboBox x:Name="cmbDevice" Margin="0,0,0,8" SelectedIndex="0"
@@ -54,5 +52,4 @@
             <TextBlock Text="Ảnh kết quả sẽ hiển thị tại Center Preview với splitter so sánh trước/sau."
                        Foreground="#666" FontSize="10" Margin="0,12,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-    </ScrollViewer>
 </UserControl>

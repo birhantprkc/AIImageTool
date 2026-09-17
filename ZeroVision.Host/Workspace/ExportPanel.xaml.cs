@@ -625,6 +625,13 @@ public partial class ExportPanel : UserControl
         }
         return d;
     }
+
+    /// <summary>Gắn UI component của plugin AI Upscaler vào ExportPanel.</summary>
+    public void SetUpscalerPlugin(object? uiComponent)
+    {
+        ccUpscalerHost.Content = uiComponent;
+        expAiUpscaler.Visibility = uiComponent != null ? Visibility.Visible : Visibility.Collapsed;
+    }
 }
 
 public class MultiPresetItem : System.ComponentModel.INotifyPropertyChanged

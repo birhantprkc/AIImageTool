@@ -2634,9 +2634,21 @@ public partial class DevelopPanel : UserControl
         {
             "Basic" => header is "Basic" or "Tone Curve",
             "Color" => header is "Tone Curve" or "Color Mixer & Grading" or "Calibration",
-            "Detail" => header is "Detail" or "Optics" or "Geometry & Transform",
-            "Advanced" => header is "Effects" or "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp",
+            "Detail" => header is "Detail" or "Optics" or "Geometry & Transform" or "AI Face Restorer (GPEN)",
+            "Advanced" => header is "Effects" or "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp" or "AI Face Restorer (GPEN)",
             _ => false
         };
+    }
+
+    /// <summary>Gắn UI component của plugin AI Face Restorer vào DevelopPanel.</summary>
+    public void SetFaceRestorerPlugin(object? uiComponent)
+    {
+        if (uiComponent == null) return;
+        var group = AddGroup("AI Face Restorer (GPEN)", false);
+        if (uiComponent is UIElement uie)
+        {
+            group.Children.Add(uie);
+        }
+        ApplyTabFilter();
     }
 }

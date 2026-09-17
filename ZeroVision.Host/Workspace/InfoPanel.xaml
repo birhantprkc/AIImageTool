@@ -121,6 +121,15 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- AI Auto Tagger Plugin Host -->
+                    <Expander x:Name="expAiTagger" Header="✦ AI Auto Tagger (Vision AI)" FontSize="11"
+                              IsExpanded="False"
+                              Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                              BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="1" Margin="0,6,0,2"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="ccTaggerHost" Margin="2,4"/>
+                    </Expander>
                 </StackPanel>
 
                 <!-- Dominant color palette (K-Means) & Color Harmony -->
