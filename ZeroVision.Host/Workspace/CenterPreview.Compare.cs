@@ -186,14 +186,7 @@ public partial class CenterPreview
     {
         try
         {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.UriSource = new Uri(path);
-            bmp.DecodePixelWidth = 1600;
-            bmp.EndInit();
-            bmp.Freeze();
-            return bmp;
+            return BitmapImageHelper.Load(path, decodePixelWidth: 1600);
         }
         catch
         {

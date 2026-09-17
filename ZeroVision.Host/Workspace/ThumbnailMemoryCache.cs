@@ -48,13 +48,7 @@ public static class ThumbnailMemoryCache
 
         try
         {
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.UriSource = new Uri(path);
-            if (decodeWidth > 0) bi.DecodePixelWidth = decodeWidth;
-            bi.EndInit();
-            bi.Freeze();
+            var bi = BitmapImageHelper.Load(path, decodeWidth);
 
             lock (_sync)
             {

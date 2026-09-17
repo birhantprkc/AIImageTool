@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using System.IO;
+using SixLabors.ImageSharp;
 using ZeroVision.Core;
 using ZeroVision.Imaging;
 using Xunit;
@@ -171,6 +173,27 @@ public class GeometryTests
         var op = ExifOrientation.ToOp(3);
         Assert.Equal(2, op.Rotate90);
         Assert.False(op.FlipH);
+    }
+
+    [Fact]
+    public void StandardImageDecoder_WithExifOrientation6()
+    {
+        using var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(200, 100);
+        img.Metadata.ExifProfile = new SixLabors.ImageSharp.Metadata.Profiles.Exif.ExifProfile();
+        img.Metadata.ExifProfile.SetValue(SixLabors.ImageSharp.Metadata.Profiles.Exif.ExifTag.Orientation, (ushort)6);
+        string temp = Path.GetTempFileName() + ".jpg";
+        try
+        {
+            img.SaveAsJpeg(temp);
+            var dec = new StandardImageDecoder();
+            var decoded = dec.Decode(temp);
+            Assert.Equal(100, decoded.Image.Width);
+            Assert.Equal(200, decoded.Image.Height);
+        }
+        finally
+        {
+            if (File.Exists(temp)) File.Delete(temp);
+        }
     }
 
     [Fact]

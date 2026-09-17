@@ -187,30 +187,17 @@ public partial class CenterPreview : UserControl, IImageToolHost
         else if (_compareMode)
             _ = LoadCompareAsync(path);
 
-        // If image has edit history and decoder supports it, render via non-destructive pipeline.
-        int pointer = _history?.GetPointer(path) ?? 0;
-        if (pointer > 0 && _renderer.CanDecode(path))
+        // Render via non-destructive Develop pipeline (linear proxy with EXIF orientation baked).
+        if (_renderer.CanDecode(path))
         {
             _ = RenderDevelopAsync(path);
             return;
         }
 
-        // RAW: WPF BitmapImage cannot decode directly -> render via pipeline (extract embedded JPEG preview).
-        if (ZeroVision.Imaging.RawPreviewExtractor.IsRawExtension(path) && _renderer.CanDecode(path))
-        {
-            _ = RenderDevelopAsync(path);
-            return;
-        }
-
-        // Default: fast display via BitmapImage (proxy decode width to conserve RAM).
+        // Fallback for non-pipeline formats: display via BitmapImageHelper with EXIF orientation.
         try
         {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.UriSource = new Uri(path);
-            bmp.EndInit();
-            bmp.Freeze();
+            var bmp = BitmapImageHelper.Load(path);
             imgPreview.Source = bmp;
             imgFull.Source = bmp;
             txtPlaceholder.Visibility = Visibility.Collapsed;
@@ -264,7 +251,10 @@ public partial class CenterPreview : UserControl, IImageToolHost
             imgFull.Source = bmp;
             txtPlaceholder.Visibility = Visibility.Collapsed;
             txtFile.Text = Path.GetFileName(path);
-            txtMeta.Text = $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  edit · {pointer} step(s)";
+            var fi = new FileInfo(path);
+            txtMeta.Text = pointer > 0
+                ? $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  edit · {pointer} step(s)"
+                : $"{bmp.PixelWidth} x {bmp.PixelHeight}  |  {fi.Length / 1024.0:N0} KB";
             if (_cropMode) DrawCropOverlay();
             RefreshClipOverlayIfActive();
             RefreshPeakOverlayIfActive();
@@ -1012,12 +1002,7 @@ public partial class CenterPreview : UserControl, IImageToolHost
                 }
                 else if (!string.IsNullOrEmpty(resultPath) && File.Exists(resultPath))
                 {
-                    bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.UriSource = new Uri(resultPath);
-                    bmp.EndInit();
-                    bmp.Freeze();
+                    bmp = BitmapImageHelper.Load(resultPath);
                 }
                 if (bmp == null) return;
 

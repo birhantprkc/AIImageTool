@@ -1,9 +1,10 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using ZeroVision.Core;
+using ZeroVision.Host.Workspace;
 
 namespace ZeroVision.Host;
 
@@ -101,14 +102,7 @@ public partial class ImportDialog : Window
             {
                 try
                 {
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.UriSource = new Uri(item.FilePath);
-                    bmp.DecodePixelWidth = 80;
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.EndInit();
-                    bmp.Freeze();
-                    item.Thumbnail = bmp;
+                    item.Thumbnail = BitmapImageHelper.Load(item.FilePath, 80);
                 }
                 catch { }
             });

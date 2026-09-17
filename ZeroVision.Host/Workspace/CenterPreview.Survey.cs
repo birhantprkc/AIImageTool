@@ -282,13 +282,7 @@ public partial class CenterPreview
             BitmapSource? loadedBitmap = null;
             try
             {
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(p);
-                bmp.DecodePixelWidth = 1400;
-                bmp.EndInit();
-                bmp.Freeze();
+                var bmp = BitmapImageHelper.Load(p, decodePixelWidth: 1400);
                 img.Source = bmp;
                 loadedBitmap = bmp;
             }
