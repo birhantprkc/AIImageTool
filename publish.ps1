@@ -4,8 +4,8 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Full', 'Lite', 'All')]
-    [string]$Mode = 'All',
+    [ValidateSet('Lite', 'Full', 'All')]
+    [string]$Mode = 'Lite',
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64'
 )
