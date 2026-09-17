@@ -42,6 +42,12 @@ if ($Mode -eq 'Full' -or $Mode -eq 'All') {
         -o $outFull
         
     Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outFull\Plugins" -Recurse -Force
+    if (Test-Path "$Root\native") {
+        Copy-Item -Path "$Root\native\*.dll" -Destination $outFull -Force
+    }
+    if (Test-Path "$Root\lensfun") {
+        Copy-Item -Path "$Root\lensfun" -Destination "$outFull\lensfun" -Recurse -Force
+    }
     
     if (Test-Path "$outFull\ZeroVision.Host.exe") {
         Move-Item "$outFull\ZeroVision.Host.exe" -Destination "$outFull\ZeroVision.exe" -Force
@@ -57,6 +63,12 @@ if ($Mode -eq 'Lite' -or $Mode -eq 'All') {
         -o $outLite
         
     Copy-Item -Path "$Root\ZeroVision.Host\bin\$Configuration\net8.0-windows\$Runtime\Plugins" -Destination "$outLite\Plugins" -Recurse -Force
+    if (Test-Path "$Root\native") {
+        Copy-Item -Path "$Root\native\*.dll" -Destination $outLite -Force
+    }
+    if (Test-Path "$Root\lensfun") {
+        Copy-Item -Path "$Root\lensfun" -Destination "$outLite\lensfun" -Recurse -Force
+    }
     
     if (Test-Path "$outLite\ZeroVision.Host.exe") {
         Move-Item "$outLite\ZeroVision.Host.exe" -Destination "$outLite\ZeroVision.exe" -Force
