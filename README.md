@@ -7,7 +7,7 @@
 [![Distribution: Standalone Single-File](https://img.shields.io/badge/Distribution-Standalone%20Single--File-2ea44f?style=flat-square)](https://github.com/kzxl/ZeroVision)
 [![Unit Tests](https://img.shields.io/badge/tests-878%20passed%20(100%25)-brightgreen.svg?style=flat-square)](#-quick-start-for-developers)
 [![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 > **ZeroVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, multi-frame computational photography, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard and workflow paradigms.
 
@@ -116,4 +116,4 @@ Binaries are generated in:
 
 ## 📄 License
 
-Licensed under the **Apache License 2.0**. Part of the sovereign **ZeroUniverse** industrial computing ecosystem.
+Licensed under the **MIT License**. Part of the sovereign **ZeroUniverse** industrial computing ecosystem.

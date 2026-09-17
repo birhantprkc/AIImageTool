@@ -151,4 +151,4 @@ powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Mode All
 
 ## License
 
-Licensed under the **Apache License 2.0**. Part of the sovereign **ZeroUniverse** ecosystem.
+Licensed under the **MIT License**. Part of the sovereign **ZeroUniverse** ecosystem.
