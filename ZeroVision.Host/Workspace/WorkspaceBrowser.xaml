@@ -57,6 +57,7 @@
                     <MenuItem x:Name="miOpenWorkspace" Header="Open in Workspace" Click="MiOpenInWorkspace_Click"/>
                     <MenuItem x:Name="miImport" Header="Import folder…" Click="MiImport_Click"/>
                     <MenuItem x:Name="miSync" Header="Sync Folder (Scan for New Photos)" Click="MiSync_Click"/>
+                    <MenuItem x:Name="miSmartCull" Header="✨ Smart Cull / Analyze Photos…" Click="MiSmartCullFolder_Click"/>
                     <Separator/>
                     <MenuItem x:Name="miShowExplorer" Header="Show in Explorer" Click="MiShowInExplorer_Click"/>
                 </ContextMenu>
@@ -117,7 +118,13 @@
 
         <!-- Thumbnails source label -->
         <Border Grid.Row="7" Background="{DynamicResource BgBaseBrush}" Padding="8,3" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
-            <TextBlock x:Name="txtThumbSource" Text="Workspace thumbnails" Foreground="{DynamicResource TextDimBrush}" FontSize="10"/>
+            <DockPanel>
+                <edit:SimpleButton x:Name="btnSmartCull" DockPanel.Dock="Right" Content="✨ Smart Cull"
+                                   Height="20" Padding="8,1" FontSize="10"
+                                   ToolTip="Analyze photos in current workspace for blur, blown highlights, and duplicates"
+                                   Click="BtnSmartCull_Click"/>
+                <TextBlock x:Name="txtThumbSource" Text="Workspace thumbnails" Foreground="{DynamicResource TextDimBrush}" FontSize="10" VerticalAlignment="Center"/>
+            </DockPanel>
         </Border>
 
         <!-- Thumbnails (workspace OR preview, swapped via _isPreviewing) -->

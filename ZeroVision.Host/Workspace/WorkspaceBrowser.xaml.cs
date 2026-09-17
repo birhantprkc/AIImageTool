@@ -17,6 +17,7 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
     private ICatalogService? _catalog;
     private IHistoryService? _history;
     private DevelopClipboard? _clipboard;
+    private IPhotoCullingService? _cullingService;
 
     public ObservableCollection<FolderNode> Roots { get; } = new();
 
@@ -65,6 +66,76 @@ public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INoti
     {
         _history = history;
         _clipboard = clipboard;
+    }
+
+    public void BindCulling(IPhotoCullingService cullingService)
+    {
+        _cullingService = cullingService;
+    }
+
+    private void MiSmartCullFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn == null || !Directory.Exists(fn.Path)) return;
+        if (_cullingService == null) return;
+
+        var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".bmp",
+            ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".rw2", ".orf"
+        };
+
+        var files = Directory.EnumerateFiles(fn.Path)
+            .Where(f => extensions.Contains(Path.GetExtension(f)))
+            .ToList();
+
+        if (files.Count == 0)
+        {
+            MessageBox.Show("No photos found in the selected folder.", "Smart Cull", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new PhotoCullingDialog(files, _cullingService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        if (dlg.ShowDialog() == true)
+        {
+            if (_workspace?.CurrentFolder != null &&
+                string.Equals(_workspace.CurrentFolder, fn.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var t in Thumbnails)
+                {
+                    if (_meta != null) t.ApplyMeta(_meta.Get(t.ImagePath));
+                }
+            }
+        }
+    }
+
+    private void BtnSmartCull_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cullingService == null) return;
+
+        var paths = Thumbnails.Select(t => t.ImagePath).ToList();
+        if (paths.Count == 0)
+        {
+            MessageBox.Show("Workspace folder contains no photos to analyze.", "Smart Cull", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new PhotoCullingDialog(paths, _cullingService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        if (dlg.ShowDialog() == true)
+        {
+            foreach (var t in Thumbnails)
+            {
+                if (_meta != null) t.ApplyMeta(_meta.Get(t.ImagePath));
+            }
+        }
     }
 
     /// <summary>Folder currently selected in tree (null if unselected or placeholder).</summary>

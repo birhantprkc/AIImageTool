@@ -100,6 +100,7 @@ public partial class App : Application
         services.AddSingleton<ImageToolHostProvider>();
         services.AddSingleton<DevelopClipboard>();
         services.AddSingleton<LensfunService>();
+        services.AddSingleton<IPhotoCullingService, PhotoCullingService>();
         // Auto-save (#12): tự ghi sidecar .xmp của history sau debounce -> khôi phục nếu app tắt đột ngột.
         services.AddSingleton<AutoSaveService>(sp => new AutoSaveService(sp.GetRequiredService<IHistoryService>()));
 

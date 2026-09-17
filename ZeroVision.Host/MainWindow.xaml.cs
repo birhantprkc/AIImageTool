@@ -70,6 +70,7 @@ public partial class MainWindow : Window
         browser.Bind(_workspace, _thumbs, _meta);
         browser.BindCollections(_serviceProvider.GetRequiredService<ICatalogService>(), _workspace);
         browser.BindContext(_history, _developClipboard);
+        browser.BindCulling(_serviceProvider.GetRequiredService<IPhotoCullingService>());
         browser.SetReferenceRequested += (_, path) => centerView.SetReferenceImage(path);
         centerView.Bind(_workspace, _thumbs, _meta, _history);
         centerView.BindContext(_developClipboard);
