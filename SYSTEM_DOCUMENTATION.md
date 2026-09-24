@@ -1,17 +1,17 @@
-# 📘 System Architecture & Technical Documentation — ZeroVision
+﻿# 📘 System Architecture & Technical Documentation — ZVision
 
-This document provides a comprehensive overview of the **ZeroVision** system architecture (WPF, .NET 8, ZeroUniverse ecosystem) and its evolutionary roadmap.
+This document provides a comprehensive overview of the **ZVision** system architecture (WPF, .NET 8, ZeroUniverse ecosystem) and its evolutionary roadmap.
 
 ---
 
 ## 🏛️ 1. System Architecture
 
-ZeroVision is structured around modular separation of concerns, decoupling the presentation layer from the 32-bit float linear-light image processing engine and out-of-process AI accelerators:
+ZVision is structured around modular separation of concerns, decoupling the presentation layer from the 32-bit float linear-light image processing engine and out-of-process AI accelerators:
 
 ```mermaid
 graph TD
-    UI[ZeroVision.Host - WPF UI] -->|Thread Marshaling| Shared[ZeroVision.Shared - Services]
-    UI -->|Render Pipeline| Imaging[ZeroVision.Imaging - Core]
+    UI[ZVision.Host - WPF UI] -->|Thread Marshaling| Shared[ZVision.Shared - Services]
+    UI -->|Render Pipeline| Imaging[ZVision.Imaging - Core]
     Shared -->|ORM LiteSql| DB[(SQLite Catalog)]
     Imaging -->|Render/Cache| Canvas[CachedEditPipeline]
     UI -->|Hot-load plugins| Plugins[Plugins Directory]
@@ -19,12 +19,12 @@ graph TD
 ```
 
 ### Component Projects:
-* **`ZeroVision.Core`**: Domain models, pipeline contracts, preset systems, and metadata abstractions.
-* **`ZeroVision.Imaging`**: 32-bit float linear-light non-destructive image processing pipeline. Contains 40+ atomic edit operations (`IEditOp`), curve mathematics, color space transforms, and cached rendering DAGs (`CachedEditPipeline`).
-* **`ZeroVision.Shared`**: High-performance services: SQLite Catalog (via LiteSql ORM), EXIF/GPS parser with memory caching (`ExifReader.GetOrCreate`), Stacking, Batch Export, and metadata indexing.
-* **`ZeroVision.Host`**: Primary WPF desktop workstation. Hosts `CenterPreview`, `NavigatorPanel`, `DevelopPanel`, `Filmstrip`, and orchestrates AI plugins.
-* **`ZeroVision.Plugins.*`**: Autonomous DirectML AI engines (`Upscaler`, `FaceRestorer`, `VisionTagger`) running in isolated process environments.
-* **`ZeroVision.Tests`**: Automated unit and integration test suite (820+ passing tests).
+* **`ZVision.Core`**: Domain models, pipeline contracts, preset systems, and metadata abstractions.
+* **`ZVision.Imaging`**: 32-bit float linear-light non-destructive image processing pipeline. Contains 40+ atomic edit operations (`IEditOp`), curve mathematics, color space transforms, and cached rendering DAGs (`CachedEditPipeline`).
+* **`ZVision.Shared`**: High-performance services: SQLite Catalog (via LiteSql ORM), EXIF/GPS parser with memory caching (`ExifReader.GetOrCreate`), Stacking, Batch Export, and metadata indexing.
+* **`ZVision.Host`**: Primary WPF desktop workstation. Hosts `CenterPreview`, `NavigatorPanel`, `DevelopPanel`, `Filmstrip`, and orchestrates AI plugins.
+* **`ZVision.Plugins.*`**: Autonomous DirectML AI engines (`Upscaler`, `FaceRestorer`, `VisionTagger`) running in isolated process environments.
+* **`ZVision.Tests`**: Automated unit and integration test suite (820+ passing tests).
 
 ---
 

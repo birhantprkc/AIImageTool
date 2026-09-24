@@ -1,19 +1,19 @@
-# 🌌 ZeroVision — High-Performance RAW & Image Processing Workstation
+﻿# 🌌 ZVision — High-Performance RAW & Image Processing Workstation
 
-[![Type: Desktop Application](https://img.shields.io/badge/Type-Desktop%20Application-007ACC?style=flat-square&logo=windows)](https://github.com/kzxl/ZeroVision)
-[![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg?style=flat-square)](https://github.com/kzxl/ZeroVision)
+[![Type: Desktop Application](https://img.shields.io/badge/Type-Desktop%20Application-007ACC?style=flat-square&logo=windows)](https://github.com/kzxl/ZVision)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg?style=flat-square)](https://github.com/kzxl/ZVision)
 [![Ecosystem](https://img.shields.io/badge/Ecosystem-ZeroUniverse-8A2BE2?style=flat-square)](https://github.com/kzxl/ZeroUniverse)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows)](https://dotnet.microsoft.com/)
-[![Distribution: Standalone Single-File](https://img.shields.io/badge/Distribution-Standalone%20Single--File-2ea44f?style=flat-square)](https://github.com/kzxl/ZeroVision)
+[![Distribution: Standalone Single-File](https://img.shields.io/badge/Distribution-Standalone%20Single--File-2ea44f?style=flat-square)](https://github.com/kzxl/ZVision)
 [![Unit Tests](https://img.shields.io/badge/tests-878%20passed%20(100%25)-brightgreen.svg?style=flat-square)](#-quick-start-for-developers)
-[![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
+[![Build and Test](https://github.com/kzxl/ZVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZVision/actions/workflows/build-test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-> **ZeroVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, multi-frame computational photography, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard and workflow paradigms.
+> **ZVision** is a sovereign professional desktop workstation application (WPF, .NET 8) for high-fidelity image cataloging, RAW development, color grading, multi-frame computational photography, and computer vision acceleration. Part of the **ZeroUniverse** industrial computing ecosystem, it combines a **non-destructive 32-bit float Linear Light** develop pipeline with native **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard and workflow paradigms.
 
 ---
 
-![ZeroVision Preview](screenshots/preview.png)
+![ZVision Preview](screenshots/preview.png)
 
 ---
 
@@ -46,7 +46,7 @@
 - **Local Adjustments**: Linear Gradient, Radial, Brush, Polygon, Path, Luminance Range, Color Range, Parametric, and AI Subject/Sky masks.
 
 ### 3. Autonomous AI & Vision Pipeline
-ZeroVision runs heavy AI workloads out-of-process via DirectML and ONNX Runtime:
+ZVision runs heavy AI workloads out-of-process via DirectML and ONNX Runtime:
 
 | AI Module | Architecture | Capability |
 | :--- | :--- | :--- |
@@ -59,13 +59,13 @@ ZeroVision runs heavy AI workloads out-of-process via DirectML and ONNX Runtime:
 ## 🏗 Solution Structure
 
 ```
-ZeroVision/
-├── ZeroVision.Core/          # Domain contracts, pipeline abstractions, metadata & catalog models
-├── ZeroVision.Imaging/       # 32-bit float linear light image processing kernels & masks
-├── ZeroVision.Shared/        # Services (Catalog SQLite/LiteSql, EXIF parser, Stacking, Fusion, Export)
-├── ZeroVision.Host/          # Main WPF desktop application (CenterPreview, Navigator, DevelopPanel)
-├── ZeroVision.Plugins.*/     # Autonomous DirectML ONNX plugins (Upscaler, FaceRestorer, VisionTagger)
-├── ZeroVision.Tests/         # 878 automated unit & integration tests (100% pass)
+ZVision/
+├── ZVision.Core/          # Domain contracts, pipeline abstractions, metadata & catalog models
+├── ZVision.Imaging/       # 32-bit float linear light image processing kernels & masks
+├── ZVision.Shared/        # Services (Catalog SQLite/LiteSql, EXIF parser, Stacking, Fusion, Export)
+├── ZVision.Host/          # Main WPF desktop application (CenterPreview, Navigator, DevelopPanel)
+├── ZVision.Plugins.*/     # Autonomous DirectML ONNX plugins (Upscaler, FaceRestorer, VisionTagger)
+├── ZVision.Tests/         # 878 automated unit & integration tests (100% pass)
 └── publish.ps1               # Dual-mode release packager (Full Self-Contained & Lite)
 ```
 
@@ -81,14 +81,14 @@ ZeroVision/
 ### Build and Test
 ```powershell
 # Clone repository
-git clone https://github.com/kzxl/ZeroVision.git
-cd ZeroVision
+git clone https://github.com/kzxl/ZVision.git
+cd ZVision
 
 # Build entire solution
-dotnet build ZeroVision.slnx -c Release
+dotnet build ZVision.slnx -c Release
 
 # Run automated tests (878 tests)
-dotnet test ZeroVision.Tests/ZeroVision.Tests.csproj -c Release
+dotnet test ZVision.Tests/ZVision.Tests.csproj -c Release
 ```
 
 ### Packaging & Release
@@ -98,8 +98,8 @@ powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Mode All
 ```
 
 Binaries are generated in:
-- `Publish/Full/ZeroVision.exe` (Single-file self-contained executable)
-- `Publish/Lite/ZeroVision.exe` (Compact framework-dependent executable)
+- `Publish/Full/ZVision.exe` (Single-file self-contained executable)
+- `Publish/Lite/ZVision.exe` (Compact framework-dependent executable)
 
 ---
 
@@ -107,7 +107,7 @@ Binaries are generated in:
 
 | Version | Release Date | Key Milestones & Highlights |
 | :--- | :---: | :--- |
-| **`v2.0.0`** | 2026-09-16 | **Major Workstation & Computational Photography Release**:<br/>• Complete sovereign rebranding & architecture as **ZeroVision** (.NET 8 WPF desktop workstation).<br/>• Non-destructive 32-bit float Linear Light develop pipeline with 16 modular adjustment blocks.<br/>• Out-of-process DirectML ONNX AI suite (Real-ESRGAN upscaler, GFPGAN face restorer, VisionTagger).<br/>• Full integration of **ZeroUI v1.8.0** creative media editors (CurveEditor, ColorWheel, MaskGizmos, Scope).<br/>• Added **Multi-Frame Fusion Engine**: Mertens Exposure Fusion, Focus Stacking, À-Trous Wavelets, Fast Marching Inpainting, Fast Guided Filter, Directed Median, and Minkowski Gray-Edge AWB.<br/>• Dual-mode release packager (`publish.ps1` for Full Self-Contained and Lite single-file executables).<br/>• **878 automated unit & integration tests (100% pass rate)**. |
+| **`v2.0.0`** | 2026-09-16 | **Major Workstation & Computational Photography Release**:<br/>• Complete sovereign rebranding & architecture as **ZVision** (.NET 8 WPF desktop workstation).<br/>• Non-destructive 32-bit float Linear Light develop pipeline with 16 modular adjustment blocks.<br/>• Out-of-process DirectML ONNX AI suite (Real-ESRGAN upscaler, GFPGAN face restorer, VisionTagger).<br/>• Full integration of **ZeroUI v1.8.0** creative media editors (CurveEditor, ColorWheel, MaskGizmos, Scope).<br/>• Added **Multi-Frame Fusion Engine**: Mertens Exposure Fusion, Focus Stacking, À-Trous Wavelets, Fast Marching Inpainting, Fast Guided Filter, Directed Median, and Minkowski Gray-Edge AWB.<br/>• Dual-mode release packager (`publish.ps1` for Full Self-Contained and Lite single-file executables).<br/>• **878 automated unit & integration tests (100% pass rate)**. |
 | **`v1.2.0`** | 2026-06-02 | **Aurora Studio Layout Modernization**:<br/>• Migrated presets and history panels to collapsible left dock.<br/>• Introduced vertical tabbed right inspector panel and preview zoom controls. |
 | **`v1.1.0`** | 2026-05-06 | **VisionTagger & ColorLab Expansion**:<br/>• Integrated VisionTagger AI classification plugin.<br/>• Added 3D LUT parser, Kelvin white balance picker, and noise reduction filters. |
 | **`v1.0.0`** | 2026-04-09 | **Initial AI ImageTool Prototype**:<br/>• DirectML prototype engine and initial WPF user interface. |

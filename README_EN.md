@@ -1,14 +1,14 @@
-# ZeroVision
+﻿# ZVision
 
-[![Build and Test](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZeroVision/actions/workflows/build-test.yml)
-[![License](https://img.shields.io/github/license/kzxl/ZeroVision)](LICENSE)
+[![Build and Test](https://github.com/kzxl/ZVision/actions/workflows/build-test.yml/badge.svg)](https://github.com/kzxl/ZVision/actions/workflows/build-test.yml)
+[![License](https://img.shields.io/github/license/kzxl/ZVision)](LICENSE)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows)
 
-> **ZeroVision** is a modern high-performance desktop workstation application (WPF, .NET 8) for RAW photo cataloging, non-destructive editing, color grading, and computer vision processing. It combines professional-grade **32-bit float Linear Light** develop pipelines with autonomous **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard workflows.
+> **ZVision** is a modern high-performance desktop workstation application (WPF, .NET 8) for RAW photo cataloging, non-destructive editing, color grading, and computer vision processing. It combines professional-grade **32-bit float Linear Light** develop pipelines with autonomous **DirectML ONNX AI engines** and ergonomic industry-standard professional keyboard workflows.
 
 ---
 
-![ZeroVision Preview](screenshots/preview.png)
+![ZVision Preview](screenshots/preview.png)
 
 ---
 
@@ -120,8 +120,8 @@ All image adjustments are applied in **linear light float RGBA** color space thr
 ## Installation & Running
 
 Releases provide two deployment options:
-- **Full Package (`ZeroVision_Full_Win_x64.zip`)**: Fully self-contained. Extract and launch `ZeroVision.exe`.
-- **Lite Package (`ZeroVision_Lite_Win_x64.zip`)**: Lightweight framework-dependent build for systems with .NET 8 Runtime installed.
+- **Full Package (`ZVision_Full_Win_x64.zip`)**: Fully self-contained. Extract and launch `ZVision.exe`.
+- **Lite Package (`ZVision_Lite_Win_x64.zip`)**: Lightweight framework-dependent build for systems with .NET 8 Runtime installed.
 
 ---
 
@@ -135,10 +135,10 @@ Releases provide two deployment options:
 ### Build and Test
 ```powershell
 # Build entire solution
-dotnet build ZeroVision.slnx -c Release
+dotnet build ZVision.slnx -c Release
 
 # Run automated tests (820 tests)
-dotnet test ZeroVision.Tests/ZeroVision.Tests.csproj -c Release
+dotnet test ZVision.Tests/ZVision.Tests.csproj -c Release
 ```
 
 ### Packaging

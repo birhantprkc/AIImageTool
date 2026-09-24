@@ -13,7 +13,7 @@ public class TestLoader : AssemblyLoadContext
     }
     protected override Assembly Load(AssemblyName n)
     {
-        if (n.Name == "ZeroVision.Core" || n.Name == "ZeroVision.Shared") return AssemblyLoadContext.Default.LoadFromAssemblyName(n);
+        if (n.Name == "ZVision.Core" || n.Name == "ZVision.Shared") return AssemblyLoadContext.Default.LoadFromAssemblyName(n);
         var path = _resolver.ResolveAssemblyToPath(n);
         Console.WriteLine("RESOLVER Path for "+n.Name+": "+path);
         if (path != null) return LoadFromAssemblyPath(path);
@@ -28,11 +28,11 @@ public class Program
 {
     public static void Main()
     {
-        var dll = @"e:\15. Other\ZeroVision\ZeroVision.Host\bin\Debug\net8.0-windows\Plugins\ZeroVision.Plugins.Upscaler.dll";
+        var dll = @"e:\15. Other\ZVision\ZVision.Host\bin\Debug\net8.0-windows\Plugins\ZVision.Plugins.Upscaler.dll";
         var ctx = new TestLoader(dll);
-        var asm = ctx.LoadFromAssemblyName(new AssemblyName("ZeroVision.Plugins.Upscaler"));
+        var asm = ctx.LoadFromAssemblyName(new AssemblyName("ZVision.Plugins.Upscaler"));
         Console.WriteLine("Loaded plugin: " + asm.FullName);
-        var type = asm.GetType("ZeroVision.Plugins.Upscaler.UpscalerControl");
+        var type = asm.GetType("ZVision.Plugins.Upscaler.UpscalerControl");
         Console.WriteLine("Loaded type: " + (type != null));
         
         try {

@@ -1,0 +1,518 @@
+﻿using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using ZVision.Core;
+
+namespace ZVision.Host.Workspace;
+
+public partial class WorkspaceBrowser : UserControl, System.ComponentModel.INotifyPropertyChanged
+{
+    private IWorkspaceService? _workspace;
+    private IThumbnailService? _thumbs;
+    private IImageMetaService? _meta;
+    private ICatalogService? _catalog;
+    private IHistoryService? _history;
+    private DevelopClipboard? _clipboard;
+    private IPhotoCullingService? _cullingService;
+
+    public ObservableCollection<FolderNode> Roots { get; } = new();
+
+    private ObservableCollection<ThumbItem> _thumbnails = new();
+    public ObservableCollection<ThumbItem> Thumbnails
+    {
+        get => _thumbnails;
+        private set
+        {
+            _thumbnails = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Thumbnails)));
+        }
+    }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    public WorkspaceBrowser()
+    {
+        InitializeComponent();
+        DataContext = this;
+        Loaded += OnLoaded;
+    }
+
+    public void Bind(IWorkspaceService workspace, IThumbnailService thumbs, IImageMetaService meta)
+    {
+        _workspace = workspace;
+        _thumbs = thumbs;
+        _meta = meta;
+        _workspace.FolderOpened += OnFolderOpened;
+        _workspace.ActiveImageChanged += OnActiveChanged;
+        _workspace.SelectionChanged += OnSelectionChanged;
+        _thumbs.ThumbnailReady += OnThumbReady;
+        _meta.MetaChanged += OnMetaChanged;
+    }
+
+    public void BindCollections(ICatalogService catalog, IWorkspaceService workspace)
+    {
+        _catalog = catalog;
+        collectionsPanel.Bind(catalog, workspace);
+    }
+
+    public event EventHandler<string>? SetReferenceRequested;
+
+    /// <summary>Provide service for thumbnail context menu (call after Bind).</summary>
+    public void BindContext(IHistoryService history, DevelopClipboard clipboard)
+    {
+        _history = history;
+        _clipboard = clipboard;
+    }
+
+    public void BindCulling(IPhotoCullingService cullingService)
+    {
+        _cullingService = cullingService;
+    }
+
+    private void MiSmartCullFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn == null || !Directory.Exists(fn.Path)) return;
+        if (_cullingService == null) return;
+
+        var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".bmp",
+            ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".rw2", ".orf"
+        };
+
+        var files = Directory.EnumerateFiles(fn.Path)
+            .Where(f => extensions.Contains(Path.GetExtension(f)))
+            .ToList();
+
+        if (files.Count == 0)
+        {
+            MessageBox.Show("No photos found in the selected folder.", "Smart Cull", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new PhotoCullingDialog(files, _cullingService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        if (dlg.ShowDialog() == true)
+        {
+            if (_workspace?.CurrentFolder != null &&
+                string.Equals(_workspace.CurrentFolder, fn.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var t in Thumbnails)
+                {
+                    if (_meta != null) t.ApplyMeta(_meta.Get(t.ImagePath));
+                }
+            }
+        }
+    }
+
+    private void BtnSmartCull_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cullingService == null) return;
+
+        var paths = Thumbnails.Select(t => t.ImagePath).ToList();
+        if (paths.Count == 0)
+        {
+            MessageBox.Show("Workspace folder contains no photos to analyze.", "Smart Cull", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new PhotoCullingDialog(paths, _cullingService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        if (dlg.ShowDialog() == true)
+        {
+            foreach (var t in Thumbnails)
+            {
+                if (_meta != null) t.ApplyMeta(_meta.Get(t.ImagePath));
+            }
+        }
+    }
+
+    /// <summary>Folder currently selected in tree (null if unselected or placeholder).</summary>
+    private FolderNode? SelectedFolder =>
+        treeFolders.SelectedItem as FolderNode is { IsPlaceholder: false } fn ? fn : null;
+
+    private void MiOpenInWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn != null) _workspace?.OpenFolder(fn.Path);
+    }
+
+    private void MiImport_Click(object sender, RoutedEventArgs e) => OpenImportDialog(SelectedFolder?.Path);
+
+    /// <summary>Sync Folder: scan folder, import new files into catalog in-place.</summary>
+    private async void MiSync_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn == null || !Directory.Exists(fn.Path) || _catalog == null) return;
+
+        var miSyncRef = sender as MenuItem;
+        if (miSyncRef != null) miSyncRef.IsEnabled = false;
+        try
+        {
+            var result = await _catalog.SyncFolderAsync(fn.Path, recursive: true, removeMissing: false);
+            string msg = $"Synchronization complete:\n• {result.Added} new photo(s) added to catalog";
+            if (result.Missing > 0)
+                msg += $"\n• {result.Missing} photo(s) in catalog no longer on disk";
+            if (result.Added == 0 && result.Missing == 0)
+                msg = "No changes found — catalog is up to date.";
+            MessageBox.Show(msg, "Sync Folder", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            // Reopen folder to show new files.
+            _workspace?.OpenFolder(fn.Path);
+        }
+        catch (Exception ex)
+        {
+            ZVision.Shared.AppLog.Error("Browser.Sync", fn.Path, ex);
+            MessageBox.Show($"Sync error: {ex.Message}", "Sync Folder", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { if (miSyncRef != null) miSyncRef.IsEnabled = true; }
+    }
+
+    private void MiShowInExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn == null || !Directory.Exists(fn.Path)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = fn.Path,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private void BtnOpenWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        var fn = SelectedFolder;
+        if (fn != null) _workspace?.OpenFolder(fn.Path);
+    }
+
+    private void BtnImport_Click(object sender, RoutedEventArgs e) => OpenImportDialog(SelectedFolder?.Path);
+
+    private void OpenImportDialog(string? sourceFolder)
+    {
+        if (_catalog == null || _thumbs == null || _workspace == null) return;
+        var dlg = new ImportDialog(_catalog, _thumbs, _workspace, sourceFolder)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        dlg.ShowDialog();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (Roots.Count > 0) return;
+        try
+        {
+            foreach (var d in DriveInfo.GetDrives())
+            {
+                if (d.IsReady) Roots.Add(new FolderNode(d.RootDirectory.FullName));
+            }
+        }
+        catch { }
+    }
+
+    private void OnFolderOpened(object? sender, FolderOpenedEventArgs e)
+    {
+        // Build list off-thread, swap collection on UI once to raise only 1 reset event.
+        var paths = e.Images.ToList();
+        var meta = _meta;
+        var thumbs = _thumbs;
+
+        Task.Run(() =>
+        {
+            var items = new List<ThumbItem>(paths.Count);
+            foreach (var p in paths)
+            {
+                var item = new ThumbItem(p);
+                if (meta != null) item.ApplyMeta(meta.Get(p));
+                var cached = thumbs?.TryGetThumbnailPath(p, 256);
+                if (cached != null) item.SetThumb(cached);
+                items.Add(item);
+            }
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                Thumbnails = new ObservableCollection<ThumbItem>(items);
+            });
+        });
+    }
+
+    private void OnThumbReady(object? sender, ThumbnailReadyEventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            foreach (var t in Thumbnails)
+            {
+                if (string.Equals(t.ImagePath, e.ImagePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    t.SetThumb(e.ThumbnailPath);
+                    break;
+                }
+            }
+        });
+    }
+
+    private void OnMetaChanged(object? sender, ImageMetaChangedEventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            foreach (var t in Thumbnails)
+            {
+                if (string.Equals(t.ImagePath, e.ImagePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    t.ApplyMeta(e.Meta);
+                    break;
+                }
+            }
+        });
+    }
+
+    private void OnActiveChanged(object? sender, ImageSelectedEventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            foreach (var t in Thumbnails)
+            {
+                t.IsActive = string.Equals(t.ImagePath, e.CurrentPath, StringComparison.OrdinalIgnoreCase);
+            }
+        });
+    }
+
+    private void OnSelectionChanged(object? sender, BatchSelectionChangedEventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            var set = new HashSet<string>(e.Selection, StringComparer.OrdinalIgnoreCase);
+            foreach (var t in Thumbnails) t.IsSelected = set.Contains(t.ImagePath);
+        });
+    }
+
+    private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (e.NewValue is FolderNode fn && _workspace != null)
+        {
+            _workspace.OpenFolder(fn.Path);
+        }
+    }
+
+    private void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TreeViewItem tvi && tvi.DataContext is FolderNode fn)
+        {
+            fn.LoadChildren();
+            e.Handled = true;
+        }
+    }
+
+    private void ThumbnailGrid_ItemClicked(object? sender, ZeroUI.Wpf.Editors.ThumbnailGridItemClickEventArgs e)
+    {
+        if (e.Item is ThumbItem item && _workspace != null)
+        {
+            if (e.IsControlDown)
+            {
+                if (_workspace.Selection.Contains(item.ImagePath)) _workspace.RemoveFromSelection(item.ImagePath);
+                else _workspace.AddToSelection(item.ImagePath);
+            }
+            else if (e.IsShiftDown && _workspace.ActiveImage != null)
+            {
+                int from = Thumbnails.IndexOf(Thumbnails.FirstOrDefault(t => t.ImagePath == _workspace.ActiveImage)!);
+                int to = Thumbnails.IndexOf(item);
+                if (from >= 0 && to >= 0)
+                {
+                    int a = Math.Min(from, to), b = Math.Max(from, to);
+                    _workspace.SetSelection(Thumbnails.Skip(a).Take(b - a + 1).Select(t => t.ImagePath));
+                }
+            }
+            else
+            {
+                _workspace.SetSelection(new[] { item.ImagePath });
+            }
+            _workspace.SetActiveImage(item.ImagePath);
+        }
+    }
+
+    private void ThumbnailGrid_ItemRightClicked(object? sender, object itemObj)
+    {
+        if (itemObj is ThumbItem item &&
+            _workspace != null && _meta != null && _history != null && _clipboard != null)
+        {
+            if (!_workspace.Selection.Contains(item.ImagePath))
+            {
+                _workspace.SetSelection(new[] { item.ImagePath });
+                _workspace.SetActiveImage(item.ImagePath);
+            }
+            var cm = ImageContextMenu.Build(item.ImagePath, _workspace, _meta, _history, _clipboard, p => SetReferenceRequested?.Invoke(this, p));
+            cm.IsOpen = true;
+        }
+    }
+
+    private void TxtSearch_DebouncedTextChanged(object? sender, string text)
+    {
+        if (_workspace == null) return;
+        _workspace.Filter.Search = text;
+        _workspace.ApplyFilterAndSort();
+    }
+
+    private void CmbMinRating_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_workspace == null || cmbMinRating == null) return;
+        _workspace.Filter.MinRating = cmbMinRating.SelectedIndex; // 0..5
+        _workspace.ApplyFilterAndSort();
+    }
+
+    private void CmbSort_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_workspace == null || cmbSort == null) return;
+        if (cmbSort.SelectedItem is ComboBoxItem item && item.Tag is string tag &&
+            Enum.TryParse<WorkspaceSort>(tag, out var s))
+        {
+            _workspace.Sort = s;
+            _workspace.ApplyFilterAndSort();
+        }
+    }
+
+    private void LabelFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace == null) return;
+        if (sender is FrameworkElement fe && fe.Tag is string tag)
+        {
+            if (tag == "None") _workspace.Filter.RequiredLabel = null;
+            else if (Enum.TryParse<ColorLabel>(tag, out var cl))
+            {
+                _workspace.Filter.RequiredLabel = _workspace.Filter.RequiredLabel == cl ? null : cl;
+            }
+            _workspace.ApplyFilterAndSort();
+        }
+    }
+}
+
+public class FolderNode
+{
+    public string Path { get; }
+    public string Name { get; }
+    public ObservableCollection<FolderNode> Children { get; } = new();
+    private bool _loaded;
+
+    public FolderNode(string path)
+    {
+        Path = path;
+        Name = string.IsNullOrEmpty(System.IO.Path.GetFileName(path)) ? path : System.IO.Path.GetFileName(path);
+        // Placeholder to let TreeViewItem render expand arrow; created via private ctor to avoid infinite recursion.
+        Children.Add(new FolderNode());
+    }
+
+    private FolderNode()
+    {
+        Path = string.Empty;
+        Name = string.Empty;
+        _placeholder = true;
+    }
+
+    private bool _placeholder;
+    public bool IsPlaceholder => _placeholder;
+
+    public void LoadChildren()
+    {
+        if (_loaded) return;
+        _loaded = true;
+        Children.Clear();
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(Path))
+            {
+                try
+                {
+                    var di = new DirectoryInfo(dir);
+                    if ((di.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0) continue;
+                    Children.Add(new FolderNode(dir));
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+}
+
+public class ThumbItem : System.ComponentModel.INotifyPropertyChanged
+{
+    public string ImagePath { get; }
+    public string FileName { get; }
+
+    private BitmapSource? _thumb;
+    private int _rating;
+    private ColorLabel _label;
+    private PickFlag _pick;
+    private bool _isSelected;
+    private bool _isActive;
+    private bool _isEdited;
+    private int _stackCount;
+
+    public BitmapSource? Thumb { get => _thumb; private set { _thumb = value; Raise(nameof(Thumb)); } }
+    public int Rating { get => _rating; set { if (_rating == value) return; _rating = value; Raise(nameof(Rating), nameof(RatingDisplay)); } }
+    public ColorLabel Label { get => _label; set { if (_label == value) return; _label = value; Raise(nameof(Label), nameof(LabelBrush)); } }
+    public PickFlag Pick { get => _pick; set { if (_pick == value) return; _pick = value; Raise(nameof(Pick), nameof(PickDisplay)); } }
+    public bool IsSelected { get => _isSelected; set { if (_isSelected == value) return; _isSelected = value; Raise(nameof(IsSelected)); } }
+    public bool IsActive { get => _isActive; set { if (_isActive == value) return; _isActive = value; Raise(nameof(IsActive)); } }
+    /// <summary>True if photo has Develop adjustments -> displays badge in grid/filmstrip.</summary>
+    public bool IsEdited { get => _isEdited; set { if (_isEdited == value) return; _isEdited = value; Raise(nameof(IsEdited)); } }
+    /// <summary>Number of photos in stack when this photo is cover (8.7). 0 = not a stack cover.</summary>
+    public int StackCount { get => _stackCount; set { if (_stackCount == value) return; _stackCount = value; Raise(nameof(StackCount), nameof(StackBadge), nameof(IsStackCover)); } }
+    public string StackBadge => _stackCount > 1 ? $"⧉ {_stackCount}" : "";
+    public bool IsStackCover => _stackCount > 1;
+
+    public bool IsVirtualCopy => VirtualCopyHelper.IsVirtualCopy(ImagePath);
+    public string VirtualCopyBadge => IsVirtualCopy ? $"[VC {VirtualCopyHelper.GetVirtualCopyNumber(ImagePath)}]" : "";
+
+    public string RatingDisplay => _rating > 0 ? new string('★', _rating) : "";
+    public string PickDisplay => _pick switch { PickFlag.Pick => "✓", PickFlag.Reject => "✗", _ => "" };
+
+    public Brush LabelBrush => _label switch
+    {
+        ColorLabel.Red => Brushes.Red,
+        ColorLabel.Yellow => Brushes.Gold,
+        ColorLabel.Green => Brushes.LimeGreen,
+        ColorLabel.Blue => Brushes.DodgerBlue,
+        ColorLabel.Purple => Brushes.MediumPurple,
+        _ => Brushes.Transparent
+    };
+
+    public ThumbItem(string path)
+    {
+        ImagePath = path;
+        FileName = System.IO.Path.GetFileName(path);
+    }
+
+    public void ApplyMeta(ImageMeta m)
+    {
+        Rating = m.Rating;
+        Label = m.Label;
+        Pick = m.Pick;
+    }
+
+    public void SetThumb(string thumbPath)
+    {
+        Thumb = ThumbnailMemoryCache.GetOrLoad(thumbPath, 256);
+    }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    private void Raise(params string[] props)
+    {
+        var h = PropertyChanged;
+        if (h == null) return;
+        foreach (var p in props) h(this, new System.ComponentModel.PropertyChangedEventArgs(p));
+    }
+}

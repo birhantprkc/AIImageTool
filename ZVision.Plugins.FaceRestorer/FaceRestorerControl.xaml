@@ -1,0 +1,35 @@
+﻿<UserControl x:Class="ZVision.Plugins.FaceRestorer.FaceRestorerControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent" Foreground="White">
+    <StackPanel Margin="6,4">
+        <TextBlock x:Name="txtActiveImage" Text="(chưa chọn ảnh)" Foreground="#888" FontSize="10"
+                   Margin="0,0,0,8" TextTrimming="CharacterEllipsis"
+                   ToolTip="Ảnh đang mở ở khung xem trung tâm"/>
+
+            <TextBlock Background="#331818" Foreground="#FF9999" Padding="10" TextWrapping="Wrap" Margin="0,0,0,16">
+                CẢNH BÁO: Ở Phase 1, Plugin này chỉ nhận hình Ảnh Chân Dung (Cận Mặt). Vui lòng cắt ô vuông hoặc khung sát mặt trước khi xử lý.
+            </TextBlock>
+
+            <TextBlock Text="Model" Foreground="#888" FontSize="11" Margin="0,0,0,4"/>
+            <ComboBox x:Name="cmbModel" Margin="0,0,0,12" SelectedIndex="0">
+                <ComboBoxItem Content="GPEN-BFR-512 (HQ)"/>
+            </ComboBox>
+
+            <Border Background="#252526" Padding="8" CornerRadius="3" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock x:Name="txtStatus" Text="Sẵn sàng" Foreground="#AAA" FontSize="11" FontWeight="Medium"/>
+                    <ProgressBar x:Name="pbProgress" Height="8" Minimum="0" Maximum="100" Value="0"
+                                 Visibility="Hidden" Foreground="#E040FB" Background="#444"
+                                 BorderThickness="0" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Button x:Name="btnProcess" Content="Restore Face" Height="34"
+                    Background="#E040FB" Foreground="White" BorderThickness="0"
+                    FontWeight="SemiBold" Cursor="Hand" Click="BtnProcess_Click" IsEnabled="False"/>
+
+            <TextBlock Text="Ảnh đã phục hồi sẽ hiển thị tại Center Preview với splitter so sánh trước/sau."
+                       Foreground="#666" FontSize="10" Margin="0,12,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+</UserControl>

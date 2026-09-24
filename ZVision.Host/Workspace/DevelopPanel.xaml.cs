@@ -1,0 +1,2654 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+using System.IO;
+using System.Text.RegularExpressions;
+using ZVision.Core;
+using ZVision.Imaging;
+using ZVision.Shared;
+using ZeroUI.Wpf.Editors;
+
+namespace ZVision.Host.Workspace;
+
+/// <summary>
+/// Panel Develop xử lý ảnh phi phá hủy 32-bit float. Các nhóm (Expander) thu gọn được: Basic/Tone/Presence/Color/
+/// HSL/Detail/Effects/Geometry. Mỗi slider có ô nhập số trực tiếp + double-click reset.
+/// Kéo slider -> debounce -> UpsertGroup -> HistoryChanged -> CenterPreview render lại.
+/// </summary>
+public partial class DevelopPanel : UserControl
+{
+    private IWorkspaceService? _workspace;
+    private IHistoryService? _history;
+    private DevelopRenderer? _renderer;
+    private DevelopClipboard? _clipboard;
+    private IStyleService? _styles;
+    private string? _currentPath;
+    private bool _loading;
+
+    private readonly Dictionary<string, NumericSliderEdit> _sliders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> _defaults = new(StringComparer.OrdinalIgnoreCase);
+
+    // HSL state: 8 dải × (hue, sat, lum).
+    private readonly float[] _hslHue = new float[HslMixerOp.Bands];
+    private readonly float[] _hslSat = new float[HslMixerOp.Bands];
+    private readonly float[] _hslLum = new float[HslMixerOp.Bands];
+    private int _band;
+    private ComboBox? _bandCombo;
+    private System.Windows.Controls.Primitives.ToggleButton? btnTat;
+    private ComboBox? cmbTatMode;
+    public event EventHandler<(bool Active, string Mode)>? TatStateChanged;
+    private string _lutPath = "";
+    private TextBlock? _lutLabel;
+
+    // Tone curve editor + channel selector.
+    private CurveEditor? _curveEditor;
+    private ComboBox? _curveChannel; // 0=RGB,1=R,2=G,3=B
+    private ToggleSwitch? _chkCurvePreserveHue; // D1.4
+    private readonly string[] _curveData = { "0,0;1,1", "0,0;1,1", "0,0;1,1", "0,0;1,1" };
+
+    // Color grading 3-way wheels + lum sliders. 0=Shadows,1=Midtones,2=Highlights,3=Global.
+    private readonly ColorWheel[] _gradeWheels = new ColorWheel[4];
+    private readonly float[] _gradeHue = new float[4];
+    private readonly float[] _gradeSat = new float[4];
+
+    // Crop rectangle (chuẩn hoá [0..1]). Mặc định full khung. Set bởi CenterPreview overlay.
+    private float _cropX, _cropY, _cropW = 1f, _cropH = 1f;
+
+    // B&W + Invert toggles & Treatment
+    private SegmentedControl? _segTreatment;
+    private ToggleSwitch? _chkBw;
+    private ToggleSwitch? _chkInvert;
+    private ToggleSwitch? _chkFilmNeg;
+    private ToggleSwitch? _chkAiUpscale;
+    private ComboBox? _cmbInputProfile; // D2.2 working/input color space
+    private TextBlock? _iccAutoInfo;    // hiển thị ICC nhúng phát hiện được (D2.2/7.3)
+    private ComboBox? _cmbSoftProof;    // #1 soft-proof / gamut map đích
+    private ComboBox? _cmbSoftProofMode; // #1 clip / desaturate
+    private TextBlock? _softProofInfo;  // % pixel ngoài gamut
+    private ComboBox? _cmbGradientMap;  // #5 preset gradient map
+    private TextBox? _gmShadow, _gmMid, _gmHigh; // #5 màu 3 chặng tuỳ chỉnh (hex sRGB)
+    private TextBlock? _colorMatchInfo; // #8 color match reference label
+    private ZVision.Imaging.ColorMatch.Stats? _colorMatchStats; // stats ảnh tham chiếu đã đo
+    public Func<string?>? ReferenceImageProvider { get; set; }
+
+    // Quick Tool Strip events
+    public event EventHandler? RequestToggleCrop;
+    public event EventHandler? RequestToggleHeal;
+    public event EventHandler? RequestToggleMask;
+
+    private void BtnToolCrop_Click(object sender, RoutedEventArgs e) => RequestToggleCrop?.Invoke(this, EventArgs.Empty);
+
+    private void BtnToolHeal_Click(object sender, RoutedEventArgs e)
+    {
+        FocusHealing();
+        RequestToggleHeal?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void BtnToolMask_Click(object sender, RoutedEventArgs e)
+    {
+        FocusMasking();
+        RequestToggleMask?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void BtnToolTat_Click(object sender, RoutedEventArgs e)
+    {
+        if (btnTat != null)
+        {
+            btnTat.IsChecked = !(btnTat.IsChecked == true);
+            TatStateChanged?.Invoke(this, (btnTat.IsChecked == true, GetTatMode()));
+            btnToolTat.Background = (btnTat.IsChecked == true)
+                ? ThemeManager.GetBrush("AccentBrush")
+                : ThemeManager.GetBrush("BgHoverBrush");
+        }
+    }
+
+    // Lensfun auto lens-correction (5.3).
+    private LensfunService? _lensfun;
+    private TextBlock? _lensAutoInfo;
+    private LensProfileOp? _autoLensOp; // op lensfun đã dựng, được BuildOps phát ra (rỗng nếu chưa auto)
+
+    // Auto WB gains (áp qua ChannelGainOp). 1,1,1 = không.
+    private float _wbGainR = 1f, _wbGainG = 1f, _wbGainB = 1f;
+
+    // Lua Scripting UI fields
+    private ComboBox? _cmbLuaScript;
+    private StackPanel? _panelLuaSliders;
+    private readonly Dictionary<string, double> _luaSliderVals = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NumericSliderEdit> _luaSliders = new(StringComparer.OrdinalIgnoreCase);
+
+    // Solo Mode & Tab Filter
+    private bool _soloMode = true;
+    private static readonly string[] FilterTabs = { "All", "Basic", "Color", "Detail", "Advanced" };
+    private string _currentTab = "All";
+
+    private readonly DispatcherTimer _debounce;
+    private bool _pendingCommit;
+
+    public DevelopPanel()
+    {
+        InitializeComponent();
+        _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+        _debounce.Tick += (s, e) => { _debounce.Stop(); if (_pendingCommit) { _pendingCommit = false; Commit(); } };
+
+        BuildUI();
+        chkSoloMode.CheckedChanged += ChkSoloMode_Changed;
+        segFilterTabs.Items = FilterTabs;
+        segFilterTabs.SelectedIndex = 0;
+        segFilterTabs.SelectedIndexChanged += SegFilterTabs_SelectedIndexChanged;
+        SetEnabled(false);
+    }
+
+    public void Bind(IWorkspaceService workspace, IHistoryService history, DevelopRenderer? renderer = null,
+                     DevelopClipboard? clipboard = null, IStyleService? styles = null, LensfunService? lensfun = null)
+    {
+        _workspace = workspace;
+        _history = history;
+        _renderer = renderer;
+        _clipboard = clipboard;
+        _styles = styles;
+        _lensfun = lensfun;
+        _workspace.ActiveImageChanged += (s, e) => Dispatcher.BeginInvoke(() => LoadFor(e.CurrentPath));
+        _workspace.SelectionChanged += (s, e) => Dispatcher.BeginInvoke(() => UpdateSyncButtonState());
+        RefreshPresetList();
+        LoadFor(_workspace.ActiveImage);
+        UpdateSyncButtonState();
+    }
+
+    /// <summary>Bắn khi crop rectangle thay đổi (load ảnh / reset). CenterPreview overlay lắng nghe để vẽ.</summary>
+    public event EventHandler<(float X, float Y, float W, float H)>? CropChanged;
+
+    /// <summary>Yêu cầu bật/tắt clipping preview tạm thời (Alt key dragging QoL)</summary>
+    public event EventHandler<bool>? RequestClippingPreview;
+
+    /// <summary>Đặt crop rectangle (chuẩn hoá) từ overlay rồi commit. Clamp về [0..1] và kích thước tối thiểu.</summary>
+    public void SetCropRect(float x, float y, float w, float h)
+    {
+        x = Math.Clamp(x, 0f, 1f);
+        y = Math.Clamp(y, 0f, 1f);
+        w = Math.Clamp(w, 0.02f, 1f - x);
+        h = Math.Clamp(h, 0.02f, 1f - y);
+        _cropX = x; _cropY = y; _cropW = w; _cropH = h;
+        if (!_loading) Commit();
+    }
+
+    /// <summary>Trả crop rectangle hiện tại (chuẩn hoá).</summary>
+    public (float X, float Y, float W, float H) GetCropRect() => (_cropX, _cropY, _cropW, _cropH);
+
+    private void BuildUI()
+    {
+        // Histogram + cảnh báo clip (live) trên cùng.
+        histogramContainer.Content = BuildHistogram();
+
+        // 1. BASIC (Gom Treatment + Profile + White Balance + Tone + Presence)
+        var gBasic = AddGroup("Basic", true);
+
+        // Treatment: Color | Black & White
+        var treatRow = new DockPanel { Margin = new Thickness(0, 2, 0, 6) };
+        treatRow.Children.Add(new TextBlock { Text = "Treatment", FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Width = 70 });
+        _segTreatment = new SegmentedControl { Height = 22, CornerRadius = 4 };
+        _segTreatment.Items = new[] { "Color", "Black & White" };
+        _segTreatment.SelectedIndex = 0;
+        _segTreatment.SelectedIndexChanged += (_, idx) =>
+        {
+            if (_loading) return;
+            if (_chkBw != null) _chkBw.IsChecked = (idx == 1);
+            ScheduleCommit();
+        };
+        treatRow.Children.Add(_segTreatment);
+        gBasic.Children.Add(treatRow);
+
+        // Profile row (Input Profile)
+        var profRow = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+        profRow.Children.Add(new TextBlock { Text = "Profile", FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Width = 70 });
+        _cmbInputProfile = new ComboBox { Height = 22 };
+        foreach (var n in new[] { "sRGB", "AdobeRGB", "Rec2020", "DisplayP3", "Embedded ICC" })
+            _cmbInputProfile.Items.Add(new ComboBoxItem { Content = n });
+        _cmbInputProfile.SelectedIndex = 0;
+        _cmbInputProfile.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        _cmbInputProfile.ToolTip = "Interpret image in this color space then map to working space.";
+        profRow.Children.Add(_cmbInputProfile);
+        gBasic.Children.Add(profRow);
+        _iccAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(70, 0, 0, 4), TextWrapping = TextWrapping.Wrap };
+        _iccAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        gBasic.Children.Add(_iccAutoInfo);
+
+        // Subheader: White Balance
+        AddSubheader(gBasic, "WHITE BALANCE");
+        AddSlider(gBasic, "kelvin", "Temp (K)", 2000, 12000, 6500, "0");
+        AddSlider(gBasic, "temp", "Temp (fine)", -1, 1, 0);
+        AddSlider(gBasic, "tint", "Tint", -1, 1, 0);
+
+        var wbBtnRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        var btnAutoWb = new Button { Content = "Auto WB", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Auto white balance (gray-world)" };
+        btnAutoWb.Click += BtnAutoWb_Click;
+        var btnPickWb = new Button { Content = "⊙ Pick", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Eyedropper: click to sample neutral gray point on photo" };
+        btnPickWb.Click += BtnPickWb_Click;
+        wbBtnRow.Children.Add(btnAutoWb);
+        wbBtnRow.Children.Add(btnPickWb);
+        gBasic.Children.Add(wbBtnRow);
+
+        var wbPresetRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        wbPresetRow.Children.Add(new TextBlock { Text = "Preset", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        var cmbWbPreset = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "—", "Daylight (5500K)", "Cloudy (6500K)", "Shade (7500K)", "Tungsten (3200K)", "Fluorescent (4000K)", "Flash (5500K)" })
+            cmbWbPreset.Items.Add(new ComboBoxItem { Content = n });
+        cmbWbPreset.SelectedIndex = 0;
+        cmbWbPreset.SelectionChanged += (_, _) => { if (!_loading) ApplyWbPreset(cmbWbPreset.SelectedIndex); };
+        cmbWbPreset.ToolTip = "Set Kelvin temperature by lighting preset.";
+        wbPresetRow.Children.Add(cmbWbPreset);
+        gBasic.Children.Add(wbPresetRow);
+
+        // Subheader: Tone
+        AddSubheader(gBasic, "TONE");
+        var toneBtnRow = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
+        var btnAutoTone = new Button { Content = "Auto Tone", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Auto exposure, contrast, whites, blacks" };
+        btnAutoTone.Click += BtnAuto_Click;
+        toneBtnRow.Children.Add(btnAutoTone);
+        gBasic.Children.Add(toneBtnRow);
+
+        AddSlider(gBasic, "exposure", "Exposure", -5, 5, 0, "0.00");
+        AddSlider(gBasic, "contrast", "Contrast", -1, 1, 0);
+        AddSlider(gBasic, "highlights", "Highlights", -1, 1, 0);
+        AddSlider(gBasic, "shadows", "Shadows", -1, 1, 0);
+        AddSlider(gBasic, "whites", "Whites", -1, 1, 0);
+        AddSlider(gBasic, "blacks", "Blacks", -1, 1, 0);
+        AddSlider(gBasic, "filmic", "Filmic", 0, 1, 0);
+
+        // Subheader: Presence
+        AddSubheader(gBasic, "PRESENCE");
+        AddSlider(gBasic, "texture", "Texture", -1, 1, 0);
+        AddSlider(gBasic, "clarity", "Clarity", -1, 1, 0);
+        AddSlider(gBasic, "dehaze", "Dehaze", -1, 1, 0);
+        AddSlider(gBasic, "vibrance", "Vibrance", -1, 1, 0);
+        AddSlider(gBasic, "saturation", "Saturation", -1, 1, 0);
+
+        // 2. TONE CURVE (Point Curve + Parametric Curve)
+        var gCurve = AddGroup("Tone Curve", false);
+        var chRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        chRow.Children.Add(new TextBlock { Text = "Channel", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        _curveChannel = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "RGB", "Red", "Green", "Blue" })
+            _curveChannel.Items.Add(new ComboBoxItem { Content = n });
+        _curveChannel.SelectedIndex = 0;
+        _curveChannel.SelectionChanged += CurveChannel_SelectionChanged;
+        chRow.Children.Add(_curveChannel);
+        gCurve.Children.Add(chRow);
+
+        _curveEditor = new CurveEditor { Margin = new Thickness(0, 2, 0, 4) };
+        _curveEditor.CurveChanged += CurveEditor_Changed;
+        gCurve.Children.Add(_curveEditor);
+
+        var presetRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        presetRow.Children.Add(new TextBlock { Text = "Preset", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        var cmbCurvePreset = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "Linear", "Medium Contrast", "Strong Contrast", "Faded (lifted blacks)" })
+            cmbCurvePreset.Items.Add(new ComboBoxItem { Content = n });
+        cmbCurvePreset.SelectedIndex = 0;
+        cmbCurvePreset.SelectionChanged += (_, _) => { if (!_loading) ApplyCurvePreset(cmbCurvePreset.SelectedIndex); };
+        cmbCurvePreset.ToolTip = "Apply contrast curve preset to RGB master channel.";
+        presetRow.Children.Add(cmbCurvePreset);
+        gCurve.Children.Add(presetRow);
+
+        var curveHint = new TextBlock
+        {
+            Text = "Drag points • double-click add/delete • right-click delete",
+            Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 10, TextWrapping = TextWrapping.Wrap
+        };
+        gCurve.Children.Add(curveHint);
+
+        var (rowCurveHue, swCurveHue) = CreateToggleRow("Preserve hue (master via luminance)", "Apply curve to luminance and scale RGB to preserve hue and avoid oversaturation shifts.");
+        _chkCurvePreserveHue = swCurveHue;
+        _chkCurvePreserveHue.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gCurve.Children.Add(rowCurveHue);
+
+        AddSubheader(gCurve, "PARAMETRIC CURVE");
+        AddSlider(gCurve, "pc_hi", "Highlights", -1, 1, 0);
+        AddSlider(gCurve, "pc_lt", "Lights", -1, 1, 0);
+        AddSlider(gCurve, "pc_dk", "Darks", -1, 1, 0);
+        AddSlider(gCurve, "pc_sh", "Shadows", -1, 1, 0);
+
+        // 3. COLOR MIXER & GRADING (Gom HSL + Color Grading + Split Toning + B&W Mix)
+        var gColor = AddGroup("Color Mixer & Grading", false);
+
+        AddSubheader(gColor, "HSL / COLOR MIXER");
+        var tatRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        btnTat = new System.Windows.Controls.Primitives.ToggleButton
+        {
+            Content = "🎯 Targeted Adjustment (TAT)",
+            Padding = new Thickness(8, 3, 8, 3),
+            ToolTip = "Targeted Adjustment Tool: Click and drag up/down on photo to adjust tonal bands."
+        };
+        btnTat.Checked += (s, e) => { TatStateChanged?.Invoke(this, (true, GetTatMode())); if (btnToolTat != null) btnToolTat.Background = ThemeManager.GetBrush("AccentBrush"); };
+        btnTat.Unchecked += (s, e) => { TatStateChanged?.Invoke(this, (false, GetTatMode())); if (btnToolTat != null) btnToolTat.Background = ThemeManager.GetBrush("BgHoverBrush"); };
+
+        cmbTatMode = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0), Width = 90 };
+        cmbTatMode.Items.Add(new ComboBoxItem { Content = "Saturation", Tag = "sat" });
+        cmbTatMode.Items.Add(new ComboBoxItem { Content = "Luminance", Tag = "lum" });
+        cmbTatMode.Items.Add(new ComboBoxItem { Content = "Hue", Tag = "hue" });
+        cmbTatMode.SelectedIndex = 0;
+        cmbTatMode.SelectionChanged += (s, e) => {
+            if (btnTat != null && btnTat.IsChecked == true) TatStateChanged?.Invoke(this, (true, GetTatMode()));
+        };
+        tatRow.Children.Add(btnTat);
+        tatRow.Children.Add(cmbTatMode);
+        gColor.Children.Add(tatRow);
+
+        var bandRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        bandRow.Children.Add(new TextBlock { Text = "Color Band", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        _bandCombo = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta" })
+            _bandCombo.Items.Add(new ComboBoxItem { Content = n });
+        _bandCombo.SelectedIndex = 0;
+        _bandCombo.SelectionChanged += BandCombo_SelectionChanged;
+        bandRow.Children.Add(_bandCombo);
+        gColor.Children.Add(bandRow);
+        AddSlider(gColor, "hsl_hue", "Hue", -1, 1, 0);
+        AddSlider(gColor, "hsl_sat", "Saturation", -1, 1, 0);
+        AddSlider(gColor, "hsl_lum", "Luminance", -1, 1, 0);
+
+        AddSubheader(gColor, "COLOR GRADING (3-WAY)");
+        string[] zoneNames = { "Shadows", "Midtones", "Highlights", "Global" };
+        var wheelRow = new UniformGrid { Columns = 2, Margin = new Thickness(0, 2, 0, 4) };
+        for (int z = 0; z < 4; z++)
+        {
+            int zi = z;
+            var cell = new StackPanel { Margin = new Thickness(2) };
+            cell.Children.Add(new TextBlock { Text = zoneNames[z], Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center });
+            var wheel = new ColorWheel { HorizontalAlignment = HorizontalAlignment.Center };
+            wheel.ColorChanged += (_, hs) => { _gradeHue[zi] = hs.hue; _gradeSat[zi] = hs.sat; if (!_loading) ScheduleCommit(); };
+            _gradeWheels[z] = wheel;
+            cell.Children.Add(wheel);
+            wheelRow.Children.Add(cell);
+        }
+        gColor.Children.Add(wheelRow);
+        AddSlider(gColor, "cg_sh_lum", "Shadow Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_mid_lum", "Midtone Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_hi_lum", "Highlight Lum", -1, 1, 0);
+        AddSlider(gColor, "cg_blend", "Blending", 0, 1, 0.5, "0.00");
+
+        AddSubheader(gColor, "SPLIT TONING");
+        AddSlider(gColor, "st_hiHue", "HL Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "st_hiSat", "HL Sat", 0, 1, 0);
+        AddSlider(gColor, "st_shHue", "SH Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "st_shSat", "SH Sat", 0, 1, 0);
+        AddSlider(gColor, "st_bal", "Balance", -1, 1, 0);
+
+        AddSubheader(gColor, "BLACK & WHITE MIX");
+        var (rowBw, swBw) = CreateToggleRow("Enable B&W Mix");
+        _chkBw = swBw;
+        _chkBw.CheckedChanged += (_, _) =>
+        {
+            if (_segTreatment != null)
+                _segTreatment.SelectedIndex = _chkBw.IsChecked ? 1 : 0;
+            if (!_loading) ScheduleCommit();
+        };
+        gColor.Children.Add(rowBw);
+        AddSlider(gColor, "bw_r", "Red mix", 0, 1, 0.299, "0.00");
+        AddSlider(gColor, "bw_g", "Green mix", 0, 1, 0.587, "0.00");
+        AddSlider(gColor, "bw_b", "Blue mix", 0, 1, 0.114, "0.00");
+        var bwFilterRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        bwFilterRow.Children.Add(new TextBlock { Text = "Filter", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        var cmbBwFilter = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        foreach (var n in new[] { "Neutral", "Red", "Orange", "Yellow", "Green", "Blue" })
+            cmbBwFilter.Items.Add(new ComboBoxItem { Content = n });
+        cmbBwFilter.SelectedIndex = 0;
+        cmbBwFilter.SelectionChanged += (_, _) => { if (!_loading) ApplyBwFilter(cmbBwFilter.SelectedIndex); };
+        cmbBwFilter.ToolTip = "Simulate optical color filters: Red darkens sky/lightens skin, Green brightens foliage...";
+        bwFilterRow.Children.Add(cmbBwFilter);
+        gColor.Children.Add(bwFilterRow);
+        AddSlider(gColor, "bw_toneHue", "Tone Hue", 0, 360, 0, "0");
+        AddSlider(gColor, "bw_toneStr", "Tone Strength", 0, 1, 0);
+
+        // 4. DETAIL (Sharpening + Noise Reduction + Defringe + AI)
+        var gDetail = AddGroup("Detail", false);
+        gDetail.Children.Add(BuildDetailLoupeWidget());
+        AddSubheader(gDetail, "SHARPENING");
+        AddSlider(gDetail, "sharpen", "Sharpen", 0, 1, 0);
+        AddSlider(gDetail, "sharpenRadius", "Sharpen Radius", 0.5, 3, 1, "0.0");
+        AddSlider(gDetail, "sharpenMask", "Sharpen Masking", 0, 1, 0);
+
+        AddSubheader(gDetail, "NOISE REDUCTION");
+        AddSlider(gDetail, "lumaNR", "Luminance NR", 0, 1, 0);
+        AddSlider(gDetail, "colorNR", "Color NR", 0, 1, 0);
+        AddSlider(gDetail, "chromaNR", "Chroma NR (edge)", 0, 1, 0);
+        AddSlider(gDetail, "diffuse", "Diffuse/Sharpen", -1, 1, 0);
+        AddSlider(gDetail, "diffuse_iter", "Diffuse Iterations", 1, 12, 6, "0");
+        AddSlider(gDetail, "diffuse_edge", "Diffuse Edge Sens", 0, 1, 0.5, "0.00");
+        AddSlider(gDetail, "fsep_smooth", "Skin Smooth", 0, 1, 0);
+        AddSlider(gDetail, "fsep_radius", "Skin Radius", 2, 30, 8, "0");
+        AddSlider(gDetail, "fsep_detail", "Skin Detail", 0.5, 2, 1, "0.00");
+
+        AddSubheader(gDetail, "OPTICS & DEFRINGE");
+        AddSlider(gDetail, "defrPurple", "Defringe Purple", 0, 1, 0);
+        AddSlider(gDetail, "defrGreen", "Defringe Green", 0, 1, 0);
+        AddSlider(gDetail, "hotpix", "Hot Pixel", 0, 1, 0);
+        AddSlider(gDetail, "hotpixThr", "Hot Pixel Thr", 0, 1, 0.5);
+        AddSlider(gDetail, "caRed", "CA Red/Cyan", -1, 1, 0);
+        AddSlider(gDetail, "caBlue", "CA Blue/Yellow", -1, 1, 0);
+        var btnAutoCa = new Button { Content = "Auto CA", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto chromatic aberration correction." };
+        btnAutoCa.Click += BtnAutoCa_Click;
+        gDetail.Children.Add(btnAutoCa);
+
+        AddSubheader(gDetail, "AI ENHANCEMENT");
+        AddSlider(gDetail, "aiDenoise", "AI Denoise", 0, 1, 0);
+        var (rowAiUp, swAiUp) = CreateToggleRow("AI Upscale 4x (on export)", "Enlarge 4x using AI during export (requires Upscaler model)");
+        _chkAiUpscale = swAiUp;
+        _chkAiUpscale.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gDetail.Children.Add(rowAiUp);
+
+        // 5. OPTICS (Lensfun Profile + Manual Distortion)
+        var gOptics = AddGroup("Optics", false);
+        AddSubheader(gOptics, "PROFILE CORRECTIONS");
+        var btnAutoLens = new Button { Content = "Auto Lens (lensfun)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Auto lens distortion & vignette correction from EXIF focal length using lensfun." };
+        btnAutoLens.Click += BtnAutoLens_Click;
+        gOptics.Children.Add(btnAutoLens);
+        _lensAutoInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
+        _lensAutoInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        gOptics.Children.Add(_lensAutoInfo);
+
+        AddSubheader(gOptics, "MANUAL CORRECTIONS");
+        AddSlider(gOptics, "lens_k1", "Lens Distortion", -0.5, 0.5, 0, "0.00");
+        AddSlider(gOptics, "lens_k2", "Lens Distortion 2", -0.5, 0.5, 0, "0.00");
+        AddSlider(gOptics, "lens_vig", "Lens Vignette Fix", 0, 1, 0);
+
+        // 6. GEOMETRY & TRANSFORM (Rotate/Flip + Straighten + Perspective)
+        var gGeo = AddGroup("Geometry & Transform", false);
+        var rotRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        var btnRotL = new Button { Content = "⟲ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnRotR = new Button { Content = "⟳ 90°", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnFlipH = new Button { Content = "⇋ FlipH", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        var btnFlipV = new Button { Content = "⇅ FlipV", Padding = new Thickness(8, 3, 8, 3) };
+        btnRotL.Click += (_, _) => RotateBy(-1);
+        btnRotR.Click += (_, _) => RotateBy(1);
+        btnFlipH.Click += (_, _) => ToggleFlip(true);
+        btnFlipV.Click += (_, _) => ToggleFlip(false);
+        rotRow.Children.Add(btnRotL);
+        rotRow.Children.Add(btnRotR);
+        rotRow.Children.Add(btnFlipH);
+        rotRow.Children.Add(btnFlipV);
+        gGeo.Children.Add(rotRow);
+
+        AddSubheader(gGeo, "UPRIGHT & STRAIGHTEN");
+        AddSlider(gGeo, "straighten", "Straighten", -45, 45, 0, "0.0");
+        var geoBtnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+        var btnAutoStraighten = new Button { Content = "Auto Straighten", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0), ToolTip = "Auto level horizon (estimates dominant edge tilt)." };
+        btnAutoStraighten.Click += BtnAutoStraighten_Click;
+        geoBtnRow.Children.Add(btnAutoStraighten);
+        var btnAutoUpright = new Button { Content = "Auto Upright", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Auto correct perspective keystone (converging vertical/horizontal lines)." };
+        btnAutoUpright.Click += BtnAutoUpright_Click;
+        geoBtnRow.Children.Add(btnAutoUpright);
+        gGeo.Children.Add(geoBtnRow);
+
+        AddSubheader(gGeo, "PERSPECTIVE TRANSFORM");
+        AddSlider(gGeo, "persp_v", "Perspective V", -1, 1, 0);
+        AddSlider(gGeo, "persp_h", "Perspective H", -1, 1, 0);
+        AddSlider(gGeo, "persp_scale", "Persp Scale", 0.5, 2, 1, "0.00");
+
+        // 7. EFFECTS (Vignette + Grain + Glow)
+        var gFx = AddGroup("Effects", false);
+        AddSubheader(gFx, "POST-CROP VIGNETTE");
+        AddSlider(gFx, "vignette", "Vignette", -1, 1, 0);
+        AddSlider(gFx, "vig_mid", "Vignette Midpoint", 0, 1, 0.5);
+        AddSlider(gFx, "vig_feather", "Vignette Feather", 0.01, 1, 0.5, "0.00");
+        AddSlider(gFx, "vig_round", "Vignette Roundness", -1, 1, 0, "0.00");
+        AddSlider(gFx, "vig_hi", "Vignette Highlights", 0, 1, 0, "0.00");
+
+        AddSubheader(gFx, "GRAIN");
+        AddSlider(gFx, "grain", "Grain", 0, 1, 0);
+        AddSlider(gFx, "grain_size", "Grain Size", 0.5, 5, 1, "0.0");
+        AddSlider(gFx, "grain_rough", "Grain Roughness", 0, 1, 0.5, "0.00");
+        AddSlider(gFx, "grain_color", "Grain Color", 0, 1, 0, "0.00");
+
+        AddSubheader(gFx, "GLOW / ORTON");
+        AddSlider(gFx, "glow", "Glow / Soften", 0, 1, 0);
+        AddSlider(gFx, "glow_radius", "Glow Radius", 2, 50, 12, "0");
+        AddSlider(gFx, "glow_thresh", "Glow Threshold", 0, 1, 0, "0.00");
+
+        // 8. CALIBRATION (Color Calibration)
+        var gChm = AddGroup("Calibration", false);
+        AddSubheader(gChm, "CAMERA CALIBRATION");
+        AddSlider(gChm, "chm_rHue", "Red Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_rSat", "Red Sat", -1, 1, 0);
+        AddSlider(gChm, "chm_gHue", "Green Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_gSat", "Green Sat", -1, 1, 0);
+        AddSlider(gChm, "chm_bHue", "Blue Hue", -1, 1, 0);
+        AddSlider(gChm, "chm_bSat", "Blue Sat", -1, 1, 0);
+
+        // 9. ADVANCED & LAB (Darktable / Custom Tools)
+        var gAdv = AddGroup("Advanced & Lab (Darktable / Custom)", false);
+
+        AddSubheader(gAdv, "SCENE-REFERRED TONE MAPPING");
+        AddSlider(gAdv, "sig_amt", "Sigmoid", 0, 1, 0);
+        AddSlider(gAdv, "sig_contrast", "Sigmoid Contrast", 0.5, 3, 1.5, "0.00");
+        AddSlider(gAdv, "filmrgb_amt", "Filmic RGB", 0, 1, 0);
+        AddSlider(gAdv, "filmrgb_white", "  White (EV)", 1, 8, 4, "0.0");
+        AddSlider(gAdv, "filmrgb_black", "  Black (EV)", -10, -1, -6, "0.0");
+        AddSlider(gAdv, "filmrgb_contrast", "  Contrast", 0.5, 2.5, 1.2, "0.00");
+        AddSlider(gAdv, "filmrgb_lat", "  Latitude", 0, 0.9, 0.2, "0.00");
+        AddSlider(gAdv, "filmrgb_sat", "  HL Saturation", -1, 1, 0);
+        AddSlider(gAdv, "hlrecon", "Highlight Recon", 0, 1, 0);
+        AddSlider(gAdv, "ltm_amt", "Local Tone (HDR)", 0, 1, 0);
+        AddSlider(gAdv, "ltm_detail", "  Local Contrast", -1, 1, 0);
+        AddSlider(gAdv, "clahe", "Local Contrast (CLAHE)", 0, 1, 0);
+        AddSlider(gAdv, "clahe_clip", "CLAHE Clip Limit", 1, 10, 3, "0.0");
+
+        AddSubheader(gAdv, "TONE EQUALIZER");
+        AddSlider(gAdv, "teq_blacks", "Blacks", -1, 1, 0);
+        AddSlider(gAdv, "teq_shadows", "Shadows", -1, 1, 0);
+        AddSlider(gAdv, "teq_mid", "Midtones", -1, 1, 0);
+        AddSlider(gAdv, "teq_highlights", "Highlights", -1, 1, 0);
+        AddSlider(gAdv, "teq_whites", "Whites", -1, 1, 0);
+
+        AddSubheader(gAdv, "LEVELS");
+        AddSlider(gAdv, "lvl_black", "Black point", 0, 0.5, 0, "0.00");
+        AddSlider(gAdv, "lvl_gamma", "Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gAdv, "lvl_white", "White point", 0.5, 1, 1, "0.00");
+        var lvlBtnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+        var btnAutoLevels = new Button { Content = "Auto Levels", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 4, 0) };
+        btnAutoLevels.Click += BtnAutoLevels_Click;
+        lvlBtnRow.Children.Add(btnAutoLevels);
+        var btnAutoColor = new Button { Content = "Auto Color", Padding = new Thickness(8, 3, 8, 3), ToolTip = "Stretch dynamic range per RGB channel to remove color casts." };
+        btnAutoColor.Click += BtnAutoColor_Click;
+        lvlBtnRow.Children.Add(btnAutoColor);
+        gAdv.Children.Add(lvlBtnRow);
+
+        var expLvlCh = new Expander { Header = "Per-channel R/G/B", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 11, Margin = new Thickness(0, 2, 0, 2) };
+        var gLvlCh = new StackPanel();
+        AddSlider(gLvlCh, "lvl_blackR", "R Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteR", "R White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaR", "R Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_blackG", "G Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteG", "G White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaG", "G Gamma", 0.2, 3, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_blackB", "B Black", 0, 0.5, 0, "0.00");
+        AddSlider(gLvlCh, "lvl_whiteB", "B White", 0.5, 1, 1, "0.00");
+        AddSlider(gLvlCh, "lvl_gammaB", "B Gamma", 0.2, 3, 1, "0.00");
+        expLvlCh.Content = gLvlCh;
+        gAdv.Children.Add(expLvlCh);
+
+        AddSubheader(gAdv, "COLOR BALANCE & CONTRAST");
+        AddSlider(gAdv, "cbr_liftHue", "Shadow Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_liftSat", "Shadow Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_gammaHue", "Mid Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_gammaSat", "Mid Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_gainHue", "Highlight Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "cbr_gainSat", "Highlight Sat", 0, 1, 0);
+        AddSlider(gAdv, "cbr_chroma", "Global Chroma", -1, 1, 0);
+        AddSlider(gAdv, "cbr_contrast", "Global Contrast", -1, 1, 0);
+        AddSlider(gAdv, "cc_ga", "Green ↔ Magenta", -1, 1, 0);
+        AddSlider(gAdv, "cc_by", "Blue ↔ Yellow", -1, 1, 0);
+        AddSlider(gAdv, "velvia", "Velvia", 0, 1, 0);
+
+        AddSubheader(gAdv, "COLOR TOOLS (SELECTIVE, UNIFY, MATCH, LUT)");
+        AddSlider(gAdv, "sel_src", "Selective Source Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "sel_tgt", "Selective Target Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "sel_tol", "Selective Tolerance", 1, 90, 30, "0");
+        AddSlider(gAdv, "sel_str", "Selective Strength", 0, 1, 0);
+
+        AddSlider(gAdv, "uni_hue", "Unify Target Hue", 0, 360, 0, "0");
+        AddSlider(gAdv, "uni_sat", "Unify Target Sat", 0, 1, 0.5, "0.00");
+        AddSlider(gAdv, "uni_int", "Unify Intensity", 0, 1, 0);
+
+        // Color Match
+        var matchRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        _colorMatchInfo = new TextBlock { Text = "(no reference photo selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        var btnMatchRef = new Button { Content = "Match Ref", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Match color grading from the active Reference Photo (Shift+R)" };
+        var btnMatch = new Button { Content = "Choose File...", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0) };
+        var btnMatchClear = new Button { Content = "✕", Padding = new Thickness(5, 3, 5, 3), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Clear color match" };
+        DockPanel.SetDock(btnMatchClear, Dock.Right);
+        DockPanel.SetDock(btnMatch, Dock.Right);
+        DockPanel.SetDock(btnMatchRef, Dock.Right);
+        btnMatchRef.Click += BtnColorMatchReference_Click;
+        btnMatch.Click += BtnColorMatch_Click;
+        btnMatchClear.Click += BtnColorMatchClear_Click;
+        matchRow.Children.Add(btnMatchClear);
+        matchRow.Children.Add(btnMatch);
+        matchRow.Children.Add(btnMatchRef);
+        matchRow.Children.Add(_colorMatchInfo);
+        gAdv.Children.Add(matchRow);
+        AddSlider(gAdv, "match_strength", "Match Strength", 0, 1, 0.8, "0.00");
+
+        // 3D LUT
+        var lutRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        _lutLabel = new TextBlock { Text = "(no LUT selected)", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        var btnLut = new Button { Content = "Choose LUT...", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+        var btnLutClear = new Button { Content = "✕", Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(4, 0, 0, 0) };
+        DockPanel.SetDock(btnLut, Dock.Right);
+        DockPanel.SetDock(btnLutClear, Dock.Right);
+        btnLut.Click += BtnLutPick_Click;
+        btnLutClear.Click += (_, _) => { _lutPath = ""; if (_lutLabel != null) _lutLabel.Text = "(no LUT selected)"; Commit(); };
+        lutRow.Children.Add(btnLutClear);
+        lutRow.Children.Add(btnLut);
+        lutRow.Children.Add(_lutLabel);
+        gAdv.Children.Add(lutRow);
+        AddSlider(gAdv, "lut_intensity", "LUT Intensity", 0, 1, 1);
+
+        // Gradient Map
+        var gradRow = new DockPanel { Margin = new Thickness(0, 4, 0, 2) };
+        gradRow.Children.Add(new TextBlock { Text = "Gradient Map", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 86 });
+        _cmbGradientMap = new ComboBox { Height = 22 };
+        foreach (var preset in GradientMapPresets.All)
+            _cmbGradientMap.Items.Add(new ComboBoxItem { Content = preset.Name });
+        _cmbGradientMap.SelectedIndex = 0;
+        _cmbGradientMap.ToolTip = "Map luminance to color gradient.";
+        gradRow.Children.Add(_cmbGradientMap);
+        gAdv.Children.Add(gradRow);
+        AddSlider(gAdv, "gradmap_opacity", "Gradient Amount", 0, 1, 0, "0.00");
+        AddSlider(gAdv, "gradmap_mid", "Gradient Midpoint", 0.05, 0.95, 0.5, "0.00");
+        var gmColorRow = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+        gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+        gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+        gmColorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _gmShadow = GradientHexBox("000000", "Shadow color (hex RRGGBB)");
+        _gmMid = GradientHexBox("808080", "Midtone color (hex RRGGBB)");
+        _gmHigh = GradientHexBox("FFFFFF", "Highlight color (hex RRGGBB)");
+        Grid.SetColumn(_gmShadow, 0); Grid.SetColumn(_gmMid, 2); Grid.SetColumn(_gmHigh, 4);
+        gmColorRow.Children.Add(_gmShadow);
+        gmColorRow.Children.Add(_gmMid);
+        gmColorRow.Children.Add(_gmHigh);
+        gAdv.Children.Add(gmColorRow);
+        _cmbGradientMap.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            int i = _cmbGradientMap.SelectedIndex;
+            if (i > 0)
+            {
+                var pr = GradientMapPresets.ByIndex(i);
+                _gmShadow!.Text = pr.Shadow; _gmMid!.Text = pr.Mid; _gmHigh!.Text = pr.High;
+            }
+            ScheduleCommit();
+        };
+
+        // Negative / Film Negative
+        var (rowInvert, swInvert) = CreateToggleRow("Negative / Invert");
+        _chkInvert = swInvert;
+        _chkInvert.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gAdv.Children.Add(rowInvert);
+
+        var (rowFilmNeg, swFilmNeg) = CreateToggleRow("Enable Film Negative (negadoctor)");
+        _chkFilmNeg = swFilmNeg;
+        _chkFilmNeg.CheckedChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        gAdv.Children.Add(rowFilmNeg);
+        AddSlider(gAdv, "film_rbase", "Base R", 0.02, 1, 0.50, "0.00");
+        AddSlider(gAdv, "film_gbase", "Base G", 0.02, 1, 0.30, "0.00");
+        AddSlider(gAdv, "film_bbase", "Base B", 0.02, 1, 0.18, "0.00");
+        AddSlider(gAdv, "film_gamma", "Contrast (gamma)", 0.3, 3, 1, "0.00");
+        AddSlider(gAdv, "film_exposure", "Exposure", 0.1, 4, 1, "0.00");
+        var btnPickBase = new Button { Content = "Pick film base (click border)", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 2, 0, 2), HorizontalAlignment = HorizontalAlignment.Left };
+        btnPickBase.Click += BtnPickFilmBase_Click;
+        gAdv.Children.Add(btnPickBase);
+
+        // Soft Proof
+        AddSubheader(gAdv, "SOFT PROOF / GAMUT WARNING");
+        var spRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        spRow.Children.Add(new TextBlock { Text = "Soft Proof", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 90 });
+        _cmbSoftProof = new ComboBox { Height = 22 };
+        foreach (var n in new[] { "Off", "sRGB", "AdobeRGB", "Rec2020", "DisplayP3" })
+            _cmbSoftProof.Items.Add(new ComboBoxItem { Content = n });
+        _cmbSoftProof.SelectedIndex = 0;
+        _cmbSoftProof.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        spRow.Children.Add(_cmbSoftProof);
+        gAdv.Children.Add(spRow);
+
+        var spModeRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+        spModeRow.Children.Add(new TextBlock { Text = "Proof Mode", Foreground = ThemeManager.GetBrush("TextSecondaryBrush"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Width = 90 });
+        _cmbSoftProofMode = new ComboBox { Height = 22 };
+        foreach (var n in new[] { "Clip", "Desaturate" })
+            _cmbSoftProofMode.Items.Add(new ComboBoxItem { Content = n });
+        _cmbSoftProofMode.SelectedIndex = 0;
+        _cmbSoftProofMode.SelectionChanged += (_, _) => { if (!_loading) ScheduleCommit(); };
+        spModeRow.Children.Add(_cmbSoftProofMode);
+        gAdv.Children.Add(spModeRow);
+        _softProofInfo = new TextBlock { FontSize = 10, Margin = new Thickness(0, 0, 0, 2), TextWrapping = TextWrapping.Wrap };
+        _softProofInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        gAdv.Children.Add(_softProofInfo);
+
+        // Lua Scripting
+        AddSubheader(gAdv, "LUA SCRIPTING");
+        var scriptRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+        scriptRow.Children.Add(new TextBlock { Text = "Script", Foreground = ThemeManager.GetBrush("TextDimBrush"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        var btnRefreshLua = new Button { Content = "↻", Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(4, 0, 0, 0), ToolTip = "Rescan Scripts/ directory" };
+        btnRefreshLua.Click += (s, e) => RefreshLuaScripts();
+        DockPanel.SetDock(btnRefreshLua, Dock.Right);
+        scriptRow.Children.Add(btnRefreshLua);
+        _cmbLuaScript = new ComboBox { Height = 22, Margin = new Thickness(6, 0, 0, 0) };
+        _cmbLuaScript.SelectionChanged += CmbLuaScript_SelectionChanged;
+        scriptRow.Children.Add(_cmbLuaScript);
+        gAdv.Children.Add(scriptRow);
+        _panelLuaSliders = new StackPanel { Margin = new Thickness(4, 2, 4, 2) };
+        gAdv.Children.Add(_panelLuaSliders);
+        RefreshLuaScripts();
+
+        // 10. TOOL EXPANDERS (Local Adjustments, Healing, Liquify)
+        var gMask = AddGroup("Local Adjustments", false);
+        _maskExpander = gMask.Parent as Expander;
+        BuildMaskUI(gMask);
+
+        var gHeal = AddGroup("Healing / Clone", false);
+        _healExpander = gHeal.Parent as Expander;
+        BuildHealingUI(gHeal);
+
+        var gLiquify = AddGroup("Liquify / Warp", false);
+        BuildLiquifyUI(gLiquify);
+
+        ThemeizeLiteralForegrounds(panelSliders);
+    }
+
+    private static void AddSubheader(Panel host, string text)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            FontSize = 10,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 10, 0, 3)
+        };
+        tb.SetResourceReference(TextBlock.ForegroundProperty, "TextDimBrush");
+        host.Children.Add(tb);
+    }
+
+    /// <summary>Đệ quy đổi Foreground = Gainsboro/Gray (literal) sang DynamicResource theme brush.</summary>
+    private static void ThemeizeLiteralForegrounds(DependencyObject root)
+    {
+        int n = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        // VisualTree chưa dựng lúc này -> đi theo logical/property. Dùng các control đã add.
+        if (root is Panel panel)
+        {
+            foreach (var child in panel.Children) ThemeizeOne(child);
+        }
+    }
+
+    private static void ThemeizeOne(object element)
+    {
+        switch (element)
+        {
+            case TextBlock tb when IsGrayish(tb.Foreground):
+                tb.SetResourceReference(TextBlock.ForegroundProperty,
+                    tb.FontSize <= 10.5 ? "TextDimBrush" : "TextSecondaryBrush");
+                break;
+            case CheckBox cb when IsGrayish(cb.Foreground):
+                cb.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
+                break;
+            case Expander ex when IsGrayish(ex.Foreground):
+                ex.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
+                break;
+        }
+        // Đệ quy vào container con (DockPanel/StackPanel/Grid... trong nhóm).
+        if (element is Panel p)
+            foreach (var c in p.Children) ThemeizeOne(c);
+        else if (element is Expander e2 && e2.Content is DependencyObject)
+            ThemeizeLiteralForegrounds(e2.Content as DependencyObject ?? e2);
+        else if (element is ContentControl cc && cc.Content is Panel cp)
+            foreach (var c in cp.Children) ThemeizeOne(c);
+    }
+
+    private static bool IsGrayish(System.Windows.Media.Brush? b)
+        => b is System.Windows.Media.SolidColorBrush s &&
+           (s.Color == System.Windows.Media.Colors.Gainsboro || s.Color == System.Windows.Media.Colors.Gray);
+
+    /// <summary>Tạo 1 nhóm thu gọn được (Expander) và trả về panel con để thêm slider.</summary>
+    private StackPanel AddGroup(string header, bool expanded)
+    {
+        var content = new StackPanel { Margin = new Thickness(2, 4, 2, 6) };
+        var exp = new Expander
+        {
+            Header = header,
+            IsExpanded = expanded,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 2, 0, 2),
+            Content = content,
+            Tag = header
+        };
+        exp.SetResourceReference(Control.ForegroundProperty, "TextPrimaryBrush");
+
+        // Solo Mode tự động khi mở rộng expander
+        exp.Expanded += (s, e) =>
+        {
+            if (_soloMode)
+            {
+                foreach (var child in panelSliders.Children)
+                {
+                    if (child is Expander other && other != exp)
+                    {
+                        other.IsExpanded = false;
+                    }
+                }
+            }
+        };
+
+        // Solo Mode: Alt+click header -> collapse all other groups, expand only this one
+        exp.PreviewMouseLeftButtonDown += (s, e) =>
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0)
+            {
+                e.Handled = true;
+                foreach (var child in panelSliders.Children)
+                {
+                    if (child is Expander other)
+                        other.IsExpanded = (other == exp);
+                }
+            }
+        };
+        panelSliders.Children.Add(exp);
+        return content;
+    }
+
+    /// <summary>Tooltip mô tả ngắn cho từng slider Develop (theo key). Giúp khám phá tác dụng.</summary>
+    private static readonly Dictionary<string, string> SliderTips = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["exposure"] = "Overall brightness (EV). Drag right = brighter.",
+        ["contrast"] = "Contrast: increases highlights, deepens shadows.",
+        ["highlights"] = "Recover or boost bright highlight areas (skies, clouds).",
+        ["shadows"] = "Open up or deepen shadow areas.",
+        ["whites"] = "White point: clips top highlight threshold.",
+        ["blacks"] = "Black point: clips deep shadow threshold.",
+        ["temp"] = "Color temperature: warm (yellow) ↔ cool (blue).",
+        ["tint"] = "Color tint: green ↔ magenta.",
+        ["vibrance"] = "Smart saturation boost, protecting skin tones.",
+        ["saturation"] = "Global color saturation.",
+        ["clarity"] = "Midtone local contrast (punch/depth).",
+        ["texture"] = "Fine surface detail (skin, fabric, foliage).",
+        ["dehaze"] = "Remove atmospheric haze and fog.",
+        ["sharpen"] = "Sharpening amount (unsharp mask).",
+        ["sharpenRadius"] = "Sharpening edge radius.",
+        ["sharpenMasking"] = "Masking: restrict sharpening to high-contrast edges.",
+        ["grain"] = "Film grain intensity.",
+        ["vignette"] = "Corner vignetting (darken or brighten).",
+        ["straighten"] = "Straighten horizon angle (degrees).",
+        ["fsep_smooth"] = "Smooth skin blemishes (frequency separation) while preserving texture.",
+        ["fsep_radius"] = "Frequency separation blur radius.",
+        ["fsep_detail"] = "High-frequency detail retention (pores, texture).",
+        ["diffuse"] = "Anisotropic diffusion: negative = edge-preserving denoise, positive = edge-aware sharpen.",
+        ["diffuse_iter"] = "Number of PDE diffusion rounds (more iterations = stronger effect).",
+        ["diffuse_edge"] = "Edge sensitivity: higher values cling tighter to image contours.",
+        ["glow"] = "Orton diffusion glow / soft romantic bloom effect.",
+        ["glow_radius"] = "Spread radius of the glowing bloom (px).",
+        ["glow_thresh"] = "Minimum luminance threshold to trigger glow diffusion.",
+    };
+
+    private static (DockPanel Row, ToggleSwitch Switch) CreateToggleRow(string label, string? tip = null)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
+        var sw = new ToggleSwitch
+        {
+            Width = 32,
+            Height = 18,
+            Margin = new Thickness(6, 0, 0, 0),
+            ToolTip = tip
+        };
+        DockPanel.SetDock(sw, Dock.Right);
+        var tb = new TextBlock
+        {
+            Text = label,
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = tip
+        };
+        tb.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        row.Children.Add(sw);
+        row.Children.Add(tb);
+        return (row, sw);
+    }
+
+    private void AddSlider(Panel host, string key, string label, double min, double max, double def, string fmt = "0.00")
+    {
+        _defaults[key] = def;
+        string? tip = SliderTips.TryGetValue(key, out var t) ? t : null;
+
+        var edit = new NumericSliderEdit(label, min, max, def, fmt)
+        {
+            Tag = key
+        };
+        if (tip != null) edit.ToolTip = tip;
+
+        edit.ValueChanged += (s, e) =>
+        {
+            if (_loading) return;
+            ScheduleCommit();
+
+            if (e.IsAltDown)
+            {
+                RequestClippingPreview?.Invoke(this, true);
+            }
+            else
+            {
+                RequestClippingPreview?.Invoke(this, false);
+            }
+        };
+
+        host.Children.Add(edit);
+        _sliders[key] = edit;
+    }
+
+    /// <summary>Ô nhập màu hex (RRGGBB) cho Gradient Map; sửa tay -> commit (debounce).</summary>
+    private TextBox GradientHexBox(string hex, string tip)
+    {
+        var tb = new TextBox
+        {
+            Text = hex, FontSize = 11, TextAlignment = TextAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center, BorderThickness = new Thickness(0),
+            ToolTip = tip, MaxLength = 7
+        };
+        tb.LostFocus += (_, _) => { if (!_loading) ScheduleCommit(); };
+        tb.KeyDown += (s, e) => { if (e.Key == Key.Enter && !_loading) ScheduleCommit(); };
+        return tb;
+    }
+
+    private static string NormHex(string? s, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return fallback;
+        s = s.Trim().TrimStart('#');
+        if (s.Length == 6 && int.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _))
+            return s.ToUpperInvariant();
+        return fallback;
+    }
+
+    private void ScheduleCommit()
+    {
+        _pendingCommit = true;
+        _debounce.Stop();
+        _debounce.Start();
+    }
+
+    private void SetVal(string key, double v) { if (_sliders.TryGetValue(key, out var s) ) s.Value = v; }
+    private double GetVal(string key) => _sliders.TryGetValue(key, out var s) ? s.Value : 0;
+
+    /// <summary>Giá trị slider per-channel; trả NaN nếu đang ở mặc định (kênh "kế thừa" master).</summary>
+    private float ChVal(string key, double identity)
+    {
+        double v = GetVal(key);
+        return Math.Abs(v - identity) < 1e-4 ? float.NaN : (float)v;
+    }
+
+    /// <summary>Đọc param per-channel của Levels từ history; trả identity nếu key không có.</summary>
+    private static double LvlCh(IReadOnlyDictionary<string, string>? p, string key, double identity)
+        => p != null && p.TryGetValue(key, out var s) &&
+           double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : identity;
+
+    private static string BuildCaptureSummary(string path)
+    {
+        try
+        {
+            var ci = ZVision.Shared.ExifReader.ReadMetadata(path);
+            var parts = new List<string>();
+            var camera = string.Join(" ", new[] { ci.CameraMake, ci.CameraModel }
+                .Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+            if (!string.IsNullOrWhiteSpace(camera)) parts.Add(camera);
+            if (ci.FocalLength is > 0) parts.Add($"{ci.FocalLength:0.#}mm");
+            if (ci.Aperture is > 0) parts.Add($"f/{ci.Aperture:0.#}");
+            if (!string.IsNullOrWhiteSpace(ci.ShutterSpeed)) parts.Add(ci.ShutterSpeed!);
+            if (ci.Iso is > 0) parts.Add($"ISO {ci.Iso}");
+            return string.Join("  ·  ", parts);
+        }
+        catch { return ""; }
+    }
+
+    private void LoadFor(string? path)
+    {
+        _currentPath = path;
+        bool ok = !string.IsNullOrEmpty(path) && _history != null;
+        SetEnabled(ok);
+        if (!ok)
+        {
+            if (txtDevelopExif != null) txtDevelopExif.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (txtDevelopExif != null)
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var summary = BuildCaptureSummary(path!);
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!string.IsNullOrEmpty(summary))
+                    {
+                        txtDevelopExif.Text = summary;
+                        txtDevelopExif.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        txtDevelopExif.Visibility = Visibility.Collapsed;
+                    }
+                });
+            });
+        }
+
+        _loading = true;
+        var b = FindOp(path!, DevelopBasicOp.Type) is { } bp ? DevelopBasicOp.FromParams(bp) : null;
+        SetVal("temp", b?.Temp ?? 0);
+        SetVal("tint", b?.Tint ?? 0);
+        SetVal("exposure", b?.Exposure ?? 0);
+        SetVal("contrast", b?.Contrast ?? 0);
+        SetVal("highlights", b?.Highlights ?? 0);
+        SetVal("shadows", b?.Shadows ?? 0);
+        SetVal("whites", b?.Whites ?? 0);
+        SetVal("blacks", b?.Blacks ?? 0);
+        SetVal("vibrance", b?.Vibrance ?? 0);
+        SetVal("saturation", b?.Saturation ?? 0);
+
+        SetVal("filmic", Param(path!, FilmicOp.Type, "amount"));
+
+        // Tone Mapping nâng cao (D1)
+        SetVal("sig_amt", Param(path!, SigmoidOp.Type, "amount"));
+        var sigP = FindOp(path!, SigmoidOp.Type);
+        SetVal("sig_contrast", sigP != null ? Param(path!, SigmoidOp.Type, "contrast") : 1.5);
+        SetVal("filmrgb_amt", Param(path!, FilmicRgbOp.Type, "amount"));
+        var frgbP = FindOp(path!, FilmicRgbOp.Type);
+        SetVal("filmrgb_white", frgbP != null ? Param(path!, FilmicRgbOp.Type, "white") : 4);
+        SetVal("filmrgb_black", frgbP != null ? Param(path!, FilmicRgbOp.Type, "black") : -6);
+        SetVal("filmrgb_contrast", frgbP != null ? Param(path!, FilmicRgbOp.Type, "contrast") : 1.2);
+        SetVal("filmrgb_lat", frgbP != null ? Param(path!, FilmicRgbOp.Type, "latitude") : 0.2);
+        SetVal("filmrgb_sat", Param(path!, FilmicRgbOp.Type, "sat"));
+        SetVal("teq_blacks", Param(path!, ToneEqualizerOp.Type, "blacks"));
+        SetVal("teq_shadows", Param(path!, ToneEqualizerOp.Type, "shadows"));
+        SetVal("teq_mid", Param(path!, ToneEqualizerOp.Type, "mid"));
+        SetVal("teq_highlights", Param(path!, ToneEqualizerOp.Type, "highlights"));
+        SetVal("teq_whites", Param(path!, ToneEqualizerOp.Type, "whites"));
+        SetVal("dehaze", Param(path!, DehazeOp.Type, "amount"));
+
+        // D2 color science
+        SetVal("velvia", Param(path!, VelviaOp.Type, "amount"));
+        var lvlP = FindOp(path!, RgbLevelsOp.Type);
+        SetVal("lvl_black", Param(path!, RgbLevelsOp.Type, "black"));
+        SetVal("lvl_gamma", lvlP != null ? Param(path!, RgbLevelsOp.Type, "gamma") : 1);
+        SetVal("lvl_white", lvlP != null ? Param(path!, RgbLevelsOp.Type, "white") : 1);
+        // Per-channel: lấy từ params nếu có, ngược lại về mặc định identity (0/1/1).
+        SetVal("lvl_blackR", LvlCh(lvlP, "blackR", 0)); SetVal("lvl_whiteR", LvlCh(lvlP, "whiteR", 1)); SetVal("lvl_gammaR", LvlCh(lvlP, "gammaR", 1));
+        SetVal("lvl_blackG", LvlCh(lvlP, "blackG", 0)); SetVal("lvl_whiteG", LvlCh(lvlP, "whiteG", 1)); SetVal("lvl_gammaG", LvlCh(lvlP, "gammaG", 1));
+        SetVal("lvl_blackB", LvlCh(lvlP, "blackB", 0)); SetVal("lvl_whiteB", LvlCh(lvlP, "whiteB", 1)); SetVal("lvl_gammaB", LvlCh(lvlP, "gammaB", 1));
+        SetVal("hlrecon", Param(path!, HighlightReconstructionOp.Type, "amount"));
+        SetVal("ltm_amt", Param(path!, LocalToneMapOp.Type, "amount"));
+        SetVal("ltm_detail", Param(path!, LocalToneMapOp.Type, "detail"));
+        SetVal("cbr_liftHue", Param(path!, ColorBalanceRgbOp.Type, "liftHue"));
+        SetVal("cbr_liftSat", Param(path!, ColorBalanceRgbOp.Type, "liftSat"));
+        SetVal("cbr_gammaHue", Param(path!, ColorBalanceRgbOp.Type, "gammaHue"));
+        SetVal("cbr_gammaSat", Param(path!, ColorBalanceRgbOp.Type, "gammaSat"));
+        SetVal("cbr_gainHue", Param(path!, ColorBalanceRgbOp.Type, "gainHue"));
+        SetVal("cbr_gainSat", Param(path!, ColorBalanceRgbOp.Type, "gainSat"));
+        SetVal("cbr_chroma", Param(path!, ColorBalanceRgbOp.Type, "chroma"));
+        SetVal("cbr_contrast", Param(path!, ColorBalanceRgbOp.Type, "contrast"));
+        SetVal("cc_ga", Param(path!, ColorContrastOp.Type, "greenMagenta"));
+        SetVal("cc_by", Param(path!, ColorContrastOp.Type, "blueYellow"));
+        SetVal("chm_rHue", Param(path!, ChannelMixerOp.Type, "rHue"));
+        SetVal("chm_rSat", Param(path!, ChannelMixerOp.Type, "rSat"));
+        SetVal("chm_gHue", Param(path!, ChannelMixerOp.Type, "gHue"));
+        SetVal("chm_gSat", Param(path!, ChannelMixerOp.Type, "gSat"));
+        SetVal("chm_bHue", Param(path!, ChannelMixerOp.Type, "bHue"));
+        SetVal("chm_bSat", Param(path!, ChannelMixerOp.Type, "bSat"));
+        SetVal("clarity", Param(path!, ClarityOp.Type, "amount"));
+        SetVal("clahe", Param(path!, ClaheOp.Type, "amount"));
+        var claheP = FindOp(path!, ClaheOp.Type);
+        SetVal("clahe_clip", claheP != null ? Param(path!, ClaheOp.Type, "clipLimit") : 3.0);
+        SetVal("texture", Param(path!, TextureOp.Type, "amount"));
+        SetVal("sharpen", Param(path!, SharpenOp.Type, "amount"));
+        var sharpP = FindOp(path!, SharpenOp.Type);
+        SetVal("sharpenRadius", sharpP != null ? Param(path!, SharpenOp.Type, "radius") : 1.0);
+        SetVal("sharpenMask", Param(path!, SharpenOp.Type, "masking"));
+        SetVal("lumaNR", Param(path!, LumaNoiseReductionOp.Type, "amount"));
+        SetVal("colorNR", Param(path!, ColorNoiseReductionOp.Type, "amount"));
+        SetVal("chromaNR", Param(path!, ChromaDenoiseOp.Type, "amount"));
+        var diffP = FindOp(path!, DiffuseOp.Type);
+        SetVal("diffuse", diffP != null ? Param(path!, DiffuseOp.Type, "amount") : 0);
+        SetVal("diffuse_iter", diffP != null ? Param(path!, DiffuseOp.Type, "iters") : 6);
+        SetVal("diffuse_edge", diffP != null ? Param(path!, DiffuseOp.Type, "edge") : 0.5);
+        // Frequency separation (#7): radius/detail có default khác 0 nên đọc theo op tồn tại.
+        var fsepP = FindOp(path!, ZVision.Imaging.FrequencySeparationOp.Type);
+        SetVal("fsep_smooth", Param(path!, ZVision.Imaging.FrequencySeparationOp.Type, "smooth"));
+        SetVal("fsep_radius", fsepP != null ? Param(path!, ZVision.Imaging.FrequencySeparationOp.Type, "radius") : 8);
+        SetVal("fsep_detail", fsepP != null ? Param(path!, ZVision.Imaging.FrequencySeparationOp.Type, "detail") : 1);
+        SetVal("defrPurple", Param(path!, DefringeOp.Type, "purple"));
+        SetVal("defrGreen", Param(path!, DefringeOp.Type, "green"));
+        SetVal("hotpix", Param(path!, HotPixelOp.Type, "strength"));
+        SetVal("hotpixThr", FindOp(path!, HotPixelOp.Type) != null ? Param(path!, HotPixelOp.Type, "threshold") : 0.5);
+        SetVal("caRed", Param(path!, CaCorrectOp.Type, "red"));
+        SetVal("caBlue", Param(path!, CaCorrectOp.Type, "blue"));
+        SetVal("aiDenoise", Param(path!, AiDenoiseOp.Type, "strength"));
+        if (_chkAiUpscale != null) _chkAiUpscale.IsChecked = FindOp(path!, AiUpscaleOp.Type) != null;
+        SetVal("vignette", Param(path!, VignetteOp.Type, "amount"));
+        var vigP = FindOp(path!, VignetteOp.Type);
+        SetVal("vig_mid", vigP != null ? Param(path!, VignetteOp.Type, "midpoint") : 0.5);
+        SetVal("vig_feather", vigP != null ? Param(path!, VignetteOp.Type, "feather") : 0.5);
+        SetVal("vig_round", Param(path!, VignetteOp.Type, "roundness"));
+        SetVal("vig_hi", Param(path!, VignetteOp.Type, "highlights"));
+        SetVal("grain", Param(path!, GrainOp.Type, "amount"));
+        var grainP = FindOp(path!, GrainOp.Type);
+        SetVal("grain_size", grainP != null ? Param(path!, GrainOp.Type, "size") : 1);
+        SetVal("grain_rough", grainP != null ? Param(path!, GrainOp.Type, "roughness") : 0.5);
+        SetVal("grain_color", Param(path!, GrainOp.Type, "color"));
+        var glowP = FindOp(path!, GlowOp.Type);
+        SetVal("glow", glowP != null ? Param(path!, GlowOp.Type, "amount") : 0);
+        SetVal("glow_radius", glowP != null ? Param(path!, GlowOp.Type, "radius") : 12);
+        SetVal("glow_thresh", glowP != null ? Param(path!, GlowOp.Type, "threshold") : 0);
+
+        // Gradient Map (#5): khôi phục màu 3 chặng + midpoint + opacity (preset chỉ là shortcut điền màu).
+        var gmP = FindOp(path!, ZVision.Imaging.GradientMapOp.Type);
+        SetVal("gradmap_opacity", gmP != null ? Param(path!, ZVision.Imaging.GradientMapOp.Type, "opacity") : 0);
+        SetVal("gradmap_mid", gmP != null ? Param(path!, ZVision.Imaging.GradientMapOp.Type, "midpoint") : 0.5);
+        if (gmP != null)
+        {
+            if (_gmShadow != null) _gmShadow.Text = NormHex(gmP.TryGetValue("sh", out var sh2) ? sh2 : null, "000000");
+            if (_gmMid != null) _gmMid.Text = NormHex(gmP.TryGetValue("mid", out var md2) ? md2 : null, "808080");
+            if (_gmHigh != null) _gmHigh.Text = NormHex(gmP.TryGetValue("hi", out var hi2) ? hi2 : null, "FFFFFF");
+        }
+        else
+        {
+            if (_gmShadow != null) _gmShadow.Text = "000000";
+            if (_gmMid != null) _gmMid.Text = "808080";
+            if (_gmHigh != null) _gmHigh.Text = "FFFFFF";
+        }
+        if (_cmbGradientMap != null)
+        {
+            int idx = 0;
+            if (gmP != null && gmP.TryGetValue("sh", out var sh) && gmP.TryGetValue("hi", out var hi))
+            {
+                for (int i = 1; i < ZVision.Imaging.GradientMapPresets.All.Length; i++)
+                {
+                    var pr = ZVision.Imaging.GradientMapPresets.All[i];
+                    if (string.Equals(pr.Shadow, sh, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(pr.High, hi, StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+                }
+            }
+            _cmbGradientMap.SelectedIndex = idx;
+        }
+
+        SetVal("pc_hi", Param(path!, ParametricCurveOp.Type, "hi"));
+        SetVal("pc_lt", Param(path!, ParametricCurveOp.Type, "lt"));
+        SetVal("pc_dk", Param(path!, ParametricCurveOp.Type, "dk"));
+        SetVal("pc_sh", Param(path!, ParametricCurveOp.Type, "sh"));
+
+        SetVal("st_hiHue", Param(path!, SplitToningOp.Type, "hiHue"));
+        SetVal("st_hiSat", Param(path!, SplitToningOp.Type, "hiSat"));
+        SetVal("st_shHue", Param(path!, SplitToningOp.Type, "shHue"));
+        SetVal("st_shSat", Param(path!, SplitToningOp.Type, "shSat"));
+        SetVal("st_bal", Param(path!, SplitToningOp.Type, "balance"));
+
+        SetVal("straighten", Param(path!, CropOp.Type, "angle"));
+
+        // Crop rectangle (đọc lại để overlay vẽ đúng).
+        var cropP = FindOp(path!, CropOp.Type);
+        if (cropP != null)
+        {
+            _cropX = (float)Param(path!, CropOp.Type, "x");
+            _cropY = (float)Param(path!, CropOp.Type, "y");
+            float cw = (float)Param(path!, CropOp.Type, "w");
+            float ch = (float)Param(path!, CropOp.Type, "h");
+            _cropW = cw > 0 ? cw : 1f;
+            _cropH = ch > 0 ? ch : 1f;
+        }
+        else { _cropX = 0; _cropY = 0; _cropW = 1f; _cropH = 1f; }
+        CropChanged?.Invoke(this, (_cropX, _cropY, _cropW, _cropH));
+
+        // Perspective / Upright
+        var perspP = FindOp(path!, PerspectiveOp.Type);
+        SetVal("persp_v", Param(path!, PerspectiveOp.Type, "vert"));
+        SetVal("persp_h", Param(path!, PerspectiveOp.Type, "horiz"));
+        SetVal("persp_scale", perspP != null ? Param(path!, PerspectiveOp.Type, "scale") : 1);
+
+        SetVal("lens_k1", Param(path!, LensCorrectionOp.Type, "k1"));
+        SetVal("lens_k2", Param(path!, LensCorrectionOp.Type, "k2"));
+        SetVal("lens_vig", Param(path!, LensCorrectionOp.Type, "vig"));
+
+        // Lens profile tự động (lensfun): dựng lại từ history nếu có.
+        var lensProfP = FindOp(path!, LensProfileOp.Type);
+        _autoLensOp = lensProfP != null ? LensProfileOp.FromParams(lensProfP) : null;
+        if (_lensAutoInfo != null)
+            _lensAutoInfo.Text = _autoLensOp != null ? "Applied lensfun profile (saved in history)." : "";
+
+        // Color Unify
+        SetVal("uni_hue", Param(path!, ColorUnifyOp.Type, "hue"));
+        var uniSat = FindOp(path!, ColorUnifyOp.Type);
+        SetVal("uni_sat", uniSat != null ? Param(path!, ColorUnifyOp.Type, "sat") : 0.5);
+        SetVal("uni_int", Param(path!, ColorUnifyOp.Type, "intensity"));
+
+        // Color Match (#8): khôi phục stats + strength từ op đã lưu.
+        var cmP = FindOp(path!, ZVision.Imaging.ColorMatchOp.Type);
+        if (cmP != null)
+        {
+            var cm = ZVision.Imaging.ColorMatchOp.FromParams(cmP);
+            _colorMatchStats = new ZVision.Imaging.ColorMatch.Stats(cm.ML, cm.Ma, cm.Mb, cm.SL, cm.Sa, cm.Sb);
+            SetVal("match_strength", cm.Strength);
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(saved in photo)";
+        }
+        else
+        {
+            _colorMatchStats = null;
+            SetVal("match_strength", 0.8);
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
+        }
+
+        // WB Kelvin
+        var kelvinP = FindOp(path!, WhiteBalanceKelvinOp.Type);
+        SetVal("kelvin", kelvinP != null ? Param(path!, WhiteBalanceKelvinOp.Type, "kelvin") : 6500);
+
+        // Selective color
+        SetVal("sel_src", Param(path!, SelectiveColorOp.Type, "src"));
+        SetVal("sel_tgt", Param(path!, SelectiveColorOp.Type, "tgt"));
+        var selTol = Param(path!, SelectiveColorOp.Type, "tol");
+        SetVal("sel_tol", selTol > 0 ? selTol : 30);
+        SetVal("sel_str", Param(path!, SelectiveColorOp.Type, "strength"));
+
+        // 3D LUT
+        var lutP = FindOp(path!, LutCubeOp.Type);
+        _lutPath = lutP != null && lutP.TryGetValue("path", out var lp) ? lp : "";
+        if (_lutLabel != null)
+            _lutLabel.Text = string.IsNullOrEmpty(_lutPath) ? "(no LUT selected)" : System.IO.Path.GetFileName(_lutPath);
+        var lutInt = Param(path!, LutCubeOp.Type, "intensity");
+        SetVal("lut_intensity", lutP != null ? lutInt : 1);
+
+        // Lua Script
+        if (_cmbLuaScript != null)
+        {
+            var luaOpP = FindOp(path!, LuaScriptOp.Type);
+            if (luaOpP != null)
+            {
+                string scriptName = luaOpP.TryGetValue("script_name", out var sn) ? sn : "";
+                
+                int selectIdx = 0;
+                for (int i = 0; i < _cmbLuaScript.Items.Count; i++)
+                {
+                    if (_cmbLuaScript.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, scriptName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectIdx = i;
+                        break;
+                    }
+                }
+                
+                _loading = true; // Block ScheduleCommit
+                _cmbLuaScript.SelectedIndex = selectIdx;
+                
+                // Khôi phục giá trị của các slider động
+                foreach (var kvp in luaOpP)
+                {
+                    if (kvp.Key is "script" or "script_name") continue;
+                    
+                    if (double.TryParse(kvp.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var val))
+                    {
+                        _luaSliderVals[kvp.Key] = val;
+                        if (_luaSliders.TryGetValue(kvp.Key, out var slider))
+                        {
+                            slider.Value = val;
+                        }
+                    }
+                }
+                _loading = false;
+            }
+            else
+            {
+                _loading = true;
+                _cmbLuaScript.SelectedIndex = 0; // Off
+                _loading = false;
+            }
+        }
+
+        var hsl = FindOp(path!, HslMixerOp.Type) is { } hp ? HslMixerOp.FromParams(hp) : null;
+        for (int i = 0; i < HslMixerOp.Bands; i++)
+        {
+            _hslHue[i] = hsl?.Hue[i] ?? 0;
+            _hslSat[i] = hsl?.Sat[i] ?? 0;
+            _hslLum[i] = hsl?.Lum[i] ?? 0;
+        }
+        LoadBandIntoSliders();
+
+        // Tone curve editor (2.2)
+        var curveP = FindOp(path!, ToneCurveOp.Type);
+        _curveData[0] = curveP != null && curveP.TryGetValue("rgb", out var crgb) && !string.IsNullOrEmpty(crgb) ? crgb : "0,0;1,1";
+        _curveData[1] = curveP != null && curveP.TryGetValue("r", out var cr) && !string.IsNullOrEmpty(cr) ? cr : "0,0;1,1";
+        _curveData[2] = curveP != null && curveP.TryGetValue("g", out var cg) && !string.IsNullOrEmpty(cg) ? cg : "0,0;1,1";
+        _curveData[3] = curveP != null && curveP.TryGetValue("b", out var cb) && !string.IsNullOrEmpty(cb) ? cb : "0,0;1,1";
+        if (_curveEditor != null && _curveChannel != null)
+            _curveEditor.SetPoints(_curveData[_curveChannel.SelectedIndex < 0 ? 0 : _curveChannel.SelectedIndex]);
+        if (_chkCurvePreserveHue != null)
+            _chkCurvePreserveHue.IsChecked = curveP != null && curveP.TryGetValue("preserveHue", out var cph) && cph == "true";
+
+        // Color grading 3-way (3.3)
+        var grade = FindOp(path!, ColorGradingOp.Type) is { } gp ? ColorGradingOp.FromParams(gp) : null;
+        for (int i = 0; i < 4; i++)
+        {
+            _gradeHue[i] = grade?.Hue[i] ?? 0;
+            _gradeSat[i] = grade?.Sat[i] ?? 0;
+            _gradeWheels[i]?.SetValue(_gradeHue[i], _gradeSat[i]);
+        }
+        SetVal("cg_sh_lum", grade?.Lum[0] ?? 0);
+        SetVal("cg_mid_lum", grade?.Lum[1] ?? 0);
+        SetVal("cg_hi_lum", grade?.Lum[2] ?? 0);
+        SetVal("cg_blend", grade?.Blending ?? 0.5f);
+
+        // Black & White (8b)
+        var bwP = FindOp(path!, BlackWhiteOp.Type);
+        if (_chkBw != null) _chkBw.IsChecked = bwP != null && bwP.TryGetValue("enabled", out var bwe) && bwe == "true";
+        SetVal("bw_r", bwP != null ? Param(path!, BlackWhiteOp.Type, "wr") : 0.299);
+        SetVal("bw_g", bwP != null ? Param(path!, BlackWhiteOp.Type, "wg") : 0.587);
+        SetVal("bw_b", bwP != null ? Param(path!, BlackWhiteOp.Type, "wb") : 0.114);
+        SetVal("bw_toneHue", Param(path!, BlackWhiteOp.Type, "toneHue"));
+        SetVal("bw_toneStr", Param(path!, BlackWhiteOp.Type, "toneStr"));
+
+        // Invert (8c)
+        var invP = FindOp(path!, InvertOp.Type);
+        if (_chkInvert != null) _chkInvert.IsChecked = invP != null && invP.TryGetValue("enabled", out var ive) && ive == "true";
+
+        // Film Negative (negadoctor)
+        var filmP = FindOp(path!, FilmNegativeOp.Type);
+        if (_chkFilmNeg != null) _chkFilmNeg.IsChecked = filmP != null && filmP.TryGetValue("enabled", out var fve) && fve == "true";
+        SetVal("film_rbase", filmP != null ? Param(path!, FilmNegativeOp.Type, "rbase") : 0.50);
+        SetVal("film_gbase", filmP != null ? Param(path!, FilmNegativeOp.Type, "gbase") : 0.30);
+        SetVal("film_bbase", filmP != null ? Param(path!, FilmNegativeOp.Type, "bbase") : 0.18);
+        SetVal("film_gamma", filmP != null ? Param(path!, FilmNegativeOp.Type, "gamma") : 1);
+        SetVal("film_exposure", filmP != null ? Param(path!, FilmNegativeOp.Type, "exposure") : 1);
+
+        // Input profile (D2.2)
+        if (_cmbInputProfile != null)
+        {
+            var ipP = FindOp(path!, InputProfileOp.Type);
+            if (ipP != null)
+            {
+                if (ipP.ContainsKey("srcMatrix"))
+                {
+                    // Embedded ICC = item cuối cùng trong combo.
+                    _cmbInputProfile.SelectedIndex = _cmbInputProfile.Items.Count - 1;
+                }
+                else
+                {
+                    ColorSpaces.TryParse(ipP.TryGetValue("space", out var sp) ? sp : "sRGB", out var ipSpace);
+                    _cmbInputProfile.SelectedIndex = (int)ipSpace;
+                }
+            }
+            else
+            {
+                // Chưa có profile lưu -> tự gợi ý theo ICC nhúng (chỉ chọn trong dropdown, áp khi user chỉnh).
+                var detected = ZVision.Imaging.IccProfileReader.DetectSpaceFromFile(path!);
+                _cmbInputProfile.SelectedIndex = detected.HasValue ? (int)detected.Value : 0;
+            }
+            // Minh bạch ICC nhúng phát hiện được (tên + gamut, theo tên hoặc ma trận colorant).
+            if (_iccAutoInfo != null)
+            {
+                var (desc, space) = ZVision.Imaging.IccProfileReader.ReadInfoFromFile(path!);
+                if (desc == null && space == null)
+                    _iccAutoInfo.Text = "";
+                else
+                {
+                    string g = space.HasValue ? ColorSpaces.Name(space.Value) : "unknown";
+                    _iccAutoInfo.Text = string.IsNullOrWhiteSpace(desc)
+                        ? $"Embedded ICC → gamut {g}"
+                        : $"ICC: {desc} → {g}";
+                }
+            }
+        }
+
+        // Soft Proof / Gamut map (#1)
+        if (_cmbSoftProof != null)
+        {
+            var gmapP = FindOp(path!, GamutMapOp.Type);
+            if (gmapP != null)
+            {
+                ColorSpaces.TryParse(gmapP.TryGetValue("dest", out var ds) ? ds : "sRGB", out var dsSpace);
+                _cmbSoftProof.SelectedIndex = (int)dsSpace + 1; // +1 do index 0 = Off
+                if (_cmbSoftProofMode != null)
+                    _cmbSoftProofMode.SelectedIndex = (gmapP.TryGetValue("method", out var mm) && mm == "desaturate") ? 1 : 0;
+            }
+            else
+            {
+                _cmbSoftProof.SelectedIndex = 0; // Off
+            }
+        }
+
+        // Auto WB gains (ChannelGain)
+        var gainP = FindOp(path!, ChannelGainOp.Type);
+        _wbGainR = gainP != null ? (float)Param(path!, ChannelGainOp.Type, "r") : 1f;
+        _wbGainG = gainP != null ? (float)Param(path!, ChannelGainOp.Type, "g") : 1f;
+        _wbGainB = gainP != null ? (float)Param(path!, ChannelGainOp.Type, "b") : 1f;
+        if (_wbGainR <= 0f) _wbGainR = 1f;
+        if (_wbGainG <= 0f) _wbGainG = 1f;
+        if (_wbGainB <= 0f) _wbGainB = 1f;
+
+        // Local adjustment masks (6.4/6.7)
+        LoadMasks(path!);
+        LoadHealing(path!);
+        LoadLiquify(path!);
+        _loading = false;
+        RefreshHistogram();
+    }
+
+    private IReadOnlyDictionary<string, string>? FindOp(string path, string opType)
+    {
+        if (_history == null) return null;
+        var stack = _history.GetStack(path);
+        int pointer = _history.GetPointer(path);
+        for (int i = Math.Min(pointer, stack.Count) - 1; i >= 0; i--)
+            if (string.Equals(stack[i].OpType, opType, StringComparison.OrdinalIgnoreCase))
+                return stack[i].Params;
+        return null;
+    }
+
+    private double Param(string path, string opType, string key)
+    {
+        var p = FindOp(path, opType);
+        if (p != null && p.TryGetValue(key, out var s) &&
+            double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) return v;
+        return 0;
+    }
+
+    private void LoadBandIntoSliders()
+    {
+        SetVal("hsl_hue", _hslHue[_band]);
+        SetVal("hsl_sat", _hslSat[_band]);
+        SetVal("hsl_lum", _hslLum[_band]);
+    }
+
+    private void SyncSlidersToBand()
+    {
+        _hslHue[_band] = (float)GetVal("hsl_hue");
+        _hslSat[_band] = (float)GetVal("hsl_sat");
+        _hslLum[_band] = (float)GetVal("hsl_lum");
+    }
+
+    private void BandCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _bandCombo == null) return;
+        SyncSlidersToBand();
+        _band = _bandCombo.SelectedIndex < 0 ? 0 : _bandCombo.SelectedIndex;
+        _loading = true;
+        LoadBandIntoSliders();
+        _loading = false;
+    }
+
+    // ===== Tone Curve editor (2.2) =====
+    private void CurveChannel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_curveEditor == null || _curveChannel == null) return;
+        int ch = _curveChannel.SelectedIndex < 0 ? 0 : _curveChannel.SelectedIndex;
+        _curveEditor.SetPoints(_curveData[ch]);
+        _curveEditor.CurveBrush = ch switch
+        {
+            1 => new SolidColorBrush(Color.FromRgb(244, 67, 54)),
+            2 => new SolidColorBrush(Color.FromRgb(76, 175, 80)),
+            3 => new SolidColorBrush(Color.FromRgb(33, 150, 243)),
+            _ => ThemeManager.GetBrush("TextSecondaryBrush")
+        };
+    }
+
+    private void CurveEditor_Changed(object? sender, string serialized)
+    {
+        if (_loading || _curveChannel == null) return;
+        int ch = _curveChannel.SelectedIndex < 0 ? 0 : _curveChannel.SelectedIndex;
+        _curveData[ch] = serialized;
+        ScheduleCommit();
+    }
+
+    /// <summary>Áp filter màu B&W cổ điển -> set trọng số mix kênh + bật B&W. 0 = Neutral.</summary>
+    private void ApplyBwFilter(int index)
+    {
+        if (_currentPath == null) return;
+        (double r, double g, double b) w = index switch
+        {
+            1 => (0.80, 0.15, 0.05), // Red: trời tối, da sáng
+            2 => (0.65, 0.30, 0.05), // Orange
+            3 => (0.50, 0.42, 0.08), // Yellow (phong cảnh cổ điển)
+            4 => (0.15, 0.70, 0.15), // Green: tán lá/da sáng
+            5 => (0.05, 0.25, 0.70), // Blue: tăng sương/khí quyển
+            _ => (0.299, 0.587, 0.114), // Neutral (luma)
+        };
+        _loading = true;
+        SetVal("bw_r", w.r); SetVal("bw_g", w.g); SetVal("bw_b", w.b);
+        if (_chkBw != null) _chkBw.IsChecked = true;
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Áp 1 preset đường cong tương phản lên kênh RGB master (index 0). 0 = Linear (reset).</summary>
+    private void ApplyCurvePreset(int index)
+    {
+        if (_currentPath == null) return;
+        string pts = index switch
+        {
+            1 => "0,0;0.25,0.21;0.75,0.79;1,1",       // medium contrast (S nhẹ)
+            2 => "0,0;0.25,0.16;0.5,0.5;0.75,0.84;1,1", // strong contrast (S mạnh)
+            3 => "0,0.06;0.25,0.27;0.75,0.78;1,0.95",  // faded: nâng đen, hạ trắng (film/matte)
+            _ => "0,0;1,1",                            // linear
+        };
+        _curveData[0] = pts;
+        if (_curveEditor != null && _curveChannel != null && _curveChannel.SelectedIndex <= 0)
+            _curveEditor.SetPoints(pts);
+        Commit();
+    }
+
+    /// <summary>Gom toàn bộ slider thành chuỗi op canonical và đẩy vào history (atomic group).</summary>
+    private void Commit()
+    {
+        if (_currentPath == null || _history == null) return;
+        SyncSlidersToBand();
+        var ops = BuildOps();
+        _history.UpsertGroup(_currentPath, "Develop", ops);
+        RefreshHistogram();
+    }
+
+    /// <summary>Dựng danh sách op theo thứ tự xử lý chuẩn (geometry trước, hiệu ứng sau).</summary>
+    private List<EditOperation> BuildOps()
+    {
+        var ops = new List<EditOperation>();
+
+        // 0) Geometry (Crop/Straighten) — trước tiên để op màu áp lên ảnh đã cắt.
+        float angle = (float)GetVal("straighten");
+        var crop = new CropOp { X = _cropX, Y = _cropY, W = _cropW, H = _cropH, Angle = angle };
+        if (!crop.IsIdentity)
+            ops.Add(Op(CropOp.Type, "Crop / Straighten", crop.ToParams()));
+
+        // Orientation đã lưu riêng qua nút xoay (đọc lại để giữ).
+        var orient = FindOp(_currentPath!, OrientationOp.Type);
+        if (orient != null) ops.Add(Op(OrientationOp.Type, "Orientation", new Dictionary<string, string>(orient)));
+
+        // 0a) Perspective / Upright (sau crop/orientation, trước op màu).
+        var persp = new PerspectiveOp
+        {
+            Vertical = (float)GetVal("persp_v"), Horizontal = (float)GetVal("persp_h"),
+            Scale = (float)GetVal("persp_scale"),
+        };
+        if (!persp.IsIdentity) ops.Add(Op(PerspectiveOp.Type, "Perspective", persp.ToParams()));
+
+        // 0a1) Liquify / Warp (sau perspective, trước lens) — khớp DevelopModules.PipelineOrder.
+        AppendLiquifyOp(ops);
+
+        // 0a2) Lens correction (distortion + vignette) — sau perspective, trước op màu.
+        var lens = new LensCorrectionOp
+        {
+            K1 = (float)GetVal("lens_k1"), K2 = (float)GetVal("lens_k2"),
+            VignetteCorrection = (float)GetVal("lens_vig"),
+        };
+        if (!lens.IsIdentity) ops.Add(Op(LensCorrectionOp.Type, "Lens Correction", lens.ToParams()));
+
+        // 0a3) Lens profile tự động (lensfun, 5.3) — sau lens correction thủ công.
+        if (_autoLensOp != null && !_autoLensOp.IsIdentity)
+            ops.Add(Op(LensProfileOp.Type, "Lens Profile (auto)", _autoLensOp.ToParams()));
+
+        // 0c) Healing/Clone (sau geometry để toạ độ chấm khớp ảnh đã cắt/sửa méo).
+        AppendHealingOp(ops);
+
+        // 0c2) Input color profile (D2.2) — quy ảnh về working sRGB trước mọi op màu.
+        if (_cmbInputProfile?.SelectedItem is ComboBoxItem ipItem)
+        {
+            string ipName = ipItem.Content?.ToString() ?? "sRGB";
+            if (ipName == "Embedded ICC")
+            {
+                // Áp ma trận colorant ICC nhúng THẬT (kể cả profile lạ không khớp tên).
+                var mtx = _currentPath != null
+                    ? ZVision.Imaging.IccProfileReader.TryReadRgbToXyzD65FromFile(_currentPath)
+                    : null;
+                if (mtx != null)
+                {
+                    var ip = new InputProfileOp { SourceMatrix = mtx };
+                    ops.Add(Op(InputProfileOp.Type, "Input Profile (ICC)", ip.ToParams()));
+                }
+            }
+            else if (ColorSpaces.TryParse(ipName, out var ipSpace) && ipSpace != ColorSpaces.Space.Srgb)
+            {
+                var ip = new InputProfileOp { Source = ipSpace };
+                ops.Add(Op(InputProfileOp.Type, "Input Profile", ip.ToParams()));
+            }
+        }
+
+        // 0c1) Film Negative (negadoctor) — sau input profile, trước WB/màu.
+        var filmNeg = new FilmNegativeOp
+        {
+            Enabled = _chkFilmNeg?.IsChecked == true,
+            RBase = (float)GetVal("film_rbase"), GBase = (float)GetVal("film_gbase"), BBase = (float)GetVal("film_bbase"),
+            Gamma = (float)GetVal("film_gamma"), Exposure = (float)GetVal("film_exposure"),
+        };
+        if (!filmNeg.IsIdentity) ops.Add(Op(FilmNegativeOp.Type, "Film Negative", filmNeg.ToParams()));
+
+        // 0b) White balance Kelvin (trước Basic).
+        var wbk = new WhiteBalanceKelvinOp { Kelvin = (float)GetVal("kelvin"), Tint = 0f };
+        if (!wbk.IsIdentity) ops.Add(Op(WhiteBalanceKelvinOp.Type, "WB (Kelvin)", wbk.ToParams()));
+
+        // 0c) Auto White Balance gains (ChannelGain) — sau WB Kelvin, trước Basic.
+        var wbGain = new ChannelGainOp { R = _wbGainR, G = _wbGainG, B = _wbGainB };
+        if (!wbGain.IsIdentity) ops.Add(Op(ChannelGainOp.Type, "Auto WB", wbGain.ToParams()));
+
+        // 1) Basic
+        var basic = new DevelopBasicOp
+        {
+            Temp = (float)GetVal("temp"), Tint = (float)GetVal("tint"),
+            Exposure = (float)GetVal("exposure"), Contrast = (float)GetVal("contrast"),
+            Highlights = (float)GetVal("highlights"), Shadows = (float)GetVal("shadows"),
+            Whites = (float)GetVal("whites"), Blacks = (float)GetVal("blacks"),
+            Vibrance = (float)GetVal("vibrance"), Saturation = (float)GetVal("saturation"),
+        };
+        if (!basic.IsIdentity) ops.Add(Op(DevelopBasicOp.Type, "Basic", basic.ToParams()));
+
+        // 2) Parametric curve
+        var pc = new ParametricCurveOp
+        {
+            Highlights = (float)GetVal("pc_hi"), Lights = (float)GetVal("pc_lt"),
+            Darks = (float)GetVal("pc_dk"), Shadows = (float)GetVal("pc_sh"),
+        };
+        if (!pc.IsIdentity) ops.Add(Op(ParametricCurveOp.Type, "Parametric Curve", pc.ToParams()));
+
+        // 2b) Tone curve (point editor)
+        var curveParams = new Dictionary<string, string>
+        {
+            ["rgb"] = _curveData[0], ["r"] = _curveData[1], ["g"] = _curveData[2], ["b"] = _curveData[3],
+            ["preserveHue"] = _chkCurvePreserveHue?.IsChecked == true ? "true" : "false",
+        };
+        var curveOp = ToneCurveOp.FromParams(curveParams);
+        if (!curveOp.IsIdentity) ops.Add(Op(ToneCurveOp.Type, "Tone Curve", curveParams));
+
+        // 3) Dehaze
+        var dehaze = new DehazeOp { Amount = (float)GetVal("dehaze") };
+        if (!dehaze.IsIdentity) ops.Add(Op(DehazeOp.Type, "Dehaze", dehaze.ToParams()));
+
+        // 4) Filmic
+        var filmic = new FilmicOp { Amount = (float)GetVal("filmic") };
+        if (!filmic.IsIdentity) ops.Add(Op(FilmicOp.Type, "Filmic", filmic.ToParams()));
+
+        // 4b) Tone Mapping nâng cao (D1): Tone Equalizer -> Sigmoid -> Filmic RGB.
+        var toneEq = new ToneEqualizerOp
+        {
+            Blacks = (float)GetVal("teq_blacks"), Shadows = (float)GetVal("teq_shadows"),
+            Midtones = (float)GetVal("teq_mid"), Highlights = (float)GetVal("teq_highlights"),
+            Whites = (float)GetVal("teq_whites"),
+        };
+        if (!toneEq.IsIdentity) ops.Add(Op(ToneEqualizerOp.Type, "Tone Equalizer", toneEq.ToParams()));
+
+        var sigmoid = new SigmoidOp { Amount = (float)GetVal("sig_amt"), Contrast = (float)GetVal("sig_contrast") };
+        if (!sigmoid.IsIdentity) ops.Add(Op(SigmoidOp.Type, "Sigmoid", sigmoid.ToParams()));
+
+        var filmRgb = new FilmicRgbOp
+        {
+            Amount = (float)GetVal("filmrgb_amt"), WhiteRelative = (float)GetVal("filmrgb_white"),
+            BlackRelative = (float)GetVal("filmrgb_black"), Contrast = (float)GetVal("filmrgb_contrast"),
+            Latitude = (float)GetVal("filmrgb_lat"), Saturation = (float)GetVal("filmrgb_sat"),
+        };
+        if (!filmRgb.IsIdentity) ops.Add(Op(FilmicRgbOp.Type, "Filmic RGB", filmRgb.ToParams()));
+
+        // 4c) Levels (D2.5) — master + per-channel R/G/B (chỉ ghi kênh khác identity).
+        var levels = new RgbLevelsOp
+        {
+            Black = (float)GetVal("lvl_black"), Gamma = (float)GetVal("lvl_gamma"), White = (float)GetVal("lvl_white"),
+            BlackR = ChVal("lvl_blackR", 0), WhiteR = ChVal("lvl_whiteR", 1), GammaR = ChVal("lvl_gammaR", 1),
+            BlackG = ChVal("lvl_blackG", 0), WhiteG = ChVal("lvl_whiteG", 1), GammaG = ChVal("lvl_gammaG", 1),
+            BlackB = ChVal("lvl_blackB", 0), WhiteB = ChVal("lvl_whiteB", 1), GammaB = ChVal("lvl_gammaB", 1),
+        };
+        if (!levels.IsIdentity) ops.Add(Op(RgbLevelsOp.Type, "Levels", levels.ToParams()));
+
+        // 4d) Highlight reconstruction (D5.3)
+        var hlr = new HighlightReconstructionOp { Amount = (float)GetVal("hlrecon") };
+        if (!hlr.IsIdentity) ops.Add(Op(HighlightReconstructionOp.Type, "Highlight Recon", hlr.ToParams()));
+
+        // 4e) Local tone map (HDR-look single-shot)
+        var ltm = new LocalToneMapOp { Amount = (float)GetVal("ltm_amt"), Detail = (float)GetVal("ltm_detail") };
+        if (!ltm.IsIdentity) ops.Add(Op(LocalToneMapOp.Type, "Local Tone Map", ltm.ToParams()));
+
+        // 5) HSL
+        var hsl = new HslMixerOp();
+        Array.Copy(_hslHue, hsl.Hue, HslMixerOp.Bands);
+        Array.Copy(_hslSat, hsl.Sat, HslMixerOp.Bands);
+        Array.Copy(_hslLum, hsl.Lum, HslMixerOp.Bands);
+        if (!hsl.IsIdentity) ops.Add(Op(HslMixerOp.Type, "HSL / Color Mixer", hsl.ToParams()));
+
+        // 5b) Color Balance RGB 4-way (D2.1)
+        var cbr = new ColorBalanceRgbOp
+        {
+            LiftHue = (float)GetVal("cbr_liftHue"), LiftSat = (float)GetVal("cbr_liftSat"),
+            GammaHue = (float)GetVal("cbr_gammaHue"), GammaSat = (float)GetVal("cbr_gammaSat"),
+            GainHue = (float)GetVal("cbr_gainHue"), GainSat = (float)GetVal("cbr_gainSat"),
+            GlobalChroma = (float)GetVal("cbr_chroma"), GlobalContrast = (float)GetVal("cbr_contrast"),
+        };
+        if (!cbr.IsIdentity) ops.Add(Op(ColorBalanceRgbOp.Type, "Color Balance RGB", cbr.ToParams()));
+
+        // 5c) Color Contrast Lab (D2.4)
+        var cc = new ColorContrastOp { GreenMagenta = (float)GetVal("cc_ga"), BlueYellow = (float)GetVal("cc_by") };
+        if (!cc.IsIdentity) ops.Add(Op(ColorContrastOp.Type, "Color Contrast", cc.ToParams()));
+
+        // 5c2) Color Calibration / Channel Mixer (hue+sat từng primary).
+        var chm = new ChannelMixerOp
+        {
+            RHue = (float)GetVal("chm_rHue"), RSat = (float)GetVal("chm_rSat"),
+            GHue = (float)GetVal("chm_gHue"), GSat = (float)GetVal("chm_gSat"),
+            BHue = (float)GetVal("chm_bHue"), BSat = (float)GetVal("chm_bSat"),
+        };
+        if (!chm.IsIdentity) ops.Add(Op(ChannelMixerOp.Type, "Color Calibration", chm.ToParams()));
+
+        // 5d) Velvia (D2.3)
+        var velvia = new VelviaOp { Amount = (float)GetVal("velvia") };
+        if (!velvia.IsIdentity) ops.Add(Op(VelviaOp.Type, "Velvia", velvia.ToParams()));
+
+        // 6) Split toning
+        var st = new SplitToningOp
+        {
+            HiHue = (float)GetVal("st_hiHue"), HiSat = (float)GetVal("st_hiSat"),
+            ShHue = (float)GetVal("st_shHue"), ShSat = (float)GetVal("st_shSat"),
+            Balance = (float)GetVal("st_bal"),
+        };
+        if (!st.IsIdentity) ops.Add(Op(SplitToningOp.Type, "Split Toning", st.ToParams()));
+
+        // 6a) Color Grading 3-way (3.3)
+        var grade = new ColorGradingOp { Blending = (float)GetVal("cg_blend") };
+        Array.Copy(_gradeHue, grade.Hue, 4);
+        Array.Copy(_gradeSat, grade.Sat, 4);
+        grade.Lum[0] = (float)GetVal("cg_sh_lum");
+        grade.Lum[1] = (float)GetVal("cg_mid_lum");
+        grade.Lum[2] = (float)GetVal("cg_hi_lum");
+        if (!grade.IsIdentity) ops.Add(Op(ColorGradingOp.Type, "Color Grading", grade.ToParams()));
+
+        // 6b) Selective color
+        var sel = new SelectiveColorOp
+        {
+            SourceHue = (float)GetVal("sel_src"), TargetHue = (float)GetVal("sel_tgt"),
+            Tolerance = (float)GetVal("sel_tol"), Strength = (float)GetVal("sel_str"),
+        };
+        if (!sel.IsIdentity) ops.Add(Op(SelectiveColorOp.Type, "Selective Color", sel.ToParams()));
+
+        // 6b2) Color Unify
+        var uni = new ColorUnifyOp
+        {
+            TargetHue = (float)GetVal("uni_hue"), TargetSat = (float)GetVal("uni_sat"),
+            Intensity = (float)GetVal("uni_int"),
+        };
+        if (!uni.IsIdentity) ops.Add(Op(ColorUnifyOp.Type, "Color Unify", uni.ToParams()));
+
+        // 6b3) Color Match (#8): áp tông màu ảnh tham chiếu (nếu đã đo stats + strength > 0).
+        if (_colorMatchStats.HasValue)
+        {
+            var cmStats = _colorMatchStats.Value;
+            var cm = new ZVision.Imaging.ColorMatchOp
+            {
+                ML = cmStats.ML, Ma = cmStats.Ma, Mb = cmStats.Mb, SL = cmStats.SL, Sa = cmStats.Sa, Sb = cmStats.Sb,
+                Strength = (float)GetVal("match_strength"),
+            };
+            if (!cm.IsIdentity) ops.Add(Op(ZVision.Imaging.ColorMatchOp.Type, "Color Match", cm.ToParams()));
+        }
+
+        // 6c) 3D LUT
+        if (!string.IsNullOrEmpty(_lutPath))
+        {
+            var lut = new LutCubeOp { Path = _lutPath, Intensity = (float)GetVal("lut_intensity") };
+            ops.Add(Op(LutCubeOp.Type, "3D LUT", lut.ToParams()));
+        }
+
+        // 7) Detail
+        var colorNR = new ColorNoiseReductionOp { Amount = (float)GetVal("colorNR") };
+        if (!colorNR.IsIdentity) ops.Add(Op(ColorNoiseReductionOp.Type, "Color NR", colorNR.ToParams()));
+        var lumaNR = new LumaNoiseReductionOp { Amount = (float)GetVal("lumaNR") };
+        if (!lumaNR.IsIdentity) ops.Add(Op(LumaNoiseReductionOp.Type, "Luminance NR", lumaNR.ToParams()));
+        var chromaNR = new ChromaDenoiseOp { Amount = (float)GetVal("chromaNR") };
+        if (!chromaNR.IsIdentity) ops.Add(Op(ChromaDenoiseOp.Type, "Chroma NR", chromaNR.ToParams()));
+        var hotpix = new HotPixelOp { Strength = (float)GetVal("hotpix"), Threshold = (float)GetVal("hotpixThr") };
+        if (!hotpix.IsIdentity) ops.Add(Op(HotPixelOp.Type, "Hot Pixel", hotpix.ToParams()));
+        var ca = new CaCorrectOp { Red = (float)GetVal("caRed"), Blue = (float)GetVal("caBlue") };
+        if (!ca.IsIdentity) ops.Add(Op(CaCorrectOp.Type, "CA Correct", ca.ToParams()));
+        var defr = new DefringeOp { Purple = (float)GetVal("defrPurple"), Green = (float)GetVal("defrGreen") };
+        if (!defr.IsIdentity) ops.Add(Op(DefringeOp.Type, "Defringe", defr.ToParams()));
+        var clarity = new ClarityOp { Amount = (float)GetVal("clarity") };
+        if (!clarity.IsIdentity) ops.Add(Op(ClarityOp.Type, "Clarity", clarity.ToParams()));
+        var clahe = new ClaheOp { Amount = (float)GetVal("clahe"), ClipLimit = (float)GetVal("clahe_clip") };
+        if (!clahe.IsIdentity) ops.Add(Op(ClaheOp.Type, "Local Contrast (CLAHE)", clahe.ToParams()));
+        var texture = new TextureOp { Amount = (float)GetVal("texture") };
+        if (!texture.IsIdentity) ops.Add(Op(TextureOp.Type, "Texture", texture.ToParams()));
+        var sharpen = new SharpenOp { Amount = (float)GetVal("sharpen"), Radius = (float)GetVal("sharpenRadius"), Masking = (float)GetVal("sharpenMask") };
+        if (!sharpen.IsIdentity) ops.Add(Op(SharpenOp.Type, "Sharpen", sharpen.ToParams()));
+        var diffuse = new DiffuseOp
+        {
+            Amount = (float)GetVal("diffuse"),
+            Iterations = (int)Math.Round(GetVal("diffuse_iter")),
+            EdgeSensitivity = (float)GetVal("diffuse_edge")
+        };
+        if (!diffuse.IsIdentity) ops.Add(Op(DiffuseOp.Type, "Diffuse/Sharpen", diffuse.ToParams()));
+
+        // Frequency Separation (#7): làm mịn da giữ kết cấu.
+        var fsep = new ZVision.Imaging.FrequencySeparationOp
+        {
+            Radius = (float)GetVal("fsep_radius"),
+            Smoothing = (float)GetVal("fsep_smooth"),
+            DetailAmount = (float)GetVal("fsep_detail"),
+        };
+        if (!fsep.IsIdentity) ops.Add(Op(ZVision.Imaging.FrequencySeparationOp.Type, "Skin Smoothing", fsep.ToParams()));
+
+        // 8) Effects
+        var vig = new VignetteOp
+        {
+            Amount = (float)GetVal("vignette"), Midpoint = (float)GetVal("vig_mid"),
+            Feather = (float)GetVal("vig_feather"), Roundness = (float)GetVal("vig_round"),
+            Highlights = (float)GetVal("vig_hi"),
+        };
+        if (!vig.IsIdentity) ops.Add(Op(VignetteOp.Type, "Vignette", vig.ToParams()));
+        var grain = new GrainOp
+        {
+            Amount = (float)GetVal("grain"), Size = (float)GetVal("grain_size"),
+            Roughness = (float)GetVal("grain_rough"), Color = (float)GetVal("grain_color"),
+        };
+        if (!grain.IsIdentity) ops.Add(Op(GrainOp.Type, "Grain", grain.ToParams()));
+        var glow = new GlowOp
+        {
+            Amount = (float)GetVal("glow"),
+            BaseRadius = (float)GetVal("glow_radius"),
+            Threshold = (float)GetVal("glow_thresh")
+        };
+        if (!glow.IsIdentity) ops.Add(Op(GlowOp.Type, "Glow / Soften", glow.ToParams()));
+
+        // Lua Scripting
+        if (_cmbLuaScript?.SelectedItem is ComboBoxItem luaItem && luaItem.Tag is string luaScriptName && !string.IsNullOrEmpty(luaScriptName))
+        {
+            var luaParams = new Dictionary<string, string>();
+            foreach (var kv in _luaSliderVals)
+            {
+                luaParams[kv.Key] = kv.Value.ToString(CultureInfo.InvariantCulture);
+            }
+            ops.Add(Op(LuaScriptOp.Type, $"Lua Script: {luaItem.Content}", new LuaScriptOp("", luaParams, luaScriptName).ToParams()));
+        }
+
+        // 8a) Gradient Map (#5): màu 3 chặng tuỳ chỉnh (preset điền sẵn) + midpoint + opacity.
+        double gmOpacity = GetVal("gradmap_opacity");
+        if (gmOpacity > 0)
+        {
+            var gm = ZVision.Imaging.GradientMapOp.FromParams(new Dictionary<string, string>
+            {
+                ["sh"] = NormHex(_gmShadow?.Text, "000000"),
+                ["mid"] = NormHex(_gmMid?.Text, "808080"),
+                ["hi"] = NormHex(_gmHigh?.Text, "FFFFFF"),
+                ["midpoint"] = GetVal("gradmap_mid").ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["opacity"] = gmOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            });
+            if (!gm.IsIdentity) ops.Add(Op(ZVision.Imaging.GradientMapOp.Type, "Gradient Map", gm.ToParams()));
+        }
+
+        // 8b) Black & White (sau màu, trước local). Chuyển xám + nhuộm.
+        var bw = new BlackWhiteOp
+        {
+            Enabled = _chkBw?.IsChecked == true,
+            RedWeight = (float)GetVal("bw_r"), GreenWeight = (float)GetVal("bw_g"), BlueWeight = (float)GetVal("bw_b"),
+            ToneHue = (float)GetVal("bw_toneHue"), ToneStrength = (float)GetVal("bw_toneStr"),
+        };
+        if (!bw.IsIdentity) ops.Add(Op(BlackWhiteOp.Type, "Black & White", bw.ToParams()));
+
+        // 8c) Invert (negative) — cuối cùng trước local.
+        var inv = new InvertOp { Enabled = _chkInvert?.IsChecked == true };
+        if (!inv.IsIdentity) ops.Add(Op(InvertOp.Type, "Negative / Invert", inv.ToParams()));
+
+        // 8d) AI Denoise (4.3) — op cuối, chỉ chạy full-res (export) qua AiOpHost.
+        var aiDn = new AiDenoiseOp { Strength = (float)GetVal("aiDenoise") };
+        if (!aiDn.IsIdentity) ops.Add(Op(AiDenoiseOp.Type, "AI Denoise", aiDn.ToParams()));
+
+        // 8e) Soft Proof / Gamut map (#1) — mô phỏng gamut thiết bị đích (Off = bỏ qua).
+        if (_cmbSoftProof?.SelectedItem is ComboBoxItem spItem && (spItem.Content?.ToString() ?? "Off") != "Off" &&
+            ColorSpaces.TryParse(spItem.Content?.ToString(), out var spSpace))
+        {
+            var gm = new GamutMapOp
+            {
+                Dest = spSpace,
+                Method = (_cmbSoftProofMode?.SelectedItem as ComboBoxItem)?.Content?.ToString() == "Desaturate"
+                    ? GamutMapOp.Mode.Desaturate : GamutMapOp.Mode.Clip,
+            };
+            ops.Add(Op(GamutMapOp.Type, "Soft Proof", gm.ToParams()));
+        }
+
+        // 9) Local adjustments (masked ops) — sau cùng để áp lên kết quả global.
+        AppendMaskOps(ops);
+
+        // 10) AI Upscale (#7) — op resizing CUỐI cùng, chỉ chạy full-res khi export.
+        if (_chkAiUpscale?.IsChecked == true)
+            ops.Add(Op(AiUpscaleOp.Type, "AI Upscale", new AiUpscaleOp { Factor = 4 }.ToParams()));
+
+        return ops;
+    }
+
+    private static EditOperation Op(string type, string title, Dictionary<string, string> p)
+        => new() { PluginId = "Develop", OpType = type, Title = title, Params = p };
+
+    // ===== Geometry buttons =====
+    private void RotateBy(int dir)
+    {
+        if (_currentPath == null || _history == null) return;
+        var cur = FindOp(_currentPath, OrientationOp.Type) is { } p ? OrientationOp.FromParams(p) : new OrientationOp();
+        cur.Rotate90 = ((cur.Rotate90 + dir) % 4 + 4) % 4;
+        ApplyOrientation(cur);
+    }
+
+    /// <summary>Xoay ảnh đang chọn (dir=-1 trái, +1 phải). Gọi được từ CenterPreview mode bar.</summary>
+    public void RotateActive(int dir) => RotateBy(dir);
+
+    /// <summary>Lật ảnh đang chọn (true=ngang, false=dọc). Gọi từ CenterPreview.</summary>
+    public void FlipActive(bool horizontal) => ToggleFlip(horizontal);
+
+    private void ToggleFlip(bool horizontal)
+    {
+        if (_currentPath == null || _history == null) return;
+        var cur = FindOp(_currentPath, OrientationOp.Type) is { } p ? OrientationOp.FromParams(p) : new OrientationOp();
+        if (horizontal) cur.FlipH = !cur.FlipH; else cur.FlipV = !cur.FlipV;
+        ApplyOrientation(cur);
+    }
+
+    private void ApplyOrientation(OrientationOp orient)
+    {
+        var ops = BuildOps();
+        ops.RemoveAll(o => o.OpType == OrientationOp.Type);
+        if (!orient.IsIdentity)
+            ops.Insert(0, Op(OrientationOp.Type, "Orientation", orient.ToParams()));
+        _history!.UpsertGroup(_currentPath!, "Develop", ops);
+    }
+
+    private void SetEnabled(bool on)
+    {
+        panelSliders.IsEnabled = on;
+        panelSliders.Opacity = on ? 1.0 : 0.65;
+        txtNoImage.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        btnReset.IsEnabled = on;
+        btnAuto.IsEnabled = on;
+        btnCopy.IsEnabled = on;
+    }
+
+    private void BtnReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _history == null) return;
+        _loading = true;
+        foreach (var kv in _defaults) SetVal(kv.Key, kv.Value);
+        Array.Clear(_hslHue); Array.Clear(_hslSat); Array.Clear(_hslLum);
+        // reset tone curve + color grading
+        for (int i = 0; i < 4; i++) _curveData[i] = "0,0;1,1";
+        if (_curveEditor != null) _curveEditor.SetPoints("0,0;1,1");
+        if (_chkCurvePreserveHue != null) _chkCurvePreserveHue.IsChecked = false;
+        Array.Clear(_gradeHue); Array.Clear(_gradeSat);
+        for (int i = 0; i < 4; i++) _gradeWheels[i]?.SetValue(0, 0);
+        // reset B&W / Invert / Auto WB
+        if (_chkBw != null) _chkBw.IsChecked = false;
+        if (_chkInvert != null) _chkInvert.IsChecked = false;
+        if (_chkFilmNeg != null) _chkFilmNeg.IsChecked = false;
+        if (_chkAiUpscale != null) _chkAiUpscale.IsChecked = false;
+        if (_cmbInputProfile != null) _cmbInputProfile.SelectedIndex = 0;
+        if (_cmbSoftProof != null) _cmbSoftProof.SelectedIndex = 0;
+        if (_cmbSoftProofMode != null) _cmbSoftProofMode.SelectedIndex = 0;
+        if (_cmbGradientMap != null) _cmbGradientMap.SelectedIndex = 0;
+        _colorMatchStats = null;
+        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
+        _wbGainR = 1f; _wbGainG = 1f; _wbGainB = 1f;
+        ClearMasks();
+        ClearHealing();
+        ClearLiquify();
+        _autoLensOp = null;
+        if (_lensAutoInfo != null) _lensAutoInfo.Text = "";
+        _loading = false;
+        _history.UpsertGroup(_currentPath, "Develop", Array.Empty<EditOperation>());
+    }
+
+    private void BtnAuto_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var sug = _renderer.AnalyzeAuto(_currentPath);
+        if (sug == null) return;
+        var v = sug.Value;
+        _loading = true;
+        SetVal("exposure", v.Exposure);
+        SetVal("contrast", v.Contrast);
+        SetVal("whites", v.Whites);
+        SetVal("blacks", v.Blacks);
+        SetVal("shadows", v.Shadows);
+        SetVal("highlights", v.Highlights);
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Auto Levels (D2.5): chọn điểm đen/trắng theo phân vị histogram rồi nạp vào slider Levels.</summary>
+    private void BtnAutoLevels_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var sug = _renderer.AnalyzeAutoLevels(_currentPath);
+        if (sug == null) return;
+        var v = sug.Value;
+        _loading = true;
+        SetVal("lvl_black", v.Black);
+        SetVal("lvl_white", v.White);
+        SetVal("lvl_gamma", v.Gamma);
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Auto Color: căng dải động riêng từng kênh R/G/B (khử ám màu) -> nạp per-channel Levels.</summary>
+    private void BtnAutoColor_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var sug = _renderer.AnalyzeAutoColor(_currentPath);
+        if (sug == null) return;
+        var v = sug.Value;
+        _loading = true;
+        SetVal("lvl_blackR", v.BlackR); SetVal("lvl_whiteR", v.WhiteR);
+        SetVal("lvl_blackG", v.BlackG); SetVal("lvl_whiteG", v.WhiteG);
+        SetVal("lvl_blackB", v.BlackB); SetVal("lvl_whiteB", v.WhiteB);
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Auto Straighten: ước lượng góc nghiêng rồi nạp vào slider Straighten (xoay bù).</summary>
+    private void BtnAutoStraighten_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var angle = _renderer.AnalyzeStraightenAngle(_currentPath);
+        if (angle == null) return;
+        SetVal("straighten", Math.Clamp(-angle.Value, -45f, 45f));
+        Commit();
+    }
+
+    /// <summary>Auto Upright (#6): ước lượng keystone V/H rồi nạp vào slider Perspective.</summary>
+    private void BtnAutoUpright_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var sug = _renderer.AnalyzeUpright(_currentPath);
+        if (sug == null) return;
+        _loading = true;
+        SetVal("persp_v", Math.Clamp(sug.Value.Vertical, -1f, 1f));
+        SetVal("persp_h", Math.Clamp(sug.Value.Horizontal, -1f, 1f));
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Auto CA: ước lượng dịch R/B ở mép rồi nạp vào slider CA Correct.</summary>
+    private void BtnAutoCa_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var ca = _renderer.AnalyzeCaCorrect(_currentPath);
+        if (ca == null) return;
+        _loading = true;
+        SetVal("caRed", ca.Value.Red);
+        SetVal("caBlue", ca.Value.Blue);
+        _loading = false;
+        Commit();
+    }
+
+    /// <summary>Auto Lens (lensfun, 5.3): đọc EXIF lens + tiêu cự, dựng LensProfileOp tự động.</summary>
+    private void BtnAutoLens_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null) return;
+        if (_lensfun == null || !_lensfun.HasDatabase)
+        {
+            if (_lensAutoInfo != null) _lensAutoInfo.Text = "Lensfun database not found (place XML in lensfun/).";
+            return;
+        }
+        try
+        {
+            var meta = ZVision.Shared.ExifReader.ReadMetadata(_currentPath);
+            float focal = (float)(meta.FocalLength ?? 0);
+            var op = _lensfun.BuildOpFor(meta.LensModel, focal);
+            if (op == null)
+            {
+                if (_lensAutoInfo != null)
+                    _lensAutoInfo.Text = string.IsNullOrWhiteSpace(meta.LensModel)
+                        ? "Photo has no lens metadata (EXIF)."
+                        : $"No profile found for: {meta.LensModel}";
+                return;
+            }
+            _autoLensOp = op;
+            if (_lensAutoInfo != null)
+            {
+                string name = _lensfun.MatchLensName(meta.LensModel) ?? meta.LensModel ?? "?";
+                _lensAutoInfo.Text = $"Applied profile: {name} @ {focal:0}mm";
+            }
+            Commit();
+        }
+        catch (Exception ex)
+        {
+            ZVision.Shared.AppLog.Warn("DevelopPanel.AutoLens", ex.Message);
+        }
+    }
+
+    /// <summary>Đặt Kelvin theo preset nguồn sáng. 0 = không đổi.</summary>
+    private void ApplyWbPreset(int index)
+    {
+        if (_currentPath == null) return;
+        double kelvin = index switch
+        {
+            1 => 5500, // Daylight
+            2 => 6500, // Cloudy
+            3 => 7500, // Shade
+            4 => 3200, // Tungsten
+            5 => 4000, // Fluorescent
+            6 => 5500, // Flash
+            _ => 0,
+        };
+        if (kelvin <= 0) return;
+        SetVal("kelvin", kelvin);
+        Commit();
+    }
+
+    private void BtnCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (_clipboard == null || _history == null || _currentPath == null) return;
+        var dlg = new CopySettingsDialog
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            _clipboard.Copy(_history, _currentPath, dlg.SelectedKeys);
+        }
+    }
+
+    /// <summary>Auto White Balance (13.2): phân tích gray-world rồi áp qua ChannelGainOp.</summary>
+    private void BtnAutoWb_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var g = _renderer.AnalyzeAutoWhiteBalance(_currentPath);
+        if (g == null) return;
+        _wbGainR = g.Value.R; _wbGainG = g.Value.G; _wbGainB = g.Value.B;
+        Commit();
+    }
+
+    /// <summary>Bắn khi user bật eyedropper WB; CenterPreview vào chế độ click chọn điểm.</summary>
+    public event EventHandler? WhiteBalancePickRequested;
+
+    private void BtnPickWb_Click(object sender, RoutedEventArgs e)
+        => WhiteBalancePickRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>CenterPreview gọi lại khi user click 1 điểm (toạ độ chuẩn hoá) để lấy mẫu WB.</summary>
+    public void ApplyWhiteBalancePick(float nx, float ny)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var g = _renderer.SampleWhiteBalance(_currentPath, nx, ny);
+        if (g == null) return;
+        _wbGainR = g.Value.R; _wbGainG = g.Value.G; _wbGainB = g.Value.B;
+        Commit();
+    }
+
+    /// <summary>Bắn khi user bật eyedropper Film Base; CenterPreview vào chế độ click chọn mép phim.</summary>
+    public event EventHandler? FilmBasePickRequested;
+
+    private void BtnPickFilmBase_Click(object sender, RoutedEventArgs e)
+        => FilmBasePickRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>CenterPreview gọi lại khi user click mép phim -> nạp màu base + bật Film Negative.</summary>
+    public void ApplyFilmBasePick(float nx, float ny)
+    {
+        if (_currentPath == null || _renderer == null) return;
+        var b = _renderer.SampleFilmBase(_currentPath, nx, ny);
+        if (b == null) return;
+        _loading = true;
+        SetVal("film_rbase", b.Value.R);
+        SetVal("film_gbase", b.Value.G);
+        SetVal("film_bbase", b.Value.B);
+        if (_chkFilmNeg != null) _chkFilmNeg.IsChecked = true;
+        _loading = false;
+        Commit();
+    }
+
+    private void BtnLutPick_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select 3D LUT (.cube)",
+            Filter = "Cube LUT (*.cube)|*.cube|All files (*.*)|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        _lutPath = dlg.FileName;
+        if (_lutLabel != null) _lutLabel.Text = System.IO.Path.GetFileName(_lutPath);
+        Commit();
+    }
+
+    /// <summary>Color Match (#8): chọn ảnh tham chiếu -> đo thống kê Lab -> dựng op.</summary>
+    /// <summary>Color Match (#8): đo trực tiếp từ ảnh tham chiếu (Shift+R) đang ghim.</summary>
+    private void BtnColorMatchReference_Click(object sender, RoutedEventArgs e)
+    {
+        if (_renderer == null) return;
+        string? refPath = ReferenceImageProvider?.Invoke();
+        if (string.IsNullOrEmpty(refPath) || !System.IO.File.Exists(refPath))
+        {
+            MessageBox.Show("No Reference Photo is active.\n\nRight-click any photo and select 'Set as Reference Photo' (or press Shift+R) to lock it as reference first.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            if (!_renderer.Decoders.CanDecode(refPath))
+            {
+                MessageBox.Show("Cannot decode reference photo: " + System.IO.Path.GetFileName(refPath), "Color Match", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var decoded = _renderer.Decoders.Decode(refPath);
+            _colorMatchStats = ZVision.Imaging.ColorMatch.Measure(decoded.Image);
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = "Ref: " + System.IO.Path.GetFileName(refPath);
+            Commit();
+        }
+        catch (Exception ex)
+        {
+            ZVision.Shared.AppLog.Warn("DevelopPanel.ColorMatch", $"{refPath}: {ex.Message}");
+            MessageBox.Show("Error analyzing reference photo colors.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnColorMatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (_renderer == null) return;
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select Reference Photo (Color Match)",
+            Filter = "Image files (*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp)|*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.webp|All files (*.*)|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            if (!_renderer.Decoders.CanDecode(dlg.FileName))
+            {
+                MessageBox.Show("Failed to read reference photo.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var decoded = _renderer.Decoders.Decode(dlg.FileName);
+            _colorMatchStats = ZVision.Imaging.ColorMatch.Measure(decoded.Image);
+            if (_colorMatchInfo != null) _colorMatchInfo.Text = System.IO.Path.GetFileName(dlg.FileName);
+            Commit();
+        }
+        catch (Exception ex)
+        {
+            ZVision.Shared.AppLog.Warn("DevelopPanel.ColorMatch", $"{dlg.FileName}: {ex.Message}");
+            MessageBox.Show("Error analyzing reference photo colors.", "Color Match", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnColorMatchClear_Click(object sender, RoutedEventArgs e)
+    {
+        _colorMatchStats = null;
+        if (_colorMatchInfo != null) _colorMatchInfo.Text = "(no reference photo selected)";
+        Commit();
+    }
+
+    private void BtnPaste_Click(object sender, RoutedEventArgs e)
+    {
+        if (_clipboard == null || _history == null || !_clipboard.HasCopied) return;
+        var targets = _workspace != null && _workspace.Selection.Count > 0
+            ? _workspace.Selection.ToList()
+            : (_currentPath != null ? new List<string> { _currentPath } : new List<string>());
+        if (targets.Count == 0) return;
+        _clipboard.PasteToMany(_history, targets);
+        LoadFor(_currentPath);
+    }
+
+    private void UpdateSyncButtonState()
+    {
+        if (btnSync != null && _workspace != null)
+        {
+            btnSync.IsEnabled = _workspace.Selection.Count > 1;
+        }
+    }
+
+    private void BtnSync_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace == null || _history == null || _currentPath == null) return;
+        
+        var targets = _workspace.Selection
+            .Where(p => !string.Equals(p, _currentPath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+            
+        if (targets.Count == 0)
+        {
+            MessageBox.Show("Please select 2 or more photos to synchronize settings.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new SyncSettingsDialog { Owner = Window.GetWindow(this) };
+        if (dlg.ShowDialog() == true)
+        {
+            var selectedCategories = dlg.SelectedCategories;
+            if (selectedCategories.Count == 0) return;
+
+            int activePointer = _history.GetPointer(_currentPath);
+            var activeStack = _history.GetStack(_currentPath).Take(activePointer).ToList();
+            var opsToSync = activeStack.Where(op => IsOpInCategories(op, selectedCategories)).ToList();
+
+            foreach (var target in targets)
+            {
+                int targetPointer = _history.GetPointer(target);
+                var targetStack = _history.GetStack(target).Take(targetPointer).ToList();
+                var mergedOps = targetStack.Where(op => !IsOpInCategories(op, selectedCategories)).ToList();
+                
+                foreach (var op in opsToSync)
+                {
+                    var cloned = new EditOperation
+                    {
+                        PluginId = op.PluginId,
+                        OpType = op.OpType,
+                        Title = op.Title,
+                        Params = new Dictionary<string, string>(op.Params)
+                    };
+                    mergedOps.Add(cloned);
+                }
+
+                _history.UpsertGroup(target, "Develop", mergedOps);
+            }
+
+            MessageBox.Show($"Successfully synchronized settings to {targets.Count} photos.", "Sync Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private bool IsOpInCategories(EditOperation op, HashSet<string> categories)
+    {
+        string type = op.OpType;
+        if (categories.Contains("Basic"))
+        {
+            if (type == "InputProfile" || type == "FilmNegative" || type == "WhiteBalanceKelvin" || 
+                type == "ChannelGain" || type == "DevelopBasic" || type == "ParametricCurve" || 
+                type == "ToneCurve" || type == "Dehaze" || type == "Filmic" || 
+                type == "ToneEqualizer" || type == "Sigmoid" || type == "FilmicRgb" || 
+                type == "RgbLevels" || type == "HighlightReconstruction" || type == "LocalToneMap")
+            {
+                return true;
+            }
+        }
+        if (categories.Contains("HSL"))
+        {
+            if (type == "HslMixer" || type == "ColorBalanceRgb" || type == "ColorContrast" || 
+                type == "ChannelMixer" || type == "Velvia" || type == "SplitToning" || 
+                type == "ColorGrading" || type == "SelectiveColor" || type == "ColorUnify" || 
+                type == "ColorMatch")
+            {
+                return true;
+            }
+        }
+        if (categories.Contains("Detail"))
+        {
+            if (type == "ColorNoiseReduction" || type == "LumaNoiseReduction" || type == "DenoiseNlMeans" || 
+                type == "Sharpen" || type == "Diffuse" || type == "Glow" || 
+                type == "Vignette" || type == "Grain")
+            {
+                return true;
+            }
+        }
+        if (categories.Contains("LUT"))
+        {
+            if (type == "LutCube")
+            {
+                return true;
+            }
+        }
+        if (categories.Contains("Lua"))
+        {
+            if (type == "LuaScript")
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ===== Develop Presets (dùng IStyleService) =====
+    private void RefreshPresetList()
+    {
+        if (cmbPreset == null) return;
+        _loading = true;
+        cmbPreset.Items.Clear();
+        cmbPreset.Items.Add(new ComboBoxItem { Content = "(Select Preset)", Tag = null });
+        cmbPreset.SelectedIndex = 0;
+        if (_styles != null)
+        {
+            try
+            {
+                foreach (var s in _styles.Styles)
+                    cmbPreset.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Id });
+            }
+            catch { }
+        }
+        _loading = false;
+    }
+
+    private void BtnSavePreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_styles == null || _currentPath == null || _history == null) return;
+        // Đảm bảo history phản ánh slider hiện tại trước khi snapshot.
+        Commit();
+        var dlg = new PresetNameDialog { Owner = Window.GetWindow(this) };
+        if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.PresetName)) return;
+        try
+        {
+            _styles.SaveFromHistory(dlg.PresetName.Trim(), _currentPath);
+            RefreshPresetList();
+        }
+        catch { }
+    }
+
+    private void CmbPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _styles == null || _history == null || _currentPath == null) return;
+        if (cmbPreset.SelectedItem is not ComboBoxItem item || item.Tag is not string id) return;
+        try
+        {
+            var style = _styles.Styles.FirstOrDefault(s => s.Id == id);
+            if (style == null) return;
+            // Áp preset: thay nhóm Develop bằng op Develop của preset (atomic, clone params).
+            var ops = style.Operations
+                .Where(o => string.Equals(o.PluginId, "Develop", StringComparison.OrdinalIgnoreCase))
+                .Select(o => new EditOperation
+                {
+                    PluginId = "Develop", OpType = o.OpType, Title = o.Title,
+                    Params = new Dictionary<string, string>(o.Params)
+                }).ToList();
+            _history.UpsertGroup(_currentPath, "Develop", ops);
+            LoadFor(_currentPath);
+        }
+        catch { }
+    }
+
+    public string GetTatMode()
+    {
+        return (cmbTatMode?.SelectedItem as ComboBoxItem)?.Tag as string ?? "sat";
+    }
+
+    public void DisableTat()
+    {
+        if (btnTat != null) btnTat.IsChecked = false;
+    }
+
+    public void GetHslValues(out float[] hue, out float[] sat, out float[] lum)
+    {
+        hue = _hslHue.ToArray();
+        sat = _hslSat.ToArray();
+        lum = _hslLum.ToArray();
+    }
+
+    public void UpdateHslValues(float[] hue, float[] sat, float[] lum, bool schedule = true)
+    {
+        Array.Copy(hue, _hslHue, HslMixerOp.Bands);
+        Array.Copy(sat, _hslSat, HslMixerOp.Bands);
+        Array.Copy(lum, _hslLum, HslMixerOp.Bands);
+        
+        _loading = true;
+        LoadBandIntoSliders();
+        _loading = false;
+
+        if (schedule)
+            ScheduleCommit();
+        else
+            Commit();
+    }
+
+    // ===== Lua Scripting UX methods =====
+    private void RefreshLuaScripts()
+    {
+        if (_cmbLuaScript == null) return;
+        _cmbLuaScript.Items.Clear();
+        _cmbLuaScript.Items.Add(new ComboBoxItem { Content = "Off", Tag = "" });
+        _cmbLuaScript.SelectedIndex = 0;
+
+        string scriptsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts");
+        if (!Directory.Exists(scriptsDir))
+        {
+            scriptsDir = Path.Combine(Environment.CurrentDirectory, "Scripts");
+        }
+
+        if (Directory.Exists(scriptsDir))
+        {
+            var files = Directory.GetFiles(scriptsDir, "*.lua");
+            foreach (var file in files)
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                _cmbLuaScript.Items.Add(new ComboBoxItem
+                {
+                    Content = name,
+                    Tag = Path.GetFileName(file)
+                });
+            }
+        }
+    }
+
+    private void CmbLuaScript_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_panelLuaSliders == null) return;
+        _panelLuaSliders.Children.Clear();
+        _luaSliders.Clear();
+        _luaSliderVals.Clear();
+
+        if (_cmbLuaScript?.SelectedItem is not ComboBoxItem item || string.IsNullOrEmpty(item.Tag as string))
+        {
+            if (!_loading) ScheduleCommit();
+            return;
+        }
+
+        string scriptName = (string)item.Tag;
+        string name = scriptName;
+        if (!name.EndsWith(".lua", StringComparison.OrdinalIgnoreCase)) name += ".lua";
+
+        string scriptsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts");
+        if (!Directory.Exists(scriptsDir))
+        {
+            scriptsDir = Path.Combine(Environment.CurrentDirectory, "Scripts");
+        }
+        string fullPath = Path.Combine(scriptsDir, name);
+
+        if (File.Exists(fullPath))
+        {
+            string content = File.ReadAllText(fullPath);
+            var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var regex = new Regex(
+                @"^--\s*@slider\s+(\w+)\s*\(\s*(-?\d+(?:\.\d+)?)\s*\.\.\s*(-?\d+(?:\.\d+)?)\s*,\s*def:\s*(-?\d+(?:\.\d+)?)\s*,\s*""([^""]+)""\s*\)"
+            );
+
+            foreach (var line in lines)
+            {
+                var match = regex.Match(line.Trim());
+                if (match.Success)
+                {
+                    string key = match.Groups[1].Value;
+                    double min = double.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                    double max = double.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+                    double def = double.Parse(match.Groups[4].Value, CultureInfo.InvariantCulture);
+                    string label = match.Groups[5].Value;
+
+                    AddLuaSlider(_panelLuaSliders, key, label, min, max, def);
+                }
+            }
+        }
+
+        if (!_loading) ScheduleCommit();
+    }
+
+    private void AddLuaSlider(Panel host, string key, string label, double min, double max, double def, string fmt = "0.00")
+    {
+        _luaSliderVals[key] = def;
+        var edit = new NumericSliderEdit(label, min, max, def, fmt) { Tag = key };
+        edit.ValueChanged += (s, e) =>
+        {
+            _luaSliderVals[key] = e.NewValue;
+            if (_loading) return;
+            ScheduleCommit();
+        };
+        host.Children.Add(edit);
+        _luaSliders[key] = edit;
+    }
+
+    // ===== Tab Filter & Solo Mode Event Handlers =====
+    private void ChkSoloMode_Changed(object? sender, bool isChecked)
+    {
+        _soloMode = isChecked;
+        
+        // Nếu bật Solo Mode, tự động đóng toàn bộ trừ cái đầu tiên đang mở
+        if (_soloMode && panelSliders?.Children != null)
+        {
+            bool foundFirst = false;
+            foreach (var child in panelSliders.Children)
+            {
+                if (child is Expander exp)
+                {
+                    if (exp.IsExpanded && !foundFirst)
+                    {
+                        foundFirst = true;
+                    }
+                    else
+                    {
+                        exp.IsExpanded = false;
+                    }
+                }
+            }
+        }
+    }
+
+    private void SegFilterTabs_SelectedIndexChanged(object? sender, int index)
+    {
+        if (index >= 0 && index < FilterTabs.Length)
+        {
+            _currentTab = FilterTabs[index];
+            ApplyTabFilter();
+        }
+    }
+
+    private void ApplyTabFilter()
+    {
+        if (panelSliders?.Children == null) return;
+        Expander? firstVisible = null;
+        bool hasExpandedVisible = false;
+
+        foreach (var child in panelSliders.Children)
+        {
+            if (child is Expander exp)
+            {
+                string header = exp.Tag as string ?? "";
+                bool isVisible = IsExpanderInTab(header, _currentTab);
+                exp.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+                if (isVisible)
+                {
+                    firstVisible ??= exp;
+                    if (exp.IsExpanded) hasExpandedVisible = true;
+                }
+            }
+        }
+
+        if (_soloMode && !hasExpandedVisible && firstVisible != null)
+        {
+            firstVisible.IsExpanded = true;
+        }
+    }
+
+    private void FilterTab_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tabName) return;
+        _currentTab = tabName;
+        ApplyTabFilter();
+    }
+
+    private bool IsExpanderInTab(string header, string tab)
+    {
+        if (tab == "All") return true;
+
+        return tab switch
+        {
+            "Basic" => header is "Basic" or "Tone Curve",
+            "Color" => header is "Tone Curve" or "Color Mixer & Grading" or "Calibration",
+            "Detail" => header is "Detail" or "Optics" or "Geometry & Transform" or "AI Face Restorer (GPEN)",
+            "Advanced" => header is "Effects" or "Advanced & Lab (Darktable / Custom)" or "Local Adjustments" or "Healing / Clone" or "Liquify / Warp" or "AI Face Restorer (GPEN)",
+            _ => false
+        };
+    }
+
+    /// <summary>Gắn UI component của plugin AI Face Restorer vào DevelopPanel.</summary>
+    public void SetFaceRestorerPlugin(object? uiComponent)
+    {
+        if (uiComponent == null) return;
+        var group = AddGroup("AI Face Restorer (GPEN)", false);
+        if (uiComponent is UIElement uie)
+        {
+            group.Children.Add(uie);
+        }
+        ApplyTabFilter();
+    }
+}

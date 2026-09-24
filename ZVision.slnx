@@ -1,0 +1,10 @@
+﻿<Solution>
+  <Project Path="ZVision.Core/ZVision.Core.csproj" />
+  <Project Path="ZVision.Host/ZVision.Host.csproj" />
+  <Project Path="ZVision.Imaging/ZVision.Imaging.csproj" />
+  <Project Path="ZVision.Plugins.FaceRestorer/ZVision.Plugins.FaceRestorer.csproj" />
+  <Project Path="ZVision.Plugins.VisionTagger/ZVision.Plugins.VisionTagger.csproj" />
+  <Project Path="ZVision.Plugins.Upscaler/ZVision.Plugins.Upscaler.csproj" />
+  <Project Path="ZVision.Shared/ZVision.Shared.csproj" />
+  <Project Path="ZVision.Tests/ZVision.Tests.csproj" />
+</Solution>

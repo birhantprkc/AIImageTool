@@ -1,0 +1,58 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZVision.Core\ZVision.Core.csproj" />
+    <ProjectReference Include="..\ZVision.Shared\ZVision.Shared.csproj" />
+    <ProjectReference Include="..\ZVision.Imaging\ZVision.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="ZeroUI.Core" Version="1.8.0" />
+    <PackageReference Include="ZeroUI.Wpf" Version="1.8.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- Thương hiệu chuẩn ZVision thuộc hệ sinh thái ZeroUniverse -->
+    <Product>ZVision</Product>
+    <AssemblyTitle>ZVision</AssemblyTitle>
+    <Description>ZVision — Professional Non-Destructive RAW and Image Processing Workstation.</Description>
+    <Company>ZeroUniverse</Company>
+    <Version>2.0.0</Version>
+  </PropertyGroup>
+
+  <!--
+    Native RAW (LibRaw) TUỲ CHỌN: bỏ libraw.dll (+ phụ thuộc) vào thư mục "native/" cạnh solution
+    để tự copy vào output. Không có file -> bỏ qua, app dùng JPEG-preview fallback. Không bắt buộc build.
+  -->
+  <ItemGroup>
+    <NativeRawDll Include="$(MSBuildProjectDirectory)\..\native\*.dll" />
+  </ItemGroup>
+  <Target Name="CopyNativeRaw" AfterTargets="Build" Condition="'@(NativeRawDll)' != ''">
+    <Copy SourceFiles="@(NativeRawDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="LibRaw native: đã copy @(NativeRawDll->'%(Filename)%(Extension)', ', ') vào output." />
+  </Target>
+
+  <!--
+    Lensfun DB TUỲ CHỌN (5.3): bỏ các file XML lensfun vào "lensfun/" cạnh solution để bật hiệu chỉnh
+    ống kính tự động. Không có file -> bỏ qua, dùng chỉnh tay. Copy giữ cấu trúc thư mục con.
+  -->
+  <ItemGroup>
+    <LensfunXml Include="$(MSBuildProjectDirectory)\..\lensfun\**\*.xml" />
+  </ItemGroup>
+  <Target Name="CopyLensfun" AfterTargets="Build" Condition="'@(LensfunXml)' != ''">
+    <Copy SourceFiles="@(LensfunXml)" DestinationFolder="$(OutDir)lensfun\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="Lensfun: đã copy @(LensfunXml->Count()) file XML vào output\lensfun." />
+  </Target>
+
+</Project>

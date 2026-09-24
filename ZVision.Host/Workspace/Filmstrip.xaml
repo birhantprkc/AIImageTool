@@ -1,0 +1,11 @@
+﻿<UserControl x:Class="ZVision.Host.Workspace.Filmstrip"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
+             Background="{DynamicResource BgBaseBrush}" Height="128">
+    <Grid>
+        <edit:FilmstripScrollerControl x:Name="ctrlFilmstrip"
+                                       ItemClicked="CtrlFilmstrip_ItemClicked"
+                                       ItemRightClicked="CtrlFilmstrip_ItemRightClicked"/>
+    </Grid>
+</UserControl>

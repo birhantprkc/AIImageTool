@@ -1,0 +1,18 @@
+﻿<UserControl x:Class="ZVision.Host.Workspace.MetadataFilterBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
+             Background="{DynamicResource BgPanelBrush}" BorderBrush="{DynamicResource BorderBrush_}"
+             BorderThickness="0,0,0,1" Height="175">
+    <Grid>
+        <edit:FacetedFilterBar x:Name="filterBar"
+                               HeaderTitle="🔍  METADATA DRILL-DOWN"
+                               SummaryText="· All Photos"
+                               SelectionChanged="FilterBar_SelectionChanged"
+                               FiltersCleared="FilterBar_FiltersCleared"/>
+        <Button x:Name="btnClose" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" Width="22" Height="20" Padding="0" Margin="0,3,8,0"
+                Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"
+                Click="BtnClose_Click" ToolTip="Hide metadata filter bar (\)"/>
+    </Grid>
+</UserControl>

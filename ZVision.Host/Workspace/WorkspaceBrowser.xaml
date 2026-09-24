@@ -1,0 +1,139 @@
+﻿<UserControl x:Class="ZVision.Host.Workspace.WorkspaceBrowser"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ZVision.Host.Workspace"
+             xmlns:edit="clr-namespace:ZeroUI.Wpf.Editors;assembly=ZeroUI.Wpf"
+             xmlns:opt="clr-namespace:ZeroUI.Wpf.Rendering.Optimizer;assembly=ZeroUI.Wpf"
+             Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="220" MinHeight="100"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="120" MinHeight="60"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Folders header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgPanelAltBrush}" Padding="10,6">
+            <DockPanel>
+                <TextBlock Text="FOLDERS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Folder tree -->
+        <TreeView x:Name="treeFolders"
+                  Grid.Row="1"
+                  Background="{DynamicResource BgPanelBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
+                  ItemsSource="{Binding Roots}"
+                  SelectedItemChanged="TreeView_SelectedItemChanged">
+            <TreeView.Resources>
+                <HierarchicalDataTemplate DataType="{x:Type local:FolderNode}"
+                                          ItemsSource="{Binding Children}">
+                    <DockPanel LastChildFill="True">
+                        <!-- Imported badge dot -->
+                        <Border DockPanel.Dock="Right" Width="8" Height="8" CornerRadius="4"
+                                Margin="6,0,4,0" VerticalAlignment="Center"
+                                Background="{DynamicResource AccentBrush}"
+                                ToolTip="This folder contains photos imported into the catalog"
+                                Visibility="{Binding ImportedBadgeVisibility}"/>
+                        <TextBlock Text="{Binding Name}" Padding="2,1"/>
+                    </DockPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.Resources>
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                </Style>
+            </TreeView.ItemContainerStyle>
+            <TreeView.ContextMenu>
+                <ContextMenu x:Name="folderContextMenu">
+                    <MenuItem x:Name="miOpenWorkspace" Header="Open in Workspace" Click="MiOpenInWorkspace_Click"/>
+                    <MenuItem x:Name="miImport" Header="Import folder…" Click="MiImport_Click"/>
+                    <MenuItem x:Name="miSync" Header="Sync Folder (Scan for New Photos)" Click="MiSync_Click"/>
+                    <MenuItem x:Name="miSmartCull" Header="✨ Smart Cull / Analyze Photos…" Click="MiSmartCullFolder_Click"/>
+                    <Separator/>
+                    <MenuItem x:Name="miShowExplorer" Header="Show in Explorer" Click="MiShowInExplorer_Click"/>
+                </ContextMenu>
+            </TreeView.ContextMenu>
+        </TreeView>
+
+        <GridSplitter Grid.Row="2" Height="3" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush_}"/>
+
+        <!-- Collections Panel -->
+        <local:CollectionsPanel x:Name="collectionsPanel" Grid.Row="3"/>
+
+        <GridSplitter Grid.Row="4" Height="3" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush_}"/>
+
+        <!-- Preview-mode action bar (hidden when workspace == previewing folder) -->
+        <Border x:Name="previewActionBar" Grid.Row="5" Background="{DynamicResource BgPanelAltBrush}" Padding="8,6"
+                BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,1,0,1" Visibility="Collapsed">
+            <StackPanel>
+                <DockPanel>
+                    <TextBlock Text="🔍 Previewing" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtPreviewPath" Text="" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="10"
+                               TextTrimming="CharacterEllipsis" Margin="6,0,0,0"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+                <DockPanel Margin="0,6,0,0">
+                    <Button x:Name="btnOpenWorkspace" DockPanel.Dock="Left" Content="↗ Open in Workspace"
+                            Padding="8,4" Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0"
+                            FontSize="11" Click="BtnOpenWorkspace_Click" Margin="0,0,4,0"
+                            ToolTip="Open this folder in main workspace (filmstrip, history, tools)"/>
+                    <Button x:Name="btnImport" DockPanel.Dock="Left" Content="⬇ Import…"
+                            Padding="8,4" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0"
+                            FontSize="11" Click="BtnImport_Click"
+                            ToolTip="Open Import dialog with this folder pre-filled"/>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Search bar -->
+        <Border Grid.Row="6" Background="{DynamicResource BgPanelBrush}" Padding="6,4" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,1,0,1">
+            <DockPanel>
+                <ComboBox x:Name="cmbSort" DockPanel.Dock="Right" Width="100" Height="22" Margin="6,0,0,0"
+                          SelectedIndex="0" SelectionChanged="CmbSort_SelectionChanged"
+                          ToolTip="Sort Order">
+                    <ComboBoxItem Content="File Name (A to Z)" Tag="NameAsc"/>
+                    <ComboBoxItem Content="File Name (Z to A)" Tag="NameDesc"/>
+                    <ComboBoxItem Content="Date (Newest First)" Tag="DateDesc"/>
+                    <ComboBoxItem Content="Date (Oldest First)" Tag="DateAsc"/>
+                    <ComboBoxItem Content="File Size (Largest First)" Tag="SizeDesc"/>
+                    <ComboBoxItem Content="File Size (Smallest First)" Tag="SizeAsc"/>
+                    <ComboBoxItem Content="Rating cao" Tag="RatingDesc"/>
+                </ComboBox>
+                <edit:SearchControl x:Name="txtSearch" Height="24" Placeholder="Search by file name or keywords..." DebounceMs="200"
+                                    DebouncedTextChanged="TxtSearch_DebouncedTextChanged"/>
+                <ComboBox x:Name="cmbMinRating" Visibility="Collapsed" SelectedIndex="0"
+                          SelectionChanged="CmbMinRating_SelectionChanged"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Thumbnails source label -->
+        <Border Grid.Row="7" Background="{DynamicResource BgBaseBrush}" Padding="8,3" BorderBrush="{DynamicResource BorderBrush_}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <edit:SimpleButton x:Name="btnSmartCull" DockPanel.Dock="Right" Content="✨ Smart Cull"
+                                   Height="20" Padding="8,1" FontSize="10"
+                                   ToolTip="Analyze photos in current workspace for blur, blown highlights, and duplicates"
+                                   Click="BtnSmartCull_Click"/>
+                <TextBlock x:Name="txtThumbSource" Text="Workspace thumbnails" Foreground="{DynamicResource TextDimBrush}" FontSize="10" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Thumbnails (workspace OR preview, swapped via _isPreviewing) -->
+        <Border Grid.Row="8" Background="{DynamicResource BgPanelBrush}">
+            <edit:ThumbnailGridControl x:Name="gridThumbnails"
+                                       ItemsSource="{Binding Thumbnails}"
+                                       EmptyMessage="Workspace folder contains no photos."
+                                       ItemClicked="ThumbnailGrid_ItemClicked"
+                                       ItemRightClicked="ThumbnailGrid_ItemRightClicked"/>
+        </Border>
+    </Grid>
+</UserControl>
